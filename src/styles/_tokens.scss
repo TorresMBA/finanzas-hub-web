@@ -1,0 +1,59 @@
+// Design tokens taken as they are from the UI mock (Mocks_finanzas-hub-angular/FinanzasHub Mocks.dc.html),
+// with the same names, so markup and values can be compared with the mock one to one.
+//
+//   bg  page background        tx   primary text        ac  accent (income, success)   am  warning
+//   sf  surface                tx2  secondary text      bl  info, links                vi  highlight
+//   sf2 raised surface         mu   muted text          rd  expense, danger
+//   sf3 track, inset           bd   border              *s  soft tint of the colour
+//   onac text on accent        sh   shadow              ov  overlay behind dialogs
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0a111e;
+  --sf: #101a2b;
+  --sf2: #152137;
+  --sf3: #1c2a45;
+  --bd: rgba(148, 163, 184, 0.13);
+  --tx: #e8edf4;
+  --tx2: #c2cbd9;
+  --mu: #8d9ab0;
+  --ac: #1cc28c;
+  --acs: rgba(28, 194, 140, 0.14);
+  --onac: #03281b;
+  --bl: #4db6f0;
+  --bls: rgba(77, 182, 240, 0.14);
+  --rd: #f25b7d;
+  --rds: rgba(242, 91, 125, 0.14);
+  --am: #f0b43f;
+  --ams: rgba(240, 180, 63, 0.15);
+  --vi: #a093f7;
+  --vis: rgba(160, 147, 247, 0.16);
+  --sh: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --ov: rgba(3, 7, 15, 0.6);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f5f8;
+  --sf: #ffffff;
+  --sf2: #f1f4f8;
+  --sf3: #e5eaf1;
+  --bd: rgba(15, 23, 42, 0.09);
+  --tx: #0e1626;
+  --tx2: #334155;
+  --mu: #5a6577;
+  --ac: #08805a;
+  --acs: rgba(8, 128, 90, 0.1);
+  --onac: #ffffff;
+  --bl: #1572b0;
+  --bls: rgba(21, 114, 176, 0.1);
+  --rd: #cc2f5a;
+  --rds: rgba(204, 47, 90, 0.09);
+  --am: #a86c00;
+  --ams: rgba(168, 108, 0, 0.11);
+  --vi: #5f4bd8;
+  --vis: rgba(95, 75, 216, 0.1);
+  --sh: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --ov: rgba(15, 23, 42, 0.35);
+}

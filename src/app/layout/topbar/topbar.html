@@ -1,0 +1,32 @@
+<a class="brand" routerLink="/" aria-label="FinanzasHub, ir a Inicio">
+  <app-brand-mark />
+  <span class="brand-text">
+    <span class="name">FinanzasHub</span>
+    <span class="period">{{ period.label() }}</span>
+  </span>
+</a>
+
+<div class="spacer"></div>
+
+<div class="month" role="group" aria-label="Mes seleccionado">
+  <button type="button" aria-label="Mes anterior" (click)="period.previous()">
+    <app-icon name="chevron_left" [size]="18" />
+  </button>
+  <span aria-live="polite">{{ period.label() }}</span>
+  <button type="button" aria-label="Mes siguiente" (click)="period.next()">
+    <app-icon name="chevron_right" [size]="18" />
+  </button>
+</div>
+
+<button
+  type="button"
+  class="icon-button"
+  [attr.aria-label]="theme.isDark() ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+  (click)="theme.toggle()"
+>
+  <app-icon [name]="theme.isDark() ? 'light_mode' : 'dark_mode'" [size]="19" />
+</button>
+
+<a class="icon-button notifications" routerLink="/notifications" aria-label="Notificaciones">
+  <app-icon name="notifications" [size]="19" />
+</a>

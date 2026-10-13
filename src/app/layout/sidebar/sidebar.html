@@ -1,0 +1,30 @@
+<a class="brand" routerLink="/" aria-label="FinanzasHub, ir a Inicio">
+  <app-brand-mark />
+  <span class="brand-text">
+    <span class="name">FinanzasHub</span>
+    <span class="tagline">Controla hoy, construye tu mañana</span>
+  </span>
+</a>
+
+<nav aria-label="Secciones">
+  @for (group of groups; track group.label) {
+    <div class="group" role="group" [attr.aria-label]="group.label">
+      <div class="group-label" aria-hidden="true">{{ group.label }}</div>
+      @for (item of group.items; track item.id) {
+        <a
+          class="link"
+          [routerLink]="item.path"
+          routerLinkActive="is-active"
+          #link="routerLinkActive"
+          [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+          ariaCurrentWhenActive="page"
+          [attr.aria-label]="item.label"
+        >
+          <app-icon [name]="item.icon" [filled]="link.isActive" />
+          <span class="label">{{ item.label }}</span>
+          <span class="short">{{ item.shortLabel }}</span>
+        </a>
+      }
+    </div>
+  }
+</nav>

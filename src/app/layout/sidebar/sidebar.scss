@@ -1,0 +1,146 @@
+@use 'mixins' as m;
+
+:host {
+  display: none;
+  flex: none;
+  flex-direction: column;
+  width: 84px;
+  background: var(--sf);
+  border-right: 1px solid var(--bd);
+
+  @include m.tablet-up {
+    display: flex;
+  }
+
+  @include m.desktop {
+    width: 252px;
+  }
+}
+
+.brand {
+  height: 64px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: inherit;
+
+  @include m.desktop {
+    justify-content: flex-start;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--bd);
+  }
+}
+
+.brand-text {
+  display: none;
+  flex-direction: column;
+  min-width: 0;
+
+  @include m.desktop {
+    display: flex;
+  }
+}
+
+.name {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.tagline {
+  font-size: 11px;
+  color: var(--mu);
+  white-space: nowrap;
+}
+
+nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  @include m.desktop {
+    padding: 14px 12px;
+    gap: 18px;
+  }
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.group-label {
+  display: none;
+
+  @include m.desktop {
+    display: block;
+    padding: 0 10px 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--mu);
+  }
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 2px;
+  border-radius: 10px;
+  color: var(--tx2);
+  font-weight: 600;
+
+  app-icon {
+    color: var(--mu);
+  }
+
+  &:hover {
+    background: var(--sf2);
+  }
+
+  &.is-active {
+    background: var(--acs);
+    color: var(--tx);
+
+    app-icon {
+      color: var(--ac);
+    }
+  }
+
+  @include m.desktop {
+    flex-direction: row;
+    gap: 12px;
+    height: 38px;
+    padding: 0 10px;
+    border-radius: 9px;
+    font-size: 13.5px;
+  }
+}
+
+.label {
+  display: none;
+
+  @include m.desktop {
+    display: inline;
+    flex: 1;
+  }
+}
+
+.short {
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.2;
+
+  @include m.desktop {
+    display: none;
+  }
+}
