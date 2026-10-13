@@ -39,8 +39,11 @@
   <app-icon [name]="theme.isDark() ? 'light_mode' : 'dark_mode'" [size]="19" />
 </button>
 
-<a class="icon-button notifications" routerLink="/notifications" aria-label="Notificaciones">
+<a class="icon-button notifications" routerLink="/notifications" [attr.aria-label]="center.unread() > 0 ? 'Notificaciones: ' + center.unread() + ' sin leer' : 'Notificaciones'">
   <app-icon name="notifications" [size]="19" />
+  @if (center.unread() > 0) {
+    <span class="unread" aria-hidden="true">{{ center.unread() > 99 ? '99+' : center.unread() }}</span>
+  }
 </a>
 
 @if (session.user(); as user) {

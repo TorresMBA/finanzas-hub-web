@@ -1,5 +1,6 @@
 import { Provider, computed, signal } from '@angular/core';
 import { Me, Workspace } from '../api/api-types';
+import { LIVE_NOTIFICATIONS } from '../notifications/notification-center';
 import { SessionStore } from '../auth/session-store';
 import { WorkspaceStore } from '../workspace/workspace-store';
 
@@ -66,6 +67,7 @@ export function provideSession(user: Me | null = TEST_USER, workspaces: readonly
   };
   return [
     { provide: SessionStore, useValue: session },
+    { provide: LIVE_NOTIFICATIONS, useValue: false },
     { provide: WorkspaceStore, useValue: store },
   ];
 }

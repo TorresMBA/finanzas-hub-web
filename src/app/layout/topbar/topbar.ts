@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { SessionStore } from '../../core/auth/session-store';
+import { NotificationCenter } from '../../core/notifications/notification-center';
 import { PeriodStore } from '../../core/period/period-store';
 import { ThemeStore } from '../../core/theme/theme-store';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
@@ -21,6 +22,7 @@ import { Icon } from '../../shared/ui/icon';
 export class Topbar {
   private readonly router = inject(Router);
   protected readonly period = inject(PeriodStore);
+  protected readonly center = inject(NotificationCenter);
   protected readonly theme = inject(ThemeStore);
   protected readonly session = inject(SessionStore);
   protected readonly workspaces = inject(WorkspaceStore);

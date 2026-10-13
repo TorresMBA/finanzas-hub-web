@@ -1,0 +1,110 @@
+<app-page-header eyebrow="Para ti" title="Notificaciones" subtitle="Lo que conviene que sepas de tu dinero. Solo tú ves tus avisos.">
+  @if (unread() > 0) {
+    <button class="button" type="button" (click)="markAllRead()">Marcar todo como leído</button>
+  }
+</app-page-header>
+
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+<div class="layout">
+  <div class="main">
+    <div class="segmented filters" role="group" aria-label="Qué avisos ver">
+      <button type="button" [attr.aria-pressed]="!unreadOnly()" (click)="unreadOnly.set(false)">Todas</button>
+      <button type="button" [attr.aria-pressed]="unreadOnly()" (click)="unreadOnly.set(true)">No leídas ({{ unread() }})</button>
+    </div>
+
+    @if (!list.hasValue() && list.isLoading()) {
+      <div class="loading" aria-busy="true" aria-label="Cargando avisos">
+        @for (row of [1, 2, 3]; track row) {
+          <app-skeleton height="68px" />
+        }
+      </div>
+    } @else if (list.error()) {
+      <app-error-state title="No se pudieron cargar tus avisos" (retry)="list.reload()" />
+    } @else if (groups().length === 0) {
+      <app-empty-state
+        icon="notifications"
+        title="Estás al día"
+        [message]="unreadOnly() ? 'No te queda ningún aviso por leer.' : 'Aquí verás tus alertas de presupuesto y tus movimientos grandes.'"
+      />
+    } @else {
+      @for (group of groups(); track group.label) {
+        <section [attr.aria-label]="group.label">
+          <h2>{{ group.label }}</h2>
+          <ul class="card notices">
+            @for (item of group.items; track item.notification.id) {
+              <li>
+                <button type="button" class="notice" [class.is-unread]="!item.notification.isRead" (click)="open(item.notification)">
+                  <app-icon-tile [icon]="item.icon" [color]="item.color" />
+                  <span class="notice-text">
+                    <strong>{{ item.notification.title }}</strong>
+                    <span>{{ item.notification.body }}</span>
+                  </span>
+                  <span class="when">{{ item.when }}</span>
+                  @if (!item.notification.isRead) {
+                    <span class="dot" role="img" aria-label="Sin leer"></span>
+                  }
+                </button>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    }
+  </div>
+
+  <aside class="card settings" aria-labelledby="settings-title">
+    <h2 id="settings-title">Cómo te avisamos</h2>
+    @if (!settings.hasValue() && settings.isLoading()) {
+      <app-skeleton height="220px" />
+    } @else if (settings.error()) {
+      <app-error-state title="No se pudieron cargar tus preferencias" (retry)="settings.reload()" />
+    } @else {
+      <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
+        <p class="form-note">Todo aviso llega a esta bandeja. Elige cuáles quieres recibir también por correo.</p>
+        <label class="form-check">
+          <input type="checkbox" [formField]="settingsForm.emailBudget" />
+          <span><strong>{{ categoryLook.budget.label }}</strong> por correo. {{ categoryLook.budget.hint }}</span>
+        </label>
+        <label class="form-check">
+          <input type="checkbox" [formField]="settingsForm.emailLargeMovement" />
+          <span><strong>{{ categoryLook.largeMovement.label }}</strong> por correo. {{ categoryLook.largeMovement.hint }}</span>
+        </label>
+
+        <label class="form-check">
+          <input type="checkbox" [formField]="settingsForm.largeMovementEnabled" />
+          <span>Avisarme de los movimientos grandes.</span>
+        </label>
+        @if (model().largeMovementEnabled) {
+          <app-field label="Desde qué monto" hint="En la moneda base de tu espacio." [state]="settingsForm.largeMovementThreshold()">
+            <input class="input" type="text" inputmode="decimal" [formField]="settingsForm.largeMovementThreshold" />
+          </app-field>
+        }
+
+        <label class="form-check">
+          <input type="checkbox" [formField]="settingsForm.quietHoursEnabled" />
+          <span>Horario silencioso: los correos que no son urgentes esperan a que termine.</span>
+        </label>
+        @if (model().quietHoursEnabled) {
+          <div class="form-pair">
+            <app-field label="Desde">
+              <input class="input" type="time" [formField]="settingsForm.quietFrom" />
+            </app-field>
+            <app-field label="Hasta">
+              <input class="input" type="time" [formField]="settingsForm.quietTo" />
+            </app-field>
+          </div>
+        }
+
+        <div class="form-actions">
+          <button class="button button--primary" type="submit" [disabled]="busy()">{{ busy() ? 'Guardando…' : 'Guardar preferencias' }}</button>
+        </div>
+      </form>
+    }
+  </aside>
+</div>

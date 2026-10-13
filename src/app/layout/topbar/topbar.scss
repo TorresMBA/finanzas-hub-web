@@ -96,6 +96,26 @@
 
 // On mobile, notifications are reached through "Más".
 .notifications {
+  position: relative;
+}
+
+.unread {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--rd);
+  color: var(--bg);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.notifications {
   display: none;
 
   @include m.tablet-up {

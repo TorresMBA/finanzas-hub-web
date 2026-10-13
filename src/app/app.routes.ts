@@ -8,6 +8,7 @@ import { Shell } from './layout/shell/shell';
 const BUILT: Readonly<Record<string, Pick<Route, 'loadChildren'>>> = {
   home: { loadChildren: () => import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES) },
   accounts: { loadChildren: () => import('./features/accounts/accounts.routes').then((m) => m.ACCOUNTS_ROUTES) },
+  notifications: { loadChildren: () => import('./features/notifications/notifications.routes').then((m) => m.NOTIFICATIONS_ROUTES) },
   budgets: { loadChildren: () => import('./features/budgets/budgets.routes').then((m) => m.BUDGETS_ROUTES) },
   categories: { loadChildren: () => import('./features/categories/categories.routes').then((m) => m.CATEGORIES_ROUTES) },
   transactions: { loadChildren: () => import('./features/transactions/transactions.routes').then((m) => m.TRANSACTIONS_ROUTES) },
