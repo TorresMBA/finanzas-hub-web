@@ -724,6 +724,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListBudgets"];
+        put?: never;
+        post: operations["CreateBudget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/budgets/{budgetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetBudget"];
+        put?: never;
+        post?: never;
+        delete: operations["EndBudget"];
+        options?: never;
+        head?: never;
+        patch: operations["AdjustBudget"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -768,6 +800,13 @@ export interface components {
             /** Format: date */
             occurredOn?: null | string;
         };
+        AdjustBudgetRequest: {
+            /** Format: double */
+            amount: null | number | string;
+            /** Format: int32 */
+            alertThresholdPercent?: number | string;
+            isFixed?: boolean;
+        };
         AuthenticatedUser: {
             /** Format: uuid */
             userId: string;
@@ -782,6 +821,82 @@ export interface components {
             net: number | string;
             missingRates: string[];
         };
+        BudgetDayResponse: {
+            /** Format: date */
+            day: string;
+            /** Format: double */
+            amount: number | string;
+        };
+        BudgetDetailResponse: {
+            budget: components["schemas"]["BudgetResponse"];
+            movements: components["schemas"]["BudgetMovementResponse"][];
+            daily: components["schemas"]["BudgetDayResponse"][];
+        };
+        BudgetMovementResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            occurredOn: string;
+            description: string;
+            accountName: string;
+            /** Format: double */
+            amount: number | string;
+            currency: string;
+        };
+        BudgetResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            categoryId: string;
+            categoryName: string;
+            categoryIcon: string;
+            categoryColor: string;
+            categoryIsArchived: boolean;
+            /** Format: double */
+            limit: number | string;
+            currency: string;
+            /** Format: int32 */
+            alertThresholdPercent: number | string;
+            isFixed: boolean;
+            /** Format: date */
+            effectiveFrom: string;
+            isInForce: boolean;
+            /** Format: double */
+            spent: number | string;
+            /** Format: double */
+            remaining: number | string;
+            /** Format: double */
+            usedPercent: number | string;
+            status: components["schemas"]["BudgetStatus"];
+            /** Format: double */
+            dailyAllowance: null | number | string;
+            /** Format: int32 */
+            movementCount: number | string;
+        };
+        BudgetsResponse: {
+            month: string;
+            baseCurrency: null | string;
+            /** Format: int32 */
+            day: number | string;
+            /** Format: int32 */
+            daysInMonth: number | string;
+            /** Format: int32 */
+            daysLeft: number | string;
+            /** Format: double */
+            pacePercent: number | string;
+            /** Format: double */
+            limit: number | string;
+            /** Format: double */
+            spent: number | string;
+            /** Format: double */
+            remaining: number | string;
+            /** Format: double */
+            dailyAllowance: null | number | string;
+            budgets: components["schemas"]["BudgetResponse"][];
+            missingRates: string[];
+        };
+        /** @enum {unknown} */
+        BudgetStatus: "onTrack" | "atRisk" | "exceeded" | "fixed" | "paid";
         /** @enum {unknown} */
         CategoryColor: "green" | "blue" | "violet" | "amber" | "red";
         /** @enum {unknown} */
@@ -825,6 +940,15 @@ export interface components {
             /** Format: uuid */
             userId: string;
             token: string;
+        };
+        CreateBudgetRequest: {
+            /** Format: uuid */
+            categoryId: null | string;
+            /** Format: double */
+            amount: null | number | string;
+            /** Format: int32 */
+            alertThresholdPercent?: number | string;
+            isFixed?: boolean;
         };
         CreateCategoryRequest: {
             kind?: null | components["schemas"]["CategoryKind"];
@@ -893,6 +1017,14 @@ export interface components {
             /** Format: double */
             balance: number | string;
         };
+        DashboardBudgetResponse: {
+            /** Format: double */
+            limit: number | string;
+            /** Format: double */
+            spent: number | string;
+            /** Format: double */
+            usedPercent: number | string;
+        };
         DashboardCategoryResponse: {
             /** Format: uuid */
             categoryId: string;
@@ -957,6 +1089,7 @@ export interface components {
             topCategories: components["schemas"]["DashboardCategoryResponse"][];
             recentMovements: components["schemas"]["DashboardMovementResponse"][];
             accounts: components["schemas"]["DashboardAccountResponse"][];
+            budget: null | components["schemas"]["DashboardBudgetResponse"];
             missingRates: string[];
         };
         EditTransactionRequest: {
@@ -4163,6 +4296,291 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListBudgets: {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBudgetRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetBudget: {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+                budgetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    EndBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                budgetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdjustBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                budgetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustBudgetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

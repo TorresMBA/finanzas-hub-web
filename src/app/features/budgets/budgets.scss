@@ -1,0 +1,295 @@
+@use 'mixins' as m;
+
+:host {
+  display: block;
+}
+
+.alert {
+  margin-bottom: 16px;
+}
+
+.loading,
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.layout {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+
+  @include m.desktop {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+h2 {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+h3 {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tx2);
+}
+
+.lead,
+.none {
+  font-size: 12.5px;
+  color: var(--mu);
+}
+
+.none {
+  padding: 14px 0;
+}
+
+.headline {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.is-negative {
+  color: var(--rd);
+}
+
+// The global badge covers neutral, accent, info and warn; a budget also needs "over".
+.badge {
+  flex: none;
+
+  &[data-tone='ok'] {
+    background: var(--acs);
+    color: var(--ac);
+  }
+
+  &[data-tone='warn'] {
+    background: var(--ams);
+    color: var(--am);
+  }
+
+  &[data-tone='over'] {
+    background: var(--rds);
+    color: var(--rd);
+  }
+
+  &[data-tone='info'] {
+    background: var(--bls);
+    color: var(--bl);
+  }
+}
+
+.summary {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-head,
+.summary-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.summary-head .lead {
+  display: block;
+}
+
+.summary-foot {
+  font-size: 12.5px;
+  color: var(--mu);
+}
+
+// The bar of what was spent with a mark where an even pace would be today.
+.pace {
+  position: relative;
+  padding: 4px 0;
+
+  .meter {
+    height: 10px;
+  }
+}
+
+.pace-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--tx);
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--bd);
+
+  dt {
+    font-size: 12.5px;
+    color: var(--mu);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-size: 18px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.filters {
+  flex-wrap: wrap;
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.rows {
+  padding: 6px;
+
+  .none {
+    padding: 24px 14px;
+    text-align: center;
+  }
+}
+
+.row {
+  width: 100%;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 12px;
+  text-align: left;
+
+  &:hover,
+  &[aria-pressed='true'] {
+    background: var(--sf2);
+  }
+}
+
+.row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+
+  .meter {
+    display: block;
+  }
+}
+
+.row-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  strong {
+    @include m.truncate;
+  }
+}
+
+.row-note {
+  font-size: 12.5px;
+  color: var(--mu);
+  font-variant-numeric: tabular-nums;
+
+  // The margin per day stays whole; on a phone it is the sentence before it that wraps.
+  span:last-child {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+.detail {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  @include m.desktop {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.names {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+
+  strong,
+  h2 {
+    @include m.truncate;
+  }
+}
+
+.left-line {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tx2);
+}
+
+.daily {
+  height: 72px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: 1px solid var(--bd);
+}
+
+.day {
+  flex: 1;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: var(--sf3);
+}
+
+.day--spent {
+  background: var(--ac);
+}
+
+.movements {
+  border-top: 1px solid var(--bd);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--bd);
+    font-size: 13px;
+  }
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

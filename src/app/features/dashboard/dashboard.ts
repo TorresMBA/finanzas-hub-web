@@ -91,6 +91,17 @@ export class Dashboard {
         note: rate === null ? 'Sin ingresos este mes' : target ? `Meta: ${target}%` : 'De lo que ingresó, lo que quedó',
         tone: rate !== null && rate < 0 ? 'bad' : 'neutral',
       },
+      // Only for someone who has set budgets: without them there is nothing to measure against.
+      ...(data.budget
+        ? [
+            {
+              label: 'Presupuesto',
+              value: `${Math.round(Number(data.budget.usedPercent))}% usado`,
+              note: `${formatMoney(data.budget.spent, currency)} de ${formatMoney(data.budget.limit, currency)}`,
+              tone: Number(data.budget.spent) > Number(data.budget.limit) ? 'bad' : 'neutral',
+            },
+          ]
+        : []),
     ];
   });
 

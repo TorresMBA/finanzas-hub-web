@@ -1,0 +1,177 @@
+<app-page-header [eyebrow]="period.label()" title="Presupuestos" subtitle="Cuánto puedes gastar por categoría y a qué ritmo vas este mes. Solo tú los ves.">
+  <button class="button button--primary" type="button" (click)="openCreate()"><app-icon name="add" [size]="18" />Nuevo presupuesto</button>
+</app-page-header>
+
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+@if (!budgets.hasValue() && budgets.isLoading()) {
+  <div class="loading" aria-busy="true" aria-label="Cargando presupuestos">
+    <app-skeleton height="150px" />
+    @for (row of [1, 2, 3]; track row) {
+      <app-skeleton height="76px" />
+    }
+  </div>
+} @else if (budgets.error()) {
+  <app-error-state title="No se pudieron cargar tus presupuestos" (retry)="budgets.reload()" />
+} @else if (all().length === 0) {
+  <app-empty-state
+    icon="donut_large"
+    [title]="period.isCurrent() ? 'Todavía no tienes presupuestos' : 'No había presupuestos en ' + period.label().toLowerCase()"
+    message="Pon un límite mensual a una categoría de gasto y verás cuánto te queda y si vas a buen ritmo."
+  >
+    <button class="button button--primary button--small" type="button" (click)="openCreate()">Crear un presupuesto</button>
+  </app-empty-state>
+} @else {
+  @if (budgets.value()?.missingRates?.length) {
+    <div class="alert alert--info" role="status">
+      Lo gastado no incluye tus movimientos en {{ budgets.value()?.missingRates?.join(', ') }}: falta su tipo de cambio.
+      <a class="link" routerLink="/accounts">Definirlo en Cuentas</a>
+    </div>
+  }
+
+  <div class="layout">
+    <div class="main">
+      @if (summary(); as total) {
+        <section class="card summary" aria-label="Resumen del mes">
+          <div class="summary-head">
+            <div>
+              <strong class="headline" [class.is-negative]="total.isOver">{{ total.headline }}</strong>
+              <span class="lead">{{ total.caption }}</span>
+            </div>
+            <span class="badge">{{ total.when }}</span>
+          </div>
+          <div class="pace">
+            <div class="meter" [style.--meter]="total.meter" [attr.data-level]="total.level"></div>
+            @if (total.pace !== null) {
+              <span class="pace-mark" [style.left.%]="total.pace" title="Ritmo ideal a esta altura del mes"></span>
+            }
+          </div>
+          <div class="summary-foot">
+            <span>{{ total.spent }}</span>
+            @if (total.pace !== null) {
+              <span>Ritmo ideal: {{ total.pace }}%</span>
+            }
+          </div>
+          <dl class="figures">
+            <div>
+              <dt>Puedes gastar por día</dt>
+              <dd>{{ total.perDay }}</dd>
+            </div>
+            <div>
+              <dt>Categorías en alerta</dt>
+              <dd [class.is-negative]="total.alerts > 0">{{ total.alerts }}</dd>
+            </div>
+          </dl>
+        </section>
+      }
+
+      <div class="segmented filters" role="group" aria-label="Estado">
+        @for (option of filters; track option.value) {
+          <button type="button" [attr.aria-pressed]="filter() === option.value" (click)="filter.set(option.value)">
+            {{ option.label }} ({{ filterCounts().get(option.value) }})
+          </button>
+        }
+      </div>
+
+      <ul class="card rows" aria-label="Presupuestos">
+        @for (row of rows(); track row.budget.categoryId) {
+          <li>
+            <button type="button" class="row" [attr.aria-pressed]="selected()?.categoryId === row.budget.categoryId" (click)="select(row.budget)">
+              <app-icon-tile [icon]="row.budget.categoryIcon" [color]="tile(row.budget.categoryColor)" />
+              <span class="row-main">
+                <span class="row-line">
+                  <strong>{{ row.budget.categoryName }}</strong>
+                  <span class="badge" [attr.data-tone]="row.look.tone">{{ row.look.label }}</span>
+                </span>
+                <span class="meter" [style.--meter]="row.meter.value" [attr.data-level]="row.meter.level"></span>
+                <span class="row-line row-note">
+                  <span>{{ row.budget.spent | money: row.budget.currency }} de {{ row.budget.limit | money: row.budget.currency }} · {{ row.budget.usedPercent }}% usado</span>
+                  <span>{{ row.margin }}</span>
+                </span>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          <li class="none">Ningún presupuesto está en ese estado.</li>
+        }
+      </ul>
+    </div>
+
+    @if (selected(); as budget) {
+      @let look = statusLook[budget.status];
+      <aside class="card detail" aria-label="Detalle del presupuesto">
+        <header class="detail-head">
+          <app-icon-tile [icon]="budget.categoryIcon" [color]="tile(budget.categoryColor)" [size]="42" />
+          <div class="names">
+            <h2>{{ budget.categoryName }}</h2>
+            <span class="lead">{{ budget.movementCount }} {{ +budget.movementCount === 1 ? 'movimiento' : 'movimientos' }} en {{ period.label().toLowerCase() }}</span>
+          </div>
+          <span class="badge" [attr.data-tone]="look.tone">{{ look.label }}</span>
+        </header>
+
+        <div>
+          <strong class="headline">{{ budget.spent | money: budget.currency }}</strong>
+          <span class="lead"> / {{ budget.limit | money: budget.currency }}</span>
+        </div>
+        <div class="meter" [style.--meter]="selectedMeter()?.value" [attr.data-level]="selectedMeter()?.level"></div>
+        <p class="left-line">{{ leftLine(budget) }}</p>
+
+        @if (!detail.hasValue() && detail.isLoading()) {
+          <app-skeleton height="120px" />
+        } @else if (detail.error()) {
+          <p class="none">No se pudieron cargar los movimientos. <button type="button" class="link" (click)="detail.reload()">Reintentar</button></p>
+        } @else if (detail.value(); as data) {
+          <section aria-labelledby="daily-title">
+            <h3 id="daily-title">Gasto por día</h3>
+            <div class="daily" role="img" [attr.aria-label]="'Gasto de cada día de ' + period.label().toLowerCase()">
+              @for (day of daily(); track day.day) {
+                <span class="day" [class.day--spent]="day.spent" [style.height.%]="day.height" [title]="formatShortDate(day.day)"></span>
+              }
+            </div>
+          </section>
+          <section aria-labelledby="movements-title">
+            <h3 id="movements-title">Movimientos</h3>
+            <ul class="movements">
+              @for (movement of data.movements; track movement.id) {
+                <li>
+                  <span class="names">
+                    <strong>{{ movement.description }}</strong>
+                    <span class="lead">{{ formatShortDate(movement.occurredOn) }} · {{ movement.accountName }}</span>
+                  </span>
+                  <strong class="tabular">−{{ movement.amount | money: movement.currency }}</strong>
+                </li>
+              } @empty {
+                <li class="none">Sin movimientos este mes.</li>
+              }
+            </ul>
+          </section>
+        }
+
+        <div class="detail-actions">
+          @if (confirmingEnd()) {
+            <span class="lead">¿Quitar el presupuesto desde este mes?</span>
+            <button type="button" class="button button--small button--danger" [disabled]="busy()" (click)="end(budget)">Sí, quitar</button>
+            <button type="button" class="button button--small" (click)="confirmingEnd.set(false)">Cancelar</button>
+          } @else {
+            @if (budget.isInForce) {
+              <button type="button" class="button button--small" (click)="openAdjust(budget)">Ajustar límite</button>
+            }
+            <a class="button button--small" routerLink="/transactions">Ver movimientos</a>
+            @if (budget.isInForce) {
+              <button type="button" class="button button--small" (click)="confirmingEnd.set(true)">Quitar</button>
+            }
+          }
+        </div>
+      </aside>
+    }
+  </div>
+}
+
+@if (formTarget(); as target) {
+  <app-budget-form [target]="target" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+}

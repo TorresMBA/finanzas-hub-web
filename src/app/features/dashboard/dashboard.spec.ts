@@ -52,6 +52,7 @@ const OCTOBER: DashboardData = {
     { id: 'a-visa', name: 'Visa', type: 'creditCard', currency: 'PEN', balance: -400 },
     { id: 'a-usd', name: 'Dólares', type: 'bank', currency: 'USD', balance: 75 },
   ],
+  budget: null,
   missingRates: [],
 };
 const NOTHING: DashboardData = {
