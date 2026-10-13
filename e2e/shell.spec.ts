@@ -83,7 +83,7 @@ test.describe('API through the dev server proxy', () => {
   });
 
   test('an API call without a session is answered with a 401 problem document', async ({ request }) => {
-    const response = await request.get('/api/v1/workspaces/00000000-0000-0000-0000-000000000001/sample-notes');
+    const response = await request.get('/api/v1/workspaces/00000000-0000-0000-0000-000000000001/accounts');
 
     expect(response.status()).toBe(401);
     expect(response.headers()['content-type']).toContain('application/problem+json');

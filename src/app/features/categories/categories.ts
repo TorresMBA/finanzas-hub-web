@@ -9,7 +9,8 @@ import { IconTile } from '../../shared/ui/icon-tile';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { StatCard } from '../../shared/ui/stat-card';
-import { CategoriesApi, KIND_LABELS, isValidTag } from './categories-api';
+import { isValidTag } from '../../shared/ui/tags';
+import { CategoriesApi, KIND_LABELS } from './categories-api';
 import { CategoryForm, CategoryFormTarget } from './category-form';
 
 type KindTab = 'all' | CategoryKind;

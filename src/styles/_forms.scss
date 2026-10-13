@@ -218,3 +218,60 @@ select.input {
   background: transparent;
   color: var(--mu);
 }
+
+// A filter that is either on or off, next to a segmented control.
+.chip-toggle {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--bd);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--mu);
+
+  &[aria-pressed='true'] {
+    border-color: transparent;
+    background: var(--ams);
+    color: var(--am);
+  }
+}
+
+// The search field of a list: an icon and a borderless input inside one box.
+.search-box {
+  flex: 1 1 200px;
+  min-width: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--sf2);
+  color: var(--mu);
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--tx);
+    font-size: 13px;
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--bl);
+    outline-offset: 1px;
+  }
+}
+
+// Text that acts as a button or a link inside a paragraph or a toolbar.
+.link {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ac);
+
+  &.danger {
+    color: var(--rd);
+  }
+}

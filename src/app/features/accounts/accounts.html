@@ -1,0 +1,149 @@
+<app-page-header eyebrow="Tu dinero" title="Cuentas" subtitle="Saldos de tus bancos, tu efectivo y tus billeteras. Solo tú los ves.">
+  <button class="button button--primary" type="button" (click)="open({ mode: 'open' })"><app-icon name="add" [size]="18" />Nueva cuenta</button>
+</app-page-header>
+
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+@if (!accounts.hasValue() && accounts.isLoading()) {
+  <div class="loading" aria-busy="true" aria-label="Cargando cuentas">
+    @for (row of [1, 2, 3]; track row) {
+      <app-skeleton height="92px" />
+    }
+  </div>
+} @else if (accounts.error()) {
+  <app-error-state title="No se pudieron cargar tus cuentas" (retry)="reload()" />
+} @else if (all().length === 0) {
+  <app-empty-state
+    icon="account_balance_wallet"
+    title="Todavía no tienes cuentas"
+    message="Crea la primera con el saldo que tiene hoy. Después podrás registrar en ella tus ingresos y tus gastos."
+  >
+    <button class="button button--primary button--small" type="button" (click)="open({ mode: 'open' })">Crear una cuenta</button>
+  </app-empty-state>
+} @else {
+  <div class="layout">
+    <div class="main">
+      @if (stats().length > 0) {
+        <ul class="stats" aria-label="Totales por moneda">
+          @for (stat of stats(); track stat.currency) {
+            <li><app-stat-card [label]="stat.label" [value]="stat.total | money: stat.currency" icon="savings" color="green" /></li>
+          }
+        </ul>
+      }
+
+      <div class="filters">
+        <div class="segmented" role="group" aria-label="Tipo de cuenta">
+          @for (option of tabs; track option.value) {
+            <button type="button" [attr.aria-pressed]="tab() === option.value" (click)="tab.set(option.value)">{{ option.label }}</button>
+          }
+        </div>
+        @if (archivedCount() > 0) {
+          <button type="button" class="chip-toggle" [attr.aria-pressed]="showArchived()" (click)="showArchived.set(!showArchived())">
+            Archivadas ({{ archivedCount() }})
+          </button>
+        }
+      </div>
+
+      @for (group of groups(); track group.id) {
+        <section [attr.aria-labelledby]="'group-' + group.id">
+          <div class="group-head">
+            <h2 [id]="'group-' + group.id">{{ group.label }}</h2>
+            <span class="group-total">
+              @for (total of group.totals; track total.currency) {
+                <span>{{ total.total | money: total.currency }}</span>
+              }
+            </span>
+          </div>
+          <ul class="cards">
+            @for (account of group.accounts; track account.id) {
+              @let type = typeOf(account.type);
+              <li>
+                <button
+                  type="button"
+                  class="card account"
+                  [class.is-archived]="account.isArchived"
+                  [attr.aria-pressed]="selected()?.id === account.id"
+                  (click)="select(account)"
+                >
+                  <span class="account-head">
+                    <app-icon-tile [icon]="type.icon" [color]="account.isArchived ? 'neutral' : type.color" />
+                    <span class="names">
+                      <strong>{{ account.name }}</strong>
+                      <span>{{ type.label }} · {{ account.currency }}{{ account.institution ? ' · ' + account.institution : '' }}</span>
+                    </span>
+                    @if (account.isArchived) {
+                      <span class="badge">Archivada</span>
+                    }
+                  </span>
+                  <span class="balance" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        </section>
+      } @empty {
+        <div class="card no-match">No tienes cuentas de este tipo.</div>
+      }
+    </div>
+
+    @if (selected(); as account) {
+      @let type = typeOf(account.type);
+      <aside #detail class="card detail" aria-label="Detalle de la cuenta">
+        <div class="account-head">
+          <app-icon-tile [icon]="type.icon" [color]="account.isArchived ? 'neutral' : type.color" [size]="44" />
+          <div class="names">
+            <strong>{{ account.name }}</strong>
+            <span>{{ type.label }} · {{ account.currency }}{{ account.institution ? ' · ' + account.institution : '' }}</span>
+          </div>
+        </div>
+        <div>
+          <div class="detail-label">Saldo</div>
+          <div class="detail-balance" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</div>
+        </div>
+
+        <div>
+          <h3>Últimos movimientos</h3>
+          @if (!movements.hasValue() && movements.isLoading()) {
+            <app-skeleton height="120px" />
+          } @else if (movements.error()) {
+            <p class="lead">No se pudieron cargar. <button type="button" class="link" (click)="movements.reload()">Reintentar</button></p>
+          } @else {
+            <ul class="movements">
+              @for (movement of movements.value()?.items; track movement.id) {
+                <li>
+                  <span class="names">
+                    <strong>{{ movement.description }}</strong>
+                    <span>{{ shortDate(movement.occurredOn) }}{{ movement.category ? ' · ' + movement.category.name : '' }}</span>
+                  </span>
+                  <span class="amount" [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</span>
+                </li>
+              } @empty {
+                <li class="lead">Sin movimientos todavía.</li>
+              }
+            </ul>
+          }
+          <a class="link" routerLink="/transactions" [queryParams]="{ accountId: account.id }">Ver todos sus movimientos</a>
+        </div>
+
+        <div class="detail-actions">
+          @if (account.isArchived) {
+            <button class="button button--small" type="button" [disabled]="busy()" (click)="restore(account)">Restaurar</button>
+          } @else {
+            <button class="button button--small" type="button" (click)="open({ mode: 'edit', account: account })">Editar</button>
+            <button class="button button--small" type="button" (click)="open({ mode: 'adjust', account: account })">Ajustar saldo</button>
+            <button class="button button--small" type="button" [disabled]="busy()" (click)="archive(account)">Archivar</button>
+          }
+        </div>
+      </aside>
+    }
+  </div>
+}
+
+@if (formTarget(); as target) {
+  <app-account-form [target]="target" [defaultCurrency]="workspaces.current()?.baseCurrency ?? 'PEN'" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+}

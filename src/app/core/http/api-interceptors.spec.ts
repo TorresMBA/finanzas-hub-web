@@ -67,9 +67,9 @@ describe('API interceptors', () => {
 
   it('turns a problem response into an ApiError with its code, trace id and field messages', () => {
     let failure: unknown;
-    http.post('/api/v1/workspaces/w/sample-notes', {}).subscribe({ error: (error: unknown) => (failure = error) });
+    http.post('/api/v1/workspaces/w/accounts', {}).subscribe({ error: (error: unknown) => (failure = error) });
 
-    server.expectOne('/api/v1/workspaces/w/sample-notes').flush(
+    server.expectOne('/api/v1/workspaces/w/accounts').flush(
       {
         title: 'The request is not valid.',
         detail: 'One or more fields are not valid.',

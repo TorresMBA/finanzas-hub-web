@@ -5,7 +5,8 @@ import { errorMessage } from '../../core/errors/error-messages';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { Icon } from '../../shared/ui/icon';
-import { CATEGORY_COLORS, CATEGORY_ICONS, CategoriesApi, KIND_LABELS, isValidTag, parseTags } from './categories-api';
+import { isValidTag, parseTags } from '../../shared/ui/tags';
+import { CATEGORY_COLORS, CATEGORY_ICONS, CategoriesApi, KIND_LABELS } from './categories-api';
 
 /** What the form is for: a new category or subcategory, a category being edited, or a subcategory being renamed. */
 export type CategoryFormTarget =

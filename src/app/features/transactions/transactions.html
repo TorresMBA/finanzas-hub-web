@@ -1,0 +1,120 @@
+<app-page-header [eyebrow]="periodLabel()" title="Transacciones" subtitle="Revisa, busca y clasifica tus movimientos. Solo tú los ves.">
+  <button class="button button--primary" type="button" (click)="openPost()"><app-icon name="add" [size]="18" />Nueva transacción</button>
+</app-page-header>
+
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+@if (accounts.hasValue() && accounts.value().length === 0) {
+  <app-empty-state icon="account_balance_wallet" title="Primero necesitas una cuenta" message="Un movimiento siempre entra o sale de una cuenta. Crea la primera y vuelve aquí.">
+    <a class="button button--primary button--small" routerLink="/accounts">Ir a Cuentas</a>
+  </app-empty-state>
+} @else {
+  <div class="layout">
+    <div class="main">
+      <div class="filters">
+        <div class="segmented" role="group" aria-label="Tipo de movimiento">
+          @for (option of tabs; track option.value) {
+            <button type="button" [attr.aria-pressed]="tab() === option.value" (click)="tab.set(option.value)">{{ option.label }}</button>
+          }
+        </div>
+        <label class="search-box">
+          <app-icon name="search" [size]="18" />
+          <input #searchInput type="search" placeholder="Buscar por descripción, comercio o nota" aria-label="Buscar movimientos" [value]="searchText()" (input)="search(searchInput.value)" />
+        </label>
+        <select #accountFilter class="input account-filter" aria-label="Cuenta" (change)="account.set(accountFilter.value)">
+          <option value="" [selected]="account() === ''">Todas las cuentas</option>
+          @for (option of accounts.value() ?? []; track option.id) {
+            <option [value]="option.id" [selected]="account() === option.id">{{ option.name }}</option>
+          }
+        </select>
+        <button type="button" class="chip-toggle" [attr.aria-pressed]="showVoided()" (click)="showVoided.set(!showVoided())">Anuladas</button>
+      </div>
+
+      @for (total of totals(); track total.currency) {
+        <dl class="summary" [attr.aria-label]="'Resumen en ' + total.currency">
+          <div>
+            <dt>Ingresos</dt>
+            <dd class="is-income">{{ total.income | money: total.currency }}</dd>
+          </div>
+          <div>
+            <dt>Gastos</dt>
+            <dd>{{ total.expense | money: total.currency }}</dd>
+          </div>
+          <div>
+            <dt>Neto</dt>
+            <dd [class.is-income]="+total.net > 0" [class.is-negative]="+total.net < 0">{{ total.net | money: total.currency : { signed: true } }}</dd>
+          </div>
+        </dl>
+      }
+
+      @if (state() === 'loading') {
+        <div class="loading" aria-busy="true" aria-label="Cargando movimientos">
+          @for (row of [1, 2, 3, 4, 5]; track row) {
+            <app-skeleton height="58px" />
+          }
+        </div>
+      } @else if (state() === 'error') {
+        <app-error-state title="No se pudieron cargar tus movimientos" (retry)="reload()" />
+      } @else if (items().length === 0) {
+        @if (hasFilters()) {
+          <app-empty-state icon="search_off" title="Sin resultados" message="Prueba con otro término o quita los filtros.">
+            <button class="button button--small" type="button" (click)="clearFilters()">Limpiar filtros</button>
+          </app-empty-state>
+        } @else {
+          <app-empty-state icon="receipt_long" [title]="'Sin movimientos en ' + periodLabel().toLowerCase()" message="Registra un ingreso o un gasto, o cambia de mes en la barra superior.">
+            <button class="button button--primary button--small" type="button" (click)="openPost()">Registrar el primero</button>
+          </app-empty-state>
+        }
+      } @else {
+        <section class="card list" aria-label="Movimientos">
+          @for (day of days(); track day.date) {
+            <h2 class="day">
+              <span>{{ day.label }}</span>
+              <span class="day-net">{{ day.nets.join(' · ') }}</span>
+            </h2>
+            <ul>
+              @for (item of day.items; track item.id) {
+                @let look = lookOf(item);
+                <li>
+                  <button type="button" class="row" [class.is-voided]="item.status === 'voided'" [attr.aria-pressed]="selected()?.id === item.id" (click)="select(item)">
+                    <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="36" />
+                    <span class="names">
+                      <strong>{{ item.description }}</strong>
+                      <span>{{ item.category ? item.category.name + ' · ' : '' }}{{ item.accountName }}</span>
+                    </span>
+                    <span class="status" [attr.data-status]="item.status">{{ statusLabels[item.status] }}</span>
+                    <span class="amount" [class.is-income]="+item.signedAmount > 0">{{ item.signedAmount | money: item.currency : { signed: true } }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+          @if (nextCursor()) {
+            <button type="button" class="more" [disabled]="loadingMore()" (click)="loadMore()">{{ loadingMore() ? 'Cargando…' : 'Cargar más' }}</button>
+          }
+        </section>
+      }
+    </div>
+
+    @if (isDesktop() && selected(); as item) {
+      <aside class="card detail" aria-label="Detalle del movimiento">
+        <app-transaction-detail [transaction]="item" [busy]="busy()" (edit)="openEdit(item)" (confirmed)="confirm(item)" (voided)="voidTransaction(item, $event)" />
+      </aside>
+    }
+  </div>
+}
+
+@if (!isDesktop() && selected(); as item) {
+  <app-dialog title="Movimiento" (closed)="closeDetail()">
+    <app-transaction-detail [transaction]="item" [busy]="busy()" (edit)="openEdit(item)" (confirmed)="confirm(item)" (voided)="voidTransaction(item, $event)" />
+  </app-dialog>
+}
+
+@if (formTarget(); as target) {
+  <app-transaction-form [target]="target" [accounts]="accounts.value() ?? []" [categories]="categories.value() ?? []" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+}
