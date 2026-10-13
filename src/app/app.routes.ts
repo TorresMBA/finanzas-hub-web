@@ -6,6 +6,7 @@ import { Shell } from './layout/shell/shell';
 
 /** The sections that already have their own pages. Every other section still shows the placeholder. */
 const BUILT: Readonly<Record<string, Pick<Route, 'loadChildren'>>> = {
+  categories: { loadChildren: () => import('./features/categories/categories.routes').then((m) => m.CATEGORIES_ROUTES) },
   settings: { loadChildren: () => import('./features/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
 };
 

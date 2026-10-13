@@ -1,0 +1,194 @@
+<app-page-header eyebrow="Organización" title="Categorías y etiquetas" subtitle="Tu taxonomía financiera: categorías, subcategorías y etiquetas. Son solo tuyas.">
+  <button class="button button--primary" type="button" (click)="openCreate()"><app-icon name="add" [size]="18" />Nueva categoría</button>
+</app-page-header>
+
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+@if (!categories.hasValue() && categories.isLoading()) {
+  <div class="loading" aria-busy="true" aria-label="Cargando categorías">
+    @for (row of [1, 2, 3, 4, 5]; track row) {
+      <app-skeleton height="66px" />
+    }
+  </div>
+} @else if (categories.error()) {
+  <app-error-state title="No se pudieron cargar tus categorías" (retry)="reload()" />
+} @else if (all().length === 0) {
+  <app-empty-state icon="sell" title="Todavía no tienes categorías" message="Empieza con las sugeridas y ajústalas a tu gusto, o crea las tuyas desde cero.">
+    <button class="button button--primary button--small" type="button" [disabled]="busy()" (click)="seedDefaults()">Usar las sugeridas</button>
+    <button class="button button--small" type="button" (click)="openCreate()">Crear una</button>
+  </app-empty-state>
+} @else {
+  <div class="layout">
+    <div class="main">
+      <ul class="stats" aria-label="Resumen">
+        @for (stat of stats(); track stat.label) {
+          <li><app-stat-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [color]="stat.color" /></li>
+        }
+      </ul>
+
+      <section class="card list" aria-label="Categorías">
+        <div class="filters">
+          <label class="search">
+            <app-icon name="search" [size]="18" />
+            <input #search type="search" placeholder="Filtrar por nombre o etiqueta" aria-label="Filtrar por nombre o etiqueta" [value]="query()" (input)="query.set(search.value)" />
+          </label>
+          <div class="segmented" role="group" aria-label="Tipo">
+            @for (tab of kindTabs; track tab.value) {
+              <button type="button" [attr.aria-pressed]="kindTab() === tab.value" (click)="kindTab.set(tab.value)">{{ tab.label }}</button>
+            }
+          </div>
+          @if (archivedCount() > 0) {
+            <button type="button" class="chip-toggle" [attr.aria-pressed]="showArchived()" (click)="showArchived.set(!showArchived())">
+              Archivadas ({{ archivedCount() }})
+            </button>
+          }
+        </div>
+
+        @if (tagFilter(); as tag) {
+          <div class="tag-filter">
+            <span>Categorías con <b>#{{ tag }}</b></span>
+            @if (confirmingTagArchive()) {
+              <span class="confirm">Se quitará de todas tus categorías.</span>
+              <button type="button" class="link danger" [disabled]="busy()" (click)="archiveTag()">Sí, archivar</button>
+              <button type="button" class="link" (click)="confirmingTagArchive.set(false)">Cancelar</button>
+            } @else {
+              <button type="button" class="link danger" (click)="confirmingTagArchive.set(true)">Archivar etiqueta</button>
+              <button type="button" class="link" (click)="filterByTag(tag)">Quitar filtro</button>
+            }
+          </div>
+        }
+
+        <ul class="rows">
+          @for (category of rows(); track category.id) {
+            @let open = expanded().has(category.id);
+            <li [class.is-archived]="category.isArchived">
+              <div class="row">
+                <button type="button" class="toggle" [attr.aria-expanded]="open" (click)="toggle(category.id)">
+                  <app-icon class="chevron" name="chevron_right" />
+                  <app-icon-tile [icon]="category.icon" [color]="category.isArchived ? 'neutral' : category.color" />
+                  <span class="names">
+                    <strong>{{ category.name }}</strong>
+                    <span>{{ describe(category) }}</span>
+                  </span>
+                </button>
+                <div class="tags">
+                  @if (category.isArchived) {
+                    <span class="badge">Archivada</span>
+                  }
+                  @for (tag of category.tags; track tag) {
+                    <button type="button" class="tag" [attr.aria-pressed]="tagFilter() === tag" (click)="filterByTag(tag)"><span class="hash">#</span>{{ tag }}</button>
+                  }
+                  @if (!category.isArchived) {
+                    <button type="button" class="tag tag--add" [attr.aria-label]="'Agregar etiqueta a ' + category.name" (click)="tagCategory(category)">
+                      <app-icon name="add" [size]="14" />Etiqueta
+                    </button>
+                  }
+                </div>
+                <div class="row-actions">
+                  @if (category.isArchived) {
+                    <button type="button" class="icon-button" [attr.aria-label]="'Restaurar ' + category.name" [disabled]="busy()" (click)="restore(category)">
+                      <app-icon name="unarchive" />
+                    </button>
+                  } @else {
+                    <button type="button" class="icon-button" [attr.aria-label]="'Editar ' + category.name" (click)="openEdit(category)">
+                      <app-icon name="edit" />
+                    </button>
+                    <button type="button" class="icon-button" [attr.aria-label]="'Archivar ' + category.name" [disabled]="busy()" (click)="archive(category)">
+                      <app-icon name="archive" />
+                    </button>
+                  }
+                </div>
+              </div>
+              @if (open) {
+                <ul class="subcategories">
+                  @for (subcategory of category.subcategories; track subcategory.id) {
+                    <li [class.is-archived]="subcategory.isArchived">
+                      <app-icon name="subdirectory_arrow_right" [size]="18" />
+                      <span class="sub-name">{{ subcategory.name }}</span>
+                      @if (subcategory.isArchived) {
+                        <span class="badge">Archivada</span>
+                        @if (!category.isArchived) {
+                          <button type="button" class="icon-button" [attr.aria-label]="'Restaurar ' + subcategory.name" [disabled]="busy()" (click)="restore(subcategory)">
+                            <app-icon name="unarchive" [size]="18" />
+                          </button>
+                        }
+                      } @else {
+                        <button type="button" class="icon-button" [attr.aria-label]="'Editar ' + subcategory.name" (click)="openRename(category, subcategory)">
+                          <app-icon name="edit" [size]="18" />
+                        </button>
+                        <button type="button" class="icon-button" [attr.aria-label]="'Archivar ' + subcategory.name" [disabled]="busy()" (click)="archive(subcategory)">
+                          <app-icon name="archive" [size]="18" />
+                        </button>
+                      }
+                    </li>
+                  }
+                  @if (!category.isArchived) {
+                    <li class="add-sub">
+                      <button type="button" (click)="openCreate(category)"><app-icon name="add" [size]="17" />Agregar subcategoría</button>
+                    </li>
+                  }
+                </ul>
+              }
+            </li>
+          } @empty {
+            <li class="no-match">Ninguna categoría coincide con el filtro.</li>
+          }
+        </ul>
+      </section>
+    </div>
+
+    <aside class="rail" aria-label="Etiquetas">
+      <form class="card panel" (submit)="$event.preventDefault(); addQuickTag()">
+        <div>
+          <h2>Asignar etiqueta rápida</h2>
+          <p class="lead">Crea una etiqueta y asóciala a una categoría.</p>
+        </div>
+        <label class="field">
+          <span>Categoría destino</span>
+          <select #quickCategory class="input" (change)="chooseQuickCategory(quickCategory.value)">
+            @for (category of active(); track category.id) {
+              <option [value]="category.id" [selected]="category.id === quickCategoryId()">{{ category.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span>Nombre de la etiqueta</span>
+          <span class="hash-input">
+            <span class="hash">#</span>
+            <input #tagInput type="text" maxlength="40" placeholder="ej. deducible, vacaciones" [value]="quickTag()" (input)="quickTag.set(tagInput.value)" />
+          </span>
+        </label>
+        <button class="button button--primary" type="submit" [disabled]="busy() || quickTag().trim() === '' || active().length === 0">Crear etiqueta</button>
+      </form>
+
+      <section class="card panel" aria-labelledby="tag-cloud-heading">
+        <div>
+          <h2 id="tag-cloud-heading">Tus etiquetas</h2>
+          <p class="lead">Toca una etiqueta para filtrar las categorías que la sugieren.</p>
+        </div>
+        @if (tags.error()) {
+          <p class="lead">No se pudieron cargar. <button type="button" class="link" (click)="tags.reload()">Reintentar</button></p>
+        } @else if (tagCloud().length === 0) {
+          <p class="lead">Todavía no tienes etiquetas.</p>
+        } @else {
+          <div class="cloud">
+            @for (tag of tagCloud(); track tag.id) {
+              <button type="button" class="tag tag--cloud" [attr.aria-pressed]="tagFilter() === tag.name" (click)="filterByTag(tag.name)">
+                <span class="hash">#</span>{{ tag.name }}<span class="count">{{ tag.categoryCount }}</span>
+              </button>
+            }
+          </div>
+        }
+      </section>
+    </aside>
+  </div>
+}
+
+@if (formTarget(); as target) {
+  <app-category-form [target]="target" [categories]="all()" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+}

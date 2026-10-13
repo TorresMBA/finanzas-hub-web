@@ -134,3 +134,87 @@ select.input {
   background: var(--ams);
   color: var(--am);
 }
+
+// A choice among a few options, shown as one control. Each option is a button with aria-pressed.
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--sf2);
+
+  button {
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--mu);
+  }
+
+  button[aria-pressed='true'] {
+    background: var(--sf);
+    color: var(--tx);
+    box-shadow: var(--sh);
+  }
+}
+
+.segmented--block button {
+  flex: 1;
+  height: 34px;
+  font-size: 13px;
+}
+
+// A button that is only an icon. It always needs an aria-label.
+.icon-button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--mu);
+
+  &:hover:not(:disabled) {
+    background: var(--sf2);
+    color: var(--tx);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// A tag, as a pill. As a button, aria-pressed marks the one being filtered by.
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: var(--sf2);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--tx2);
+
+  &:is(button):hover {
+    background: var(--sf3);
+  }
+
+  &[aria-pressed='true'] {
+    background: var(--acs);
+    color: var(--ac);
+  }
+
+  .hash {
+    color: var(--ac);
+    font-weight: 800;
+  }
+}
+
+.tag--add {
+  border: 1px dashed var(--bd);
+  background: transparent;
+  color: var(--mu);
+}
