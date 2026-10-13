@@ -81,6 +81,7 @@ export class Notifications {
     return {
       emailBudget: email.get('budget') ?? true,
       emailLargeMovement: email.get('largeMovement') ?? false,
+      emailBills: email.get('bills') ?? true,
       quietHoursEnabled: settings?.quietHoursEnabled ?? true,
       quietFrom: (settings?.quietFrom ?? '22:00').slice(0, 5),
       quietTo: (settings?.quietTo ?? '07:00').slice(0, 5),
@@ -135,6 +136,7 @@ export class Notifications {
           preferences: [
             { category: 'budget', emailEnabled: model.emailBudget },
             { category: 'largeMovement', emailEnabled: model.emailLargeMovement },
+            { category: 'bills', emailEnabled: model.emailBills },
           ],
         });
         this.notice.set('Preferencias guardadas.');

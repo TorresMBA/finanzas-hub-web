@@ -19,7 +19,7 @@ async function postTransaction(page: Page, fields: { type?: 'Gasto' | 'Ingreso';
   await dialog.getByLabel('Descripción').fill(fields.description);
   await dialog.getByLabel('Categoría').selectOption({ label: fields.category });
   if (fields.pending) {
-    await dialog.getByRole('checkbox').check();
+    await dialog.getByRole('checkbox', { name: /pendiente/ }).check();
   }
 
   await dialog.getByRole('button', { name: 'Registrar' }).click();

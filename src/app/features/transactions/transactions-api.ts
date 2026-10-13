@@ -87,6 +87,22 @@ export class TransactionsApi {
     );
   }
 
+  /** Schedules the same income or expense for that day of every month, registered automatically. */
+  repeatMonthly(body: TransactionBody, startsOn: string): Promise<unknown> {
+    return firstValueFrom(
+      this.http.post(`${this.base()}/recurring-rules`, {
+        type: body.type,
+        accountId: body.accountId,
+        categoryId: body.categoryId,
+        amount: body.amount,
+        description: body.description,
+        frequency: 'monthly',
+        startsOn,
+        postingMode: 'automatic',
+      }),
+    );
+  }
+
   /** Moves money between two accounts of the person. It comes back as a movement like any other. */
   transfer(body: PostTransferRequest, key: string): Promise<Transaction> {
     return firstValueFrom(this.http.post<Transaction>(`${this.base()}/transfers`, body, { context: new HttpContext().set(IDEMPOTENCY_KEY, key) }));

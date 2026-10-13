@@ -3,7 +3,7 @@ import { FormField, form, maxLength, required, submit, validate } from '@angular
 import { Account, Category, Transaction, TransactionType } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
-import { todayIso } from '../../shared/ui/dates';
+import { sameDayNextMonth, todayIso } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { formatMoney, parseAmount } from '../../shared/ui/money';
@@ -31,6 +31,8 @@ interface TransactionFormModel {
   date: string;
   tags: string;
   pending: boolean;
+  /** Also schedule it for the same day of every month from the next one on. */
+  repeat: boolean;
   merchant: string;
   note: string;
 }
@@ -134,6 +136,10 @@ const AMOUNT_ERROR = { kind: 'amount', message: 'Un monto mayor que cero, con ha
           <label class="form-check">
             <input type="checkbox" [formField]="transactionForm.pending" />
             <span>Marcar como pendiente de revisar. Cuenta en el saldo igual.</span>
+          </label>
+          <label class="form-check">
+            <input type="checkbox" [formField]="transactionForm.repeat" />
+            <span>Repetir cada mes. Se registrará solo ese mismo día, desde el mes que viene; lo ves y lo detienes en el Calendario.</span>
           </label>
         }
         <div class="form-actions">
@@ -319,7 +325,18 @@ export class TransactionForm {
     }
 
     const posted = await this.api.post(body, value.pending, this.idempotencyKey);
-    return `${value.type === 'income' ? 'Ingreso' : 'Gasto'} de ${formatMoney(posted.amount, posted.currency)} registrado.`;
+    const done = `${value.type === 'income' ? 'Ingreso' : 'Gasto'} de ${formatMoney(posted.amount, posted.currency)} registrado`;
+    if (!value.repeat) {
+      return `${done}.`;
+    }
+
+    // The movement is already in the ledger: failing to schedule the next ones must not look like it was lost.
+    try {
+      await this.api.repeatMonthly(body, sameDayNextMonth(value.date));
+      return `${done}. Se repetirá cada mes.`;
+    } catch {
+      return `${done}, pero no se pudo programar su repetición. Prográmalo desde el Calendario.`;
+    }
   }
 
   private currencyOf(accountId: string): string {
@@ -341,13 +358,14 @@ export class TransactionForm {
         date: transaction.occurredOn,
         tags: transaction.tags.join(', '),
         pending: transaction.status === 'pending',
+        repeat: false,
         merchant: transaction.merchant ?? '',
         note: transaction.note ?? '',
       };
     }
 
     return {
-      ...blank, type: 'expense', amount: '', description: '', categoryId: '', accountId: target.accountId ?? '', date: todayIso(), tags: '', pending: false, merchant: '', note: '',
+      ...blank, type: 'expense', amount: '', description: '', categoryId: '', accountId: target.accountId ?? '', date: todayIso(), tags: '', pending: false, repeat: false, merchant: '', note: '',
     };
   }
 }

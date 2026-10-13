@@ -1,0 +1,170 @@
+<app-page-header [eyebrow]="period.label()" title="Calendario" subtitle="Tus ingresos, pagos programados y vencimientos del mes. Solo tú los ves.">
+  <button class="button button--primary" type="button" (click)="openForm()"><app-icon name="add" [size]="18" />Programar movimiento</button>
+</app-page-header>
+
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+@if (!calendar.hasValue() && calendar.isLoading()) {
+  <div class="loading" aria-busy="true" aria-label="Cargando el calendario">
+    <app-skeleton height="92px" />
+    <app-skeleton height="420px" />
+  </div>
+} @else if (calendar.error()) {
+  <app-error-state title="No se pudo cargar tu calendario" (retry)="reload()" />
+} @else if (calendar.value(); as data) {
+  @if (data.missingRates.length > 0) {
+    <div class="alert alert--info" role="status">Las cifras no incluyen lo que está en {{ data.missingRates.join(', ') }}: falta su tipo de cambio.</div>
+  }
+  @if (stats().length > 0) {
+    <ul class="stats" aria-label="Cifras del mes">
+      @for (stat of stats(); track stat.label) {
+        <li><app-stat-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [color]="stat.color" /></li>
+      }
+    </ul>
+  }
+
+  <div class="layout">
+    <div class="main">
+      <div class="segmented filters" role="group" aria-label="Qué mostrar">
+        @for (option of filters; track option.value) {
+          <button type="button" [attr.aria-pressed]="filter() === option.value" (click)="filter.set(option.value)">{{ option.label }}</button>
+        }
+      </div>
+
+      <section class="card month" [attr.aria-label]="period.label()">
+        <div class="weekdays" aria-hidden="true">
+          @for (weekday of weekdays; track weekday) {
+            <span>{{ weekday }}</span>
+          }
+        </div>
+        @for (week of weeks(); track $index) {
+          <div class="week">
+            @for (cell of week; track $index) {
+              @if (cell) {
+                <button
+                  type="button"
+                  class="day"
+                  [class.is-today]="cell.date === today()"
+                  [attr.aria-pressed]="cell.date === selectedDay()"
+                  [attr.aria-label]="formatDay(cell.date) + (cell.pills.length ? ', ' + (cell.pills.length + cell.more) + ' movimientos' : '')"
+                  (click)="selectDay(cell.date)"
+                >
+                  <span class="day-number">{{ cell.day }}</span>
+                  @for (pill of cell.pills; track pill.id) {
+                    <span class="pill" [attr.data-tone]="kindLook[pill.kind].tone" [class.is-planned]="pill.status !== 'confirmed'">{{ pill.description }}</span>
+                  }
+                  @if (cell.more > 0) {
+                    <span class="more">+{{ cell.more }} más</span>
+                  }
+                </button>
+              } @else {
+                <span class="day day--empty"></span>
+              }
+            }
+          </div>
+        }
+      </section>
+
+      <section aria-labelledby="rules-title">
+        <h2 id="rules-title">Movimientos programados</h2>
+        @if (liveRules().length === 0) {
+          <app-empty-state icon="event_repeat" title="Nada programado" message="Programa tu alquiler, tus servicios o tu sueldo y aparecerán solos en su fecha.">
+            <button class="button button--primary button--small" type="button" (click)="openForm()">Programar un movimiento</button>
+          </app-empty-state>
+        } @else {
+          <ul class="card rules" aria-label="Movimientos programados">
+            @for (rule of liveRules(); track rule.id) {
+              <li>
+                <span class="names">
+                  <strong>{{ rule.description }}</strong>
+                  <span class="lead">
+                    {{ frequencyLabels[rule.frequency] }} · {{ rule.accountName }}
+                    @if (rule.nextDate) {
+                      · próximo {{ formatShortDate(rule.nextDate) }}
+                    }
+                  </span>
+                  @if (rule.pauseReason) {
+                    <span class="lead is-negative">{{ rule.pauseReason }}</span>
+                  }
+                </span>
+                <strong class="tabular" [class.is-income]="rule.type === 'income'">{{ rule.amount | money: rule.currency }}</strong>
+                <span class="badge" [class.badge--warn]="rule.status === 'paused'">{{ ruleStatusLabels[rule.status] }}</span>
+                <span class="rule-actions">
+                  @if (rule.status === 'active') {
+                    <button type="button" class="link" [disabled]="busy()" (click)="changeStatus(rule, 'pause')">Pausar</button>
+                  } @else {
+                    <button type="button" class="link" [disabled]="busy()" (click)="changeStatus(rule, 'resume')">Reanudar</button>
+                  }
+                  <button type="button" class="link" [disabled]="busy()" (click)="changeStatus(rule, 'end')">Terminar</button>
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+
+    <aside class="side">
+      <section class="card panel" aria-labelledby="day-title">
+        <header>
+          <h2 id="day-title">{{ formatDay(selectedDay()) }}</h2>
+          @if (dayNet()) {
+            <span class="lead">Neto {{ dayNet() }}</span>
+          }
+        </header>
+        <ul class="items">
+          @for (item of dayItems(); track item.id) {
+            <li>
+              <span class="dot" [attr.data-tone]="kindLook[item.kind].tone"></span>
+              <span class="names">
+                <strong>{{ item.description }}</strong>
+                <span class="lead">
+                  {{ kindLook[item.kind].label }} · {{ item.accountName }} ·
+                  {{ item.status === 'confirmed' ? 'Registrado' : item.status === 'pending' ? 'Por confirmar' : 'Programado' }}
+                </span>
+                @if (item.status === 'pending' && item.ruleId) {
+                  <span class="item-actions">
+                    <button type="button" class="button button--small button--primary" [disabled]="busy()" (click)="confirm(item)">Registrar</button>
+                    <button type="button" class="button button--small" [disabled]="busy()" (click)="skip(item)">Omitir</button>
+                  </span>
+                }
+              </span>
+              <strong class="tabular">{{ item.amount | money: item.currency }}</strong>
+            </li>
+          } @empty {
+            <li class="none">Nada este día.</li>
+          }
+        </ul>
+      </section>
+
+      <section class="card panel" aria-labelledby="upcoming-title">
+        <header>
+          <h2 id="upcoming-title">Próximos</h2>
+        </header>
+        <ul class="items">
+          @for (item of upcoming(); track item.id) {
+            <li>
+              <span class="dot" [attr.data-tone]="kindLook[item.kind].tone"></span>
+              <span class="names">
+                <strong>{{ item.description }}</strong>
+                <span class="lead">{{ formatShortDate(item.date) }} · {{ kindLook[item.kind].label }}</span>
+              </span>
+              <strong class="tabular">{{ item.amount | money: item.currency }}</strong>
+            </li>
+          } @empty {
+            <li class="none">Nada pendiente en lo que queda del mes.</li>
+          }
+        </ul>
+      </section>
+    </aside>
+  </div>
+}
+
+@if (formTarget(); as target) {
+  <app-schedule-form [target]="target" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+}

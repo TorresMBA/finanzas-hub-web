@@ -13,6 +13,13 @@ export function toIsoDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+/** The same day of the following month, or its last day when that month is shorter. */
+export function sameDayNextMonth(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return toIsoDate(new Date(year, month, Math.min(day, lastDay)));
+}
+
 /** Today in the person's own calendar. */
 export function todayIso(now = new Date()): string {
   return toIsoDate(now);

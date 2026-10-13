@@ -180,6 +180,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/recurring-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListRecurringRules"];
+        put?: never;
+        post: operations["CreateRecurringRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/recurring-rules/{ruleId}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PauseRecurringRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/recurring-rules/{ruleId}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ResumeRecurringRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/recurring-rules/{ruleId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["EndRecurringRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/recurring-rules/{ruleId}/occurrences/{date}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmOccurrence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/recurring-rules/{ruleId}/occurrences/{date}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SkipOccurrence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/dashboard": {
         parameters: {
             query?: never;
@@ -978,6 +1090,44 @@ export interface components {
         /** @enum {unknown} */
         BudgetStatus: "onTrack" | "atRisk" | "exceeded" | "fixed" | "paid";
         /** @enum {unknown} */
+        CalendarItemKind: "income" | "expense" | "transfer" | "cardDue";
+        CalendarItemResponse: {
+            id: string;
+            /** Format: date */
+            date: string;
+            kind: components["schemas"]["CalendarItemKind"];
+            status: components["schemas"]["CalendarItemStatus"];
+            description: string;
+            /** Format: double */
+            amount: number | string;
+            currency: string;
+            accountName: string;
+            /** Format: uuid */
+            ruleId: null | string;
+            isRecurring: boolean;
+        };
+        /** @enum {unknown} */
+        CalendarItemStatus: "confirmed" | "scheduled" | "pending";
+        CalendarResponse: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** Format: date */
+            today: string;
+            baseCurrency: null | string;
+            /** Format: double */
+            incomeReceived: number | string;
+            /** Format: double */
+            pendingIncome: number | string;
+            /** Format: double */
+            pendingExpenses: number | string;
+            /** Format: double */
+            projectedBalance: null | number | string;
+            items: components["schemas"]["CalendarItemResponse"][];
+            missingRates: string[];
+        };
+        /** @enum {unknown} */
         CategoryColor: "green" | "blue" | "violet" | "amber" | "red";
         /** @enum {unknown} */
         CategoryKind: "income" | "expense";
@@ -1021,6 +1171,10 @@ export interface components {
             userId: string;
             token: string;
         };
+        ConfirmOccurrenceRequest: {
+            /** Format: double */
+            amount?: null | number | string;
+        };
         CreateBudgetRequest: {
             /** Format: uuid */
             categoryId: null | string;
@@ -1038,6 +1192,24 @@ export interface components {
             icon?: null | string;
             color?: null | components["schemas"]["CategoryColor"];
             tags?: null | string[];
+        };
+        CreateRecurringRuleRequest: {
+            type: null | components["schemas"]["RuleType"];
+            /** Format: uuid */
+            accountId: null | string;
+            /** Format: uuid */
+            categoryId: null | string;
+            /** Format: double */
+            amount: null | number | string;
+            description: string;
+            frequency: null | components["schemas"]["RuleFrequency"];
+            /** Format: date */
+            startsOn: null | string;
+            /** Format: date */
+            endsOn?: null | string;
+            postingMode?: components["schemas"]["PostingMode"];
+            /** Format: int32 */
+            reminderDaysBefore?: null | number | string;
         };
         CreateWorkspaceRequest: {
             name: string;
@@ -1170,7 +1342,17 @@ export interface components {
             recentMovements: components["schemas"]["DashboardMovementResponse"][];
             accounts: components["schemas"]["DashboardAccountResponse"][];
             budget: null | components["schemas"]["DashboardBudgetResponse"];
+            upcoming: components["schemas"]["DashboardUpcomingResponse"][];
             missingRates: string[];
+        };
+        DashboardUpcomingResponse: {
+            /** Format: date */
+            date: string;
+            description: string;
+            /** Format: double */
+            amount: number | string;
+            currency: string;
+            isCardPayment: boolean;
         };
         EditTransactionRequest: {
             type: null | components["schemas"]["TransactionType"];
@@ -1248,7 +1430,7 @@ export interface components {
             preferences: components["schemas"]["PreferencesResponse"];
         };
         /** @enum {unknown} */
-        NotificationCategory: "budget" | "largeMovement";
+        NotificationCategory: "budget" | "largeMovement" | "bills";
         NotificationListResponse: {
             items: components["schemas"]["NotificationResponse"][];
             /** Format: int32 */
@@ -1313,6 +1495,8 @@ export interface components {
             occurredOn: null | string;
             note?: null | string;
         };
+        /** @enum {unknown} */
+        PostingMode: "automatic" | "confirm";
         PostTransactionRequest: {
             pending?: boolean;
             type: null | components["schemas"]["TransactionType"];
@@ -1362,6 +1546,33 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        RecurringRuleResponse: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["RuleType"];
+            description: string;
+            /** Format: double */
+            amount: number | string;
+            currency: string;
+            /** Format: uuid */
+            accountId: string;
+            accountName: string;
+            /** Format: uuid */
+            categoryId: string;
+            categoryName: string;
+            frequency: components["schemas"]["RuleFrequency"];
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: null | string;
+            postingMode: components["schemas"]["PostingMode"];
+            /** Format: int32 */
+            reminderDaysBefore: null | number | string;
+            status: components["schemas"]["RuleStatus"];
+            pauseReason: null | string;
+            /** Format: date */
+            nextDate: null | string;
+        };
         RegisterRequest: {
             email: string;
             password: string;
@@ -1373,6 +1584,12 @@ export interface components {
             token: string;
             newPassword: string;
         };
+        /** @enum {unknown} */
+        RuleFrequency: "once" | "monthly" | "yearly";
+        /** @enum {unknown} */
+        RuleStatus: "active" | "paused" | "ended";
+        /** @enum {unknown} */
+        RuleType: "income" | "expense";
         SeededCategoriesResponse: {
             /** Format: int32 */
             created: number | string;
@@ -2328,6 +2545,421 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCalendar: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListRecurringRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateRecurringRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecurringRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PauseRecurringRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ResumeRecurringRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    EndRecurringRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecurringRuleResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmOccurrence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                ruleId: string;
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ConfirmOccurrenceRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SkipOccurrence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                ruleId: string;
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

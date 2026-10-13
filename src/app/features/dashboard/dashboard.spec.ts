@@ -53,6 +53,7 @@ const OCTOBER: DashboardData = {
     { id: 'a-usd', name: 'Dólares', type: 'bank', currency: 'USD', balance: 75 },
   ],
   budget: null,
+  upcoming: [],
   missingRates: [],
 };
 const NOTHING: DashboardData = {

@@ -107,6 +107,27 @@
         </ul>
       </section>
 
+      @if (data.upcoming.length > 0) {
+        <section class="card panel" aria-labelledby="upcoming-title">
+          <header>
+            <h2 id="upcoming-title">Próximos pagos</h2>
+            <a class="link" routerLink="/calendar">Ver calendario</a>
+          </header>
+          <ul class="rows">
+            @for (payment of data.upcoming; track $index) {
+              <li>
+                <app-icon-tile [icon]="payment.isCardPayment ? 'credit_card' : 'event'" [color]="payment.isCardPayment ? 'blue' : 'amber'" [size]="34" />
+                <span class="names">
+                  <strong>{{ payment.description }}</strong>
+                  <span>{{ shortDate(payment.date) }}</span>
+                </span>
+                <strong class="figure">{{ payment.amount | money: payment.currency }}</strong>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
       <section class="card panel" aria-labelledby="accounts-title">
         <header>
           <h2 id="accounts-title">Tus cuentas</h2>
