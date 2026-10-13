@@ -275,3 +275,70 @@ select.input {
     color: var(--rd);
   }
 }
+
+// How much of something is used: a credit line, and later a budget. Set --meter to a number from 0 to 100.
+.meter {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sf3);
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    display: block;
+    width: calc(var(--meter, 0) * 1%);
+    max-width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--ac);
+  }
+
+  &[data-level='warn']::before {
+    background: var(--am);
+  }
+
+  &[data-level='over']::before {
+    background: var(--rd);
+  }
+}
+
+// The buttons that close a form, and two fields side by side.
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.form-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+// A checkbox with the sentence it switches.
+.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--tx2);
+  text-wrap: pretty;
+
+  input {
+    flex: none;
+    margin-top: 2px;
+    accent-color: var(--ac);
+  }
+}
+
+// What a form explains before asking.
+.form-note {
+  font-size: 13px;
+  color: var(--mu);
+  text-wrap: pretty;
+
+  strong {
+    color: var(--tx);
+  }
+}

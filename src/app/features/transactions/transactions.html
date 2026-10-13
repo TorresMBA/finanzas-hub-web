@@ -1,4 +1,4 @@
-<app-page-header [eyebrow]="periodLabel()" title="Transacciones" subtitle="Revisa, busca y clasifica tus movimientos. Solo tú los ves.">
+<app-page-header [eyebrow]="periodLabel()" title="Transacciones" subtitle="Tus ingresos, gastos y transferencias. Solo tú los ves.">
   <button class="button button--primary" type="button" (click)="openPost()"><app-icon name="add" [size]="18" />Nueva transacción</button>
 </app-page-header>
 
@@ -52,6 +52,26 @@
         </dl>
       }
 
+      @if (inBase(); as base) {
+        <dl class="summary summary--base" [attr.aria-label]="'Resumen en ' + base.currency + ', todas las monedas'">
+          <div>
+            <dt>Ingresos en {{ base.currency }}</dt>
+            <dd class="is-income">{{ base.income | money: base.currency }}</dd>
+          </div>
+          <div>
+            <dt>Gastos en {{ base.currency }}</dt>
+            <dd>{{ base.expense | money: base.currency }}</dd>
+          </div>
+          <div>
+            <dt>Neto en {{ base.currency }}</dt>
+            <dd [class.is-income]="+base.net > 0" [class.is-negative]="+base.net < 0">{{ base.net | money: base.currency : { signed: true } }}</dd>
+          </div>
+        </dl>
+        @if (base.missingRates.length > 0) {
+          <p class="hint">Sin contar lo que está en {{ base.missingRates.join(', ') }}: falta su tipo de cambio. Defínelo en <a class="link" routerLink="/accounts">Cuentas</a>.</p>
+        }
+      }
+
       @if (state() === 'loading') {
         <div class="loading" aria-busy="true" aria-label="Cargando movimientos">
           @for (row of [1, 2, 3, 4, 5]; track row) {
@@ -85,10 +105,19 @@
                     <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="36" />
                     <span class="names">
                       <strong>{{ item.description }}</strong>
-                      <span>{{ item.category ? item.category.name + ' · ' : '' }}{{ item.accountName }}</span>
+                      @if (item.transfer; as transfer) {
+                        <span>{{ transfer.fromAccountName }} → {{ transfer.toAccountName }}</span>
+                      } @else {
+                        <span>{{ item.category ? item.category.name + ' · ' : '' }}{{ item.accountName }}</span>
+                      }
                     </span>
                     <span class="status" [attr.data-status]="item.status">{{ statusLabels[item.status] }}</span>
-                    <span class="amount" [class.is-income]="+item.signedAmount > 0">{{ item.signedAmount | money: item.currency : { signed: true } }}</span>
+                    @if (item.transfer && account() === '') {
+                      <!-- Seen from no account in particular, a transfer is money that neither came nor went. -->
+                      <span class="amount is-neutral">{{ item.amount | money: item.currency }}</span>
+                    } @else {
+                      <span class="amount" [class.is-income]="+item.signedAmount > 0">{{ item.signedAmount | money: item.currency : { signed: true } }}</span>
+                    }
                   </button>
                 </li>
               }

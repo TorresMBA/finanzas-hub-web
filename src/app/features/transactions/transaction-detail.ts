@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, outp
 import { Transaction } from '../../core/api/api-types';
 import { formatDay } from '../../shared/ui/dates';
 import { IconTile } from '../../shared/ui/icon-tile';
-import { MoneyPipe } from '../../shared/ui/money';
+import { MoneyPipe, formatMoney } from '../../shared/ui/money';
 import { KIND_LABELS, STATUS_LABELS, lookOf } from './transactions-api';
 
 /** Everything about one movement, and what can be done with it. It asks; the page does. */
@@ -18,8 +18,12 @@ import { KIND_LABELS, STATUS_LABELS, lookOf } from './transactions-api';
         <span>{{ day() }}</span>
       </div>
     </div>
-    <div class="amount" [class.is-income]="+item.signedAmount > 0 && item.status !== 'voided'" [class.is-voided]="item.status === 'voided'">
-      {{ item.signedAmount | money: item.currency : { signed: true } }}
+    <div class="amount" [class.is-income]="+item.signedAmount > 0 && item.status !== 'voided' && !item.transfer" [class.is-voided]="item.status === 'voided'">
+      @if (item.transfer; as transfer) {
+        {{ transfer.amountOut | money: transfer.currencyOut }}
+      } @else {
+        {{ item.signedAmount | money: item.currency : { signed: true } }}
+      }
     </div>
     <dl>
       @for (row of rows(); track row.label) {
@@ -172,10 +176,16 @@ export class TransactionDetail {
   protected readonly rows = computed(() => {
     const item = this.transaction();
     const category = item.category ? (item.category.parentName ? `${item.category.parentName} › ${item.category.name}` : item.category.name) : null;
+    const transfer = item.transfer;
+    // Between two currencies what arrives is not what left, so both are shown.
+    const arrives = transfer && transfer.currencyIn !== transfer.currencyOut ? formatMoney(transfer.amountIn, transfer.currencyIn) : null;
     return [
-      { label: 'Tipo', value: KIND_LABELS[item.kind] },
+      { label: 'Tipo', value: transfer?.isCardPayment ? 'Pago de tarjeta' : KIND_LABELS[item.kind] },
       { label: 'Categoría', value: category },
-      { label: 'Cuenta', value: item.accountName },
+      { label: 'Cuenta', value: transfer ? null : item.accountName },
+      { label: 'Desde', value: transfer?.fromAccountName },
+      { label: 'Hacia', value: transfer?.toAccountName },
+      { label: 'Llega', value: arrives },
       { label: 'Estado', value: STATUS_LABELS[item.status] },
       { label: 'Comercio', value: item.merchant },
       { label: 'Nota', value: item.note },

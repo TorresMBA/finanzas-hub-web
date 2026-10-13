@@ -1,11 +1,14 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { Category, CategoryKind, Subcategory, Tag } from '../../core/api/api-types';
+import { Category, CategoryKind, CategoryTotals, Subcategory, Tag } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
+import { PeriodStore } from '../../core/period/period-store';
+import { monthRange } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Icon } from '../../shared/ui/icon';
 import { IconTile } from '../../shared/ui/icon-tile';
+import { formatMoney, sumAmounts } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { StatCard } from '../../shared/ui/stat-card';
@@ -42,6 +45,7 @@ function searchable(text: string): string {
 })
 export class Categories {
   private readonly api = inject(CategoriesApi);
+  private readonly period = inject(PeriodStore);
   private readonly tagInput = viewChild<ElementRef<HTMLInputElement>>('tagInput');
 
   protected readonly kindTabs = KIND_TABS;
@@ -50,6 +54,14 @@ export class Categories {
   // Archived ones come too and are hidden here, so showing them is instant.
   protected readonly categories = httpResource<Category[]>(() => this.api.categoriesUrl());
   protected readonly tags = httpResource<Tag[]>(() => this.api.tagsUrl());
+
+  // What each category moved in the month of the top bar. Extra information: the page works the same without it.
+  private readonly totalsUrl = computed(() => {
+    const { year, month } = this.period.month();
+    return this.api.totalsUrl(monthRange(year, month));
+  });
+  private readonly totals = httpResource<CategoryTotals>(() => this.totalsUrl());
+  private readonly movedById = computed(() => new Map((this.totals.value()?.categories ?? []).map((total) => [total.categoryId, total])));
 
   protected readonly query = signal('');
   protected readonly kindTab = signal<KindTab>('all');
@@ -122,7 +134,15 @@ export class Categories {
   protected describe(category: Category): string {
     const count = category.subcategories.length;
     const subcategories = count === 0 ? 'Sin subcategorías' : `${count} subcategoría${count > 1 ? 's' : ''}`;
-    return `${subcategories} · ${KIND_LABELS[category.kind]}`;
+    const moved = this.moved([category.id, ...category.subcategories.map((subcategory) => subcategory.id)]);
+    return `${subcategories} · ${KIND_LABELS[category.kind]}${moved ? ` · ${moved} en ${this.period.label().toLowerCase()}` : ''}`;
+  }
+
+  /** What these categories moved in the month, in the base currency; null when nothing did. */
+  protected moved(categoryIds: readonly string[]): string | null {
+    const currency = this.totals.value()?.baseCurrency;
+    const totals = categoryIds.map((id) => this.movedById().get(id)).filter((total) => total !== undefined);
+    return currency && totals.length > 0 ? formatMoney(sumAmounts(totals.map((total) => total.amount)), currency) : null;
   }
 
   protected filterByTag(tag: string): void {

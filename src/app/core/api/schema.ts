@@ -180,6 +180,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/accounts": {
         parameters: {
             query?: never;
@@ -190,6 +206,22 @@ export interface paths {
         get: operations["ListAccounts"];
         put?: never;
         post: operations["OpenAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/accounts/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetAccountSummary"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -260,6 +292,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/accounts/{accountId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PayCreditCard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/transactions": {
         parameters: {
             query?: never;
@@ -270,6 +318,22 @@ export interface paths {
         get: operations["ListTransactions"];
         put?: never;
         post: operations["PostTransaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/transactions/category-totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetCategoryTotals"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -318,6 +382,54 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["VoidTransaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PostTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/exchange-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListExchangeRates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/exchange-rates/{currency}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["SetExchangeRate"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -631,12 +743,25 @@ export interface components {
             institution: null | string;
             /** Format: double */
             balance: number | string;
+            includeInNetWorth: boolean;
+            creditCard: null | components["schemas"]["CreditCardResponse"];
             isArchived: boolean;
             /** Format: date-time */
             createdAt: string;
         };
+        AccountSummaryResponse: {
+            baseCurrency: null | string;
+            /** Format: double */
+            netWorth: number | string;
+            /** Format: double */
+            assets: number | string;
+            /** Format: double */
+            debts: number | string;
+            missingRates: string[];
+            currencies: components["schemas"]["CurrencyPositionResponse"][];
+        };
         /** @enum {unknown} */
-        AccountType: "bank" | "cash" | "wallet";
+        AccountType: "bank" | "cash" | "wallet" | "creditCard";
         AdjustAccountBalanceRequest: {
             /** Format: double */
             actualBalance: null | number | string;
@@ -646,6 +771,16 @@ export interface components {
         AuthenticatedUser: {
             /** Format: uuid */
             userId: string;
+        };
+        BaseTotalsResponse: {
+            currency: string;
+            /** Format: double */
+            income: number | string;
+            /** Format: double */
+            expense: number | string;
+            /** Format: double */
+            net: number | string;
+            missingRates: string[];
         };
         /** @enum {unknown} */
         CategoryColor: "green" | "blue" | "violet" | "amber" | "red";
@@ -661,6 +796,19 @@ export interface components {
             isArchived: boolean;
             tags: string[];
             subcategories: components["schemas"]["SubcategoryResponse"][];
+        };
+        CategoryTotalResponse: {
+            /** Format: uuid */
+            categoryId: string;
+            /** Format: double */
+            amount: number | string;
+            /** Format: int32 */
+            count: number | string;
+        };
+        CategoryTotalsResponse: {
+            baseCurrency: null | string;
+            categories: components["schemas"]["CategoryTotalResponse"][];
+            missingRates: string[];
         };
         ChangeMemberRoleRequest: {
             role: null | components["schemas"]["WorkspaceRole"];
@@ -690,6 +838,41 @@ export interface components {
         CreateWorkspaceRequest: {
             name: string;
         };
+        CreditCardRequest: {
+            /** Format: double */
+            creditLimit: null | number | string;
+            /** Format: int32 */
+            paymentDay: null | number | string;
+            /** Format: int32 */
+            closingDay?: null | number | string;
+        };
+        CreditCardResponse: {
+            /** Format: double */
+            creditLimit: number | string;
+            /** Format: double */
+            used: number | string;
+            /** Format: double */
+            available: number | string;
+            /** Format: int32 */
+            paymentDay: number | string;
+            /** Format: int32 */
+            closingDay: null | number | string;
+            /** Format: date */
+            nextPaymentDate: string;
+        };
+        CurrencyPositionResponse: {
+            currency: string;
+            /** Format: double */
+            assets: number | string;
+            /** Format: double */
+            debts: number | string;
+            /** Format: double */
+            net: number | string;
+            /** Format: double */
+            rate: null | number | string;
+            /** Format: date */
+            rateDate: null | string;
+        };
         CurrencyTotalsResponse: {
             currency: string;
             /** Format: double */
@@ -700,6 +883,81 @@ export interface components {
             net: number | string;
             /** Format: int32 */
             count: number | string;
+        };
+        DashboardAccountResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            type: components["schemas"]["LedgerAccountType"];
+            currency: string;
+            /** Format: double */
+            balance: number | string;
+        };
+        DashboardCategoryResponse: {
+            /** Format: uuid */
+            categoryId: string;
+            name: string;
+            icon: string;
+            color: string;
+            /** Format: double */
+            amount: number | string;
+            /** Format: double */
+            share: number | string;
+        };
+        DashboardMonthResponse: {
+            month: string;
+            /** Format: double */
+            income: number | string;
+            /** Format: double */
+            expense: number | string;
+        };
+        DashboardMovementResponse: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["LedgerMovementKind"];
+            /** Format: date */
+            occurredOn: string;
+            description: string;
+            /** Format: double */
+            signedAmount: number | string;
+            currency: string;
+            accountName: string;
+            counterAccountName: null | string;
+            categoryName: null | string;
+            categoryIcon: null | string;
+            categoryColor: null | string;
+        };
+        DashboardNetWorthResponse: {
+            /** Format: double */
+            amount: number | string;
+            /** Format: double */
+            assets: number | string;
+            /** Format: double */
+            debts: number | string;
+            /** Format: double */
+            previousAmount: number | string;
+            /** Format: double */
+            change: number | string;
+        };
+        DashboardResponse: {
+            month: string;
+            baseCurrency: null | string;
+            netWorth: components["schemas"]["DashboardNetWorthResponse"];
+            /** Format: double */
+            income: number | string;
+            /** Format: double */
+            expense: number | string;
+            /** Format: double */
+            previousIncome: number | string;
+            /** Format: double */
+            previousExpense: number | string;
+            /** Format: double */
+            savingsRate: null | number | string;
+            cashflow: components["schemas"]["DashboardMonthResponse"][];
+            topCategories: components["schemas"]["DashboardCategoryResponse"][];
+            recentMovements: components["schemas"]["DashboardMovementResponse"][];
+            accounts: components["schemas"]["DashboardAccountResponse"][];
+            missingRates: string[];
         };
         EditTransactionRequest: {
             type: null | components["schemas"]["TransactionType"];
@@ -715,6 +973,14 @@ export interface components {
             merchant?: null | string;
             note?: null | string;
             tags?: null | string[];
+        };
+        ExchangeRateResponse: {
+            currency: string;
+            baseCurrency: string;
+            /** Format: double */
+            rate: number | string;
+            /** Format: date */
+            asOf: string;
         };
         ForgotPasswordRequest: {
             email: string;
@@ -741,6 +1007,10 @@ export interface components {
             email: string;
             role: null | components["schemas"]["WorkspaceRole"];
         };
+        /** @enum {unknown} */
+        LedgerAccountType: "bank" | "cash" | "wallet" | "creditCard";
+        /** @enum {unknown} */
+        LedgerMovementKind: "income" | "expense" | "transfer";
         LoginRequest: {
             email: string;
             password: string;
@@ -771,11 +1041,24 @@ export interface components {
             institution?: null | string;
             /** Format: double */
             openingBalance?: number | string;
+            includeInNetWorth?: boolean;
+            creditCard?: null | components["schemas"]["CreditCardRequest"];
         };
         /** @enum {unknown} */
         OperationKind: "income" | "expense" | "refund" | "transfer" | "adjustment" | "openingBalance";
         /** @enum {unknown} */
         OperationStatus: "pending" | "confirmed" | "voided";
+        PayCreditCardRequest: {
+            /** Format: uuid */
+            fromAccountId: null | string;
+            /** Format: double */
+            amount: null | number | string;
+            /** Format: double */
+            sourceAmount?: null | number | string;
+            /** Format: date */
+            occurredOn: null | string;
+            note?: null | string;
+        };
         PostTransactionRequest: {
             pending?: boolean;
             type: null | components["schemas"]["TransactionType"];
@@ -791,6 +1074,20 @@ export interface components {
             merchant?: null | string;
             note?: null | string;
             tags?: null | string[];
+        };
+        PostTransferRequest: {
+            /** Format: uuid */
+            fromAccountId: null | string;
+            /** Format: uuid */
+            toAccountId: null | string;
+            /** Format: double */
+            amount: null | number | string;
+            /** Format: double */
+            destinationAmount?: null | number | string;
+            /** Format: date */
+            occurredOn: null | string;
+            description?: null | string;
+            note?: null | string;
         };
         PreferencesResponse: {
             locale: string;
@@ -829,6 +1126,12 @@ export interface components {
         SetCategoryTagsRequest: {
             tags: string[];
         };
+        SetExchangeRateRequest: {
+            /** Format: double */
+            rate: null | number | string;
+            /** Format: date */
+            asOf?: null | string;
+        };
         SubcategoryResponse: {
             /** Format: uuid */
             id: string;
@@ -856,6 +1159,7 @@ export interface components {
             items: components["schemas"]["TransactionResponse"][];
             nextCursor: null | string;
             totals: components["schemas"]["CurrencyTotalsResponse"][];
+            baseTotals: null | components["schemas"]["BaseTotalsResponse"];
         };
         TransactionResponse: {
             /** Format: uuid */
@@ -881,6 +1185,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             voidReason: null | string;
+            transfer: null | components["schemas"]["TransferResponse"];
         };
         /** @enum {unknown} */
         TransactionType: "income" | "expense" | null;
@@ -888,9 +1193,26 @@ export interface components {
             /** Format: uuid */
             userId: null | string;
         };
+        TransferResponse: {
+            /** Format: uuid */
+            fromAccountId: string;
+            fromAccountName: string;
+            /** Format: double */
+            amountOut: number | string;
+            currencyOut: string;
+            /** Format: uuid */
+            toAccountId: string;
+            toAccountName: string;
+            /** Format: double */
+            amountIn: number | string;
+            currencyIn: string;
+            isCardPayment: boolean;
+        };
         UpdateAccountRequest: {
             name: string;
             institution?: null | string;
+            includeInNetWorth?: null | boolean;
+            creditCard?: null | components["schemas"]["CreditCardRequest"];
         };
         UpdateCategoryRequest: {
             name: string;
@@ -1747,6 +2069,57 @@ export interface operations {
             };
         };
     };
+    GetDashboard: {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     ListAccounts: {
         parameters: {
             query?: {
@@ -1853,6 +2226,46 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetAccountSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountSummaryResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2140,10 +2553,84 @@ export interface operations {
             };
         };
     };
+    PayCreditCard: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayCreditCardRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     ListTransactions: {
         parameters: {
             query?: {
-                type?: components["schemas"]["TransactionType"];
+                type?: components["schemas"]["OperationKind"];
                 status?: components["schemas"]["OperationStatus"];
                 accountId?: string;
                 categoryId?: string;
@@ -2264,6 +2751,58 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCategoryTotals: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryTotalsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2468,6 +3007,191 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PostTransfer: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostTransferRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListExchangeRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeRateResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetExchangeRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                currency: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetExchangeRateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExchangeRateResponse"];
                 };
             };
             /** @description Bad Request */

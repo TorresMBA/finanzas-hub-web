@@ -1,7 +1,7 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable, computed, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { OperationKind, OperationStatus, Transaction, TransactionPage, TransactionType } from '../../core/api/api-types';
+import { OperationKind, OperationStatus, PostTransferRequest, Transaction, TransactionPage, TransactionType } from '../../core/api/api-types';
 import { IDEMPOTENCY_KEY } from '../../core/http/api-interceptors';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { TileColor } from '../../shared/ui/icon-tile';
@@ -17,17 +17,27 @@ export const KIND_LABELS: Readonly<Record<OperationKind, string>> = {
 
 export const STATUS_LABELS: Readonly<Record<OperationStatus, string>> = { confirmed: 'Confirmada', pending: 'Pendiente', voided: 'Anulada' };
 
-/** The icon and colour of a movement: its category's, or a neutral one for what the application registered. */
+/** The kinds of movement the list can be narrowed to. */
+export type MovementFilter = TransactionType | 'transfer';
+
+/** The icon and colour of a movement: its category's, the one of a transfer, or a neutral one for what the application registered. */
 export function lookOf(transaction: Transaction): { icon: string; color: TileColor } {
+  const voided = transaction.status === 'voided';
   if (transaction.category) {
-    return { icon: transaction.category.icon, color: transaction.status === 'voided' ? 'neutral' : (transaction.category.color as TileColor) };
+    return { icon: transaction.category.icon, color: voided ? 'neutral' : (transaction.category.color as TileColor) };
+  }
+
+  if (transaction.transfer) {
+    return transaction.transfer.isCardPayment
+      ? { icon: 'credit_card', color: voided ? 'neutral' : 'amber' }
+      : { icon: 'swap_horiz', color: voided ? 'neutral' : 'blue' };
   }
 
   return { icon: transaction.kind === 'adjustment' ? 'tune' : 'flag', color: 'neutral' };
 }
 
 export interface TransactionFilters {
-  readonly type: TransactionType | null;
+  readonly type: MovementFilter | null;
   readonly voided: boolean;
   readonly accountId: string;
   readonly text: string;
@@ -75,6 +85,11 @@ export class TransactionsApi {
     return firstValueFrom(
       this.http.post<Transaction>(`${this.base()}/transactions`, { ...body, pending }, { context: new HttpContext().set(IDEMPOTENCY_KEY, key) }),
     );
+  }
+
+  /** Moves money between two accounts of the person. It comes back as a movement like any other. */
+  transfer(body: PostTransferRequest, key: string): Promise<Transaction> {
+    return firstValueFrom(this.http.post<Transaction>(`${this.base()}/transfers`, body, { context: new HttpContext().set(IDEMPOTENCY_KEY, key) }));
   }
 
   edit(transactionId: string, body: TransactionBody): Promise<Transaction> {

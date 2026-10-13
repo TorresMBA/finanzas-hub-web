@@ -2,7 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Account, Category, CurrencyTotals, Transaction, TransactionPage } from '../../core/api/api-types';
+import { Account, BaseTotals, Category, CurrencyTotals, Transaction, TransactionPage } from '../../core/api/api-types';
 import { apiErrorInterceptor, idempotencyKeyInterceptor } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
 import { TEST_WORKSPACE, provideSession } from '../../core/testing/signed-in';
@@ -12,7 +12,10 @@ import { Transactions } from './transactions';
 const BASE = `/api/v1/workspaces/${TEST_WORKSPACE.id}`;
 const LIST_URL = `${BASE}/transactions`;
 
-const BCP: Account = { id: 'a-bcp', name: 'BCP', type: 'bank', currency: 'PEN', institution: null, balance: 946, isArchived: false, createdAt: '2026-10-01T10:00:00Z' };
+const BCP: Account = {
+  id: 'a-bcp', name: 'BCP', type: 'bank', currency: 'PEN', institution: null, balance: 946, includeInNetWorth: true, creditCard: null, isArchived: false,
+  createdAt: '2026-10-01T10:00:00Z',
+};
 const DOLLARS: Account = { ...BCP, id: 'a-usd', name: 'BCP Dólares', currency: 'USD' };
 const GROCERIES: Category = {
   id: 'c-groceries',
@@ -44,17 +47,33 @@ const movement = (id: string, description: string, signedAmount: number, occurre
   isEditable: true,
   createdAt: '2026-10-12T10:00:00Z',
   voidReason: null,
+  transfer: null,
   ...extra,
 });
 const WONG = movement('t-wong', 'Wong', -54, '2026-10-12', { tags: ['mercado'], merchant: 'Wong Benavides' });
 const SALARY_PAID = movement('t-salary', 'Sueldo', 4500, '2026-10-12', { status: 'pending' });
 const NETFLIX = movement('t-netflix', 'Netflix', -12.99, '2026-10-12', { currency: 'USD', accountId: 'a-usd', accountName: 'BCP Dólares' });
 const OPENING = movement('t-opening', 'Saldo inicial', 1000, '2026-10-01', { kind: 'openingBalance', category: null, isEditable: false });
+const TRANSFER = movement('t-transfer', 'Transferencia', -375, '2026-10-11', {
+  kind: 'transfer',
+  category: null,
+  isEditable: false,
+  transfer: {
+    fromAccountId: 'a-bcp', fromAccountName: 'BCP', amountOut: 375, currencyOut: 'PEN',
+    toAccountId: 'a-usd', toAccountName: 'BCP Dólares', amountIn: 100, currencyIn: 'USD', isCardPayment: false,
+  },
+});
+const IN_BASE: BaseTotals = { currency: 'PEN', income: 4500, expense: 102.71, net: 4397.29, missingRates: [] };
 const TOTALS: CurrencyTotals[] = [
   { currency: 'PEN', income: 4500, expense: 54, net: 4446, count: 2 },
   { currency: 'USD', income: 0, expense: 12.99, net: -12.99, count: 1 },
 ];
-const page = (items: Transaction[], totals: CurrencyTotals[] = [], nextCursor: string | null = null): TransactionPage => ({ items, totals, nextCursor });
+const page = (items: Transaction[], totals: CurrencyTotals[] = [], nextCursor: string | null = null, baseTotals: BaseTotals | null = null): TransactionPage => ({
+  items,
+  totals,
+  nextCursor,
+  baseTotals,
+});
 
 describe('Transactions', () => {
   let fixture: ComponentFixture<Transactions>;
@@ -150,6 +169,94 @@ describe('Transactions', () => {
     await open();
 
     expect(texts('.summary dd')).toEqual(['S/ 4,500.00', 'S/ 54.00', '+S/ 4,446.00', 'US$ 0.00', 'US$ 12.99', '−US$ 12.99']);
+  });
+
+  it('adds every currency up in the base one only when the API did, and says what it could not convert', async () => {
+    lists();
+    listRequest().flush(page([WONG, NETFLIX], TOTALS, null, { ...IN_BASE, missingRates: ['EUR'] }));
+    await fixture.whenStable();
+
+    expect(texts('.summary--base dt')).toEqual(['Ingresos en PEN', 'Gastos en PEN', 'Neto en PEN']);
+    expect(texts('.summary--base dd')).toEqual(['S/ 4,500.00', 'S/ 102.71', '+S/ 4,397.29']);
+    expect(element.querySelector('.hint')?.textContent).toContain('Sin contar lo que está en EUR');
+
+    // With one currency that is already the base one, the summary of that currency says it all.
+    await click('Gastos');
+    listRequest().flush(page([WONG], [TOTALS[0]], null, IN_BASE));
+    await settle();
+    expect(element.querySelector('.summary--base')).toBeNull();
+  });
+
+  it('shows a transfer as money between two accounts, neither earned nor spent', async () => {
+    await open([WONG, TRANSFER], [TOTALS[0]]);
+
+    expect(texts('.day')).toEqual(['Lunes, 12 de octubre−S/ 54.00', 'Domingo, 11 de octubre']);
+    expect(texts('.row .names span')).toEqual(['Supermercado · BCP', 'BCP → BCP Dólares']);
+    expect(texts('.row .amount')).toEqual(['−S/ 54.00', 'S/ 375.00']);
+
+    element.querySelectorAll<HTMLButtonElement>('.row')[1].click();
+    await settle();
+    const detail = element.querySelector('.detail')!;
+    expect(detail.querySelector('.amount')?.textContent?.trim()).toBe('S/ 375.00');
+    expect(texts('.detail dl div')).toEqual(['TipoTransferencia', 'DesdeBCP', 'HaciaBCP Dólares', 'LlegaUS$ 100.00', 'EstadoConfirmada']);
+    expect(button('Editar', detail)).toBeUndefined();
+    expect(button('Anular', detail)).toBeDefined();
+
+    await click('Transferencias');
+    const filtered = listRequest();
+    expect(paramsOf(filtered)).toMatchObject({ type: 'transfer' });
+    filtered.flush(page([TRANSFER]));
+    await settle();
+
+    // Seen from one of its accounts, the same transfer is money that came in.
+    const select = element.querySelector<HTMLSelectElement>('.account-filter')!;
+    select.value = 'a-usd';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    listRequest().flush(page([{ ...TRANSFER, amount: 100, signedAmount: 100, currency: 'USD', accountId: 'a-usd', accountName: 'BCP Dólares' }]));
+    await settle();
+    expect(texts('.row .amount')).toEqual(['+US$ 100.00']);
+  });
+
+  it('registers a transfer between two currencies, asking how much arrives', async () => {
+    await open();
+    await click('addNueva transacción');
+    const form = () => element.querySelector('app-transaction-form')!;
+    const send = async () => {
+      form().querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle();
+    };
+
+    await click('Transferencia');
+    expect(texts('app-transaction-form label .label')).toEqual(['Monto', 'Fecha', 'Desde', 'Hacia', 'Descripción (opcional)', 'Nota (opcional)']);
+    await send();
+    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Escribe el monto.', 'Elige una cuenta.', 'Elige la cuenta que recibe.']);
+
+    await fill('Monto', '375');
+    await fill('Desde', 'a-bcp');
+    await fill('Hacia', 'a-bcp');
+    await send();
+    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Elige una cuenta distinta de la de origen.']);
+
+    await fill('Hacia', 'a-usd');
+    await send();
+    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Un monto mayor que cero, con hasta dos decimales.']);
+
+    await fill('Llega a la cuenta (USD)', '100');
+    await send();
+
+    const request = http.expectOne({ method: 'POST', url: `${BASE}/transfers` });
+    expect(request.request.body).toEqual({
+      fromAccountId: 'a-bcp', toAccountId: 'a-usd', amount: 375, destinationAmount: 100, occurredOn: '2026-10-13', description: null, note: null,
+    });
+    expect(request.request.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
+    request.flush(TRANSFER);
+    await settle();
+    listRequest().flush(page([TRANSFER]));
+    await settle();
+
+    expect(form()).toBeNull();
+    expect(element.querySelector('[role="status"]')?.textContent).toBe('Transferencia de S/ 375.00 registrada.');
   });
 
   it('shows the first movement in the panel and another one on click', async () => {

@@ -1,4 +1,4 @@
-<app-page-header eyebrow="Tu dinero" title="Cuentas" subtitle="Saldos de tus bancos, tu efectivo y tus billeteras. Solo tú los ves.">
+<app-page-header eyebrow="Tu dinero" title="Cuentas" subtitle="Saldos de tus bancos, tu efectivo, tus billeteras y tus tarjetas. Solo tú los ves.">
   <button class="button button--primary" type="button" (click)="open({ mode: 'open' })"><app-icon name="add" [size]="18" />Nueva cuenta</button>
 </app-page-header>
 
@@ -29,9 +29,24 @@
   <div class="layout">
     <div class="main">
       @if (stats().length > 0) {
-        <ul class="stats" aria-label="Totales por moneda">
-          @for (stat of stats(); track stat.currency) {
-            <li><app-stat-card [label]="stat.label" [value]="stat.total | money: stat.currency" icon="savings" color="green" /></li>
+        <ul class="stats" aria-label="Patrimonio">
+          @for (stat of stats(); track stat.label) {
+            <li><app-stat-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [color]="stat.color" /></li>
+          }
+        </ul>
+      }
+      @if (rates().length > 0) {
+        <ul class="rates" aria-label="Tipos de cambio">
+          @for (rate of rates(); track rate.currency) {
+            <li [class.is-missing]="rate.rate === null">
+              @if (rate.rate === null) {
+                <span>Falta el tipo de cambio de {{ rate.currency }}: lo que tienes en esa moneda todavía no suma en tu patrimonio.</span>
+                <button type="button" class="link" (click)="rateTarget.set(rate)">Definir</button>
+              } @else {
+                <span>1 {{ rate.currency }} = {{ rate.rate }} {{ rate.baseCurrency }}</span>
+                <button type="button" class="link" (click)="rateTarget.set(rate)">Cambiar</button>
+              }
+            </li>
           }
         </ul>
       }
@@ -78,9 +93,20 @@
                     </span>
                     @if (account.isArchived) {
                       <span class="badge">Archivada</span>
+                    } @else if (!account.includeInNetWorth) {
+                      <span class="badge" title="No cuenta en tu patrimonio">Aparte</span>
                     }
                   </span>
-                  <span class="balance" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</span>
+                  @if (account.creditCard; as card) {
+                    @let usage = usageOf(account);
+                    <span class="balance" [class.is-negative]="+card.used > 0">{{ card.used | money: account.currency }}</span>
+                    <span class="usage">
+                      <span class="meter" [attr.data-level]="usage?.level" [style.--meter]="usage?.percent"></span>
+                      <span>Disponible {{ card.available | money: account.currency }} de {{ card.creditLimit | money: account.currency }}</span>
+                    </span>
+                  } @else {
+                    <span class="balance" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</span>
+                  }
                 </button>
               </li>
             }
@@ -101,10 +127,34 @@
             <span>{{ type.label }} · {{ account.currency }}{{ account.institution ? ' · ' + account.institution : '' }}</span>
           </div>
         </div>
-        <div>
-          <div class="detail-label">Saldo</div>
-          <div class="detail-balance" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</div>
-        </div>
+        @if (account.creditCard; as card) {
+          <div>
+            <div class="detail-label">Deuda</div>
+            <div class="detail-balance" [class.is-negative]="+card.used > 0">{{ card.used | money: account.currency }}</div>
+          </div>
+          <dl class="facts">
+            <div>
+              <dt>Disponible</dt>
+              <dd>{{ card.available | money: account.currency }}</dd>
+            </div>
+            <div>
+              <dt>Línea</dt>
+              <dd>{{ card.creditLimit | money: account.currency }}</dd>
+            </div>
+            <div>
+              <dt>Próximo pago</dt>
+              <dd>{{ shortDate(card.nextPaymentDate) }}</dd>
+            </div>
+          </dl>
+        } @else {
+          <div>
+            <div class="detail-label">Saldo</div>
+            <div class="detail-balance" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</div>
+          </div>
+        }
+        @if (!account.includeInNetWorth && !account.isArchived) {
+          <p class="lead">No cuenta en tu patrimonio. Puedes cambiarlo al editarla.</p>
+        }
 
         <div>
           <h3>Últimos movimientos</h3>
@@ -118,7 +168,7 @@
                 <li>
                   <span class="names">
                     <strong>{{ movement.description }}</strong>
-                    <span>{{ shortDate(movement.occurredOn) }}{{ movement.category ? ' · ' + movement.category.name : '' }}</span>
+                    <span>{{ shortDate(movement.occurredOn) }}{{ movement.category ? ' · ' + movement.category.name : '' }}{{ counterpart(movement, account.id) }}</span>
                   </span>
                   <span class="amount" [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</span>
                 </li>
@@ -134,8 +184,13 @@
           @if (account.isArchived) {
             <button class="button button--small" type="button" [disabled]="busy()" (click)="restore(account)">Restaurar</button>
           } @else {
+            @if (account.creditCard) {
+              <button class="button button--small button--primary" type="button" (click)="payingCard.set(account)">Pagar tarjeta</button>
+            }
             <button class="button button--small" type="button" (click)="open({ mode: 'edit', account: account })">Editar</button>
-            <button class="button button--small" type="button" (click)="open({ mode: 'adjust', account: account })">Ajustar saldo</button>
+            <button class="button button--small" type="button" (click)="open({ mode: 'adjust', account: account })">
+              {{ account.creditCard ? 'Ajustar deuda' : 'Ajustar saldo' }}
+            </button>
             <button class="button button--small" type="button" [disabled]="busy()" (click)="archive(account)">Archivar</button>
           }
         </div>
@@ -146,4 +201,12 @@
 
 @if (formTarget(); as target) {
   <app-account-form [target]="target" [defaultCurrency]="workspaces.current()?.baseCurrency ?? 'PEN'" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+}
+
+@if (payingCard(); as card) {
+  <app-card-payment-form [card]="card" [accounts]="all()" (saved)="onSaved($event)" (closed)="payingCard.set(null)" />
+}
+
+@if (rateTarget(); as target) {
+  <app-exchange-rate-form [target]="target" (saved)="onSaved($event)" (closed)="rateTarget.set(null)" />
 }

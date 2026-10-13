@@ -50,6 +50,11 @@ export class CategoriesApi {
   readonly categoriesUrl = computed(() => (this.workspaces.current() ? `${this.base()}/categories?includeArchived=true` : undefined));
   readonly tagsUrl = computed(() => (this.workspaces.current() ? `${this.base()}/tags` : undefined));
 
+  /** What each category moved between two days, in the base currency. Undefined until a workspace is selected. */
+  totalsUrl(range: { from: string; to: string }): string | undefined {
+    return this.workspaces.current() ? `${this.base()}/transactions/category-totals?from=${range.from}&to=${range.to}` : undefined;
+  }
+
   create(request: CreateCategoryRequest): Promise<Category> {
     return firstValueFrom(this.http.post<Category>(`${this.base()}/categories`, request));
   }

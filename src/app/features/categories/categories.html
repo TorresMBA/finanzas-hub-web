@@ -110,6 +110,9 @@
                     <li [class.is-archived]="subcategory.isArchived">
                       <app-icon name="subdirectory_arrow_right" [size]="18" />
                       <span class="sub-name">{{ subcategory.name }}</span>
+                      @if (moved([subcategory.id]); as amount) {
+                        <span class="badge">{{ amount }}</span>
+                      }
                       @if (subcategory.isArchived) {
                         <span class="badge">Archivada</span>
                         @if (!category.isArchived) {

@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, linkedSignal, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Account, Category, CurrencyTotals, Transaction, TransactionType } from '../../core/api/api-types';
+import { Account, BaseTotals, Category, CurrencyTotals, Transaction } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { PeriodStore } from '../../core/period/period-store';
 import { formatDay, monthRange } from '../../shared/ui/dates';
@@ -16,14 +16,15 @@ import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { TransactionDetail } from './transaction-detail';
 import { TransactionForm, TransactionFormTarget } from './transaction-form';
-import { STATUS_LABELS, TransactionFilters, TransactionsApi, lookOf } from './transactions-api';
+import { MovementFilter, STATUS_LABELS, TransactionFilters, TransactionsApi, lookOf } from './transactions-api';
 
-type Tab = 'all' | TransactionType;
+type Tab = 'all' | MovementFilter;
 
 const TABS: readonly { value: Tab; label: string }[] = [
   { value: 'all', label: 'Todas' },
   { value: 'income', label: 'Ingresos' },
   { value: 'expense', label: 'Gastos' },
+  { value: 'transfer', label: 'Transferencias' },
 ];
 
 const DESKTOP = '(min-width: 1100px)';
@@ -65,6 +66,7 @@ export class Transactions {
 
   protected readonly items = signal<readonly Transaction[]>([]);
   protected readonly totals = signal<readonly CurrencyTotals[]>([]);
+  private readonly baseTotals = signal<BaseTotals | null>(null);
   protected readonly nextCursor = signal<string | null>(null);
   protected readonly state = signal<'loading' | 'error' | 'ready'>('loading');
   protected readonly loadingMore = signal(false);
@@ -87,6 +89,16 @@ export class Transactions {
     const { year, month } = this.period.month();
     const tab = this.tab();
     return { ...monthRange(year, month), type: tab === 'all' ? null : tab, voided: this.showVoided(), accountId: this.account(), text: this.appliedText() };
+  });
+
+  /**
+   * Everything in the base currency, when the per-currency summaries alone do not say it: there is more than one
+   * currency, or the only one is not the base.
+   */
+  protected readonly inBase = computed(() => {
+    const base = this.baseTotals();
+    const totals = this.totals();
+    return base && (totals.length > 1 || (totals.length === 1 && totals[0].currency !== base.currency)) ? base : null;
   });
 
   protected readonly hasFilters = computed(() => this.tab() !== 'all' || this.account() !== '' || this.showVoided() || this.appliedText() !== '');
@@ -218,6 +230,7 @@ export class Transactions {
 
       this.items.set(cursor ? [...this.items(), ...page.items] : page.items);
       this.totals.set(page.totals);
+      this.baseTotals.set(page.baseTotals);
       this.nextCursor.set(page.nextCursor);
       this.state.set('ready');
     } catch (error) {

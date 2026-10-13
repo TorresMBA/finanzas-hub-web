@@ -1,8 +1,9 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Category, Tag } from '../../core/api/api-types';
+import { Category, CategoryTotals, Tag } from '../../core/api/api-types';
 import { apiErrorInterceptor } from '../../core/http/api-interceptors';
+import { TODAY } from '../../core/period/period-store';
 import { TEST_WORKSPACE, provideSession } from '../../core/testing/signed-in';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { Categories } from './categories';
@@ -10,6 +11,8 @@ import { Categories } from './categories';
 const BASE = `/api/v1/workspaces/${TEST_WORKSPACE.id}`;
 const CATEGORIES_URL = `${BASE}/categories?includeArchived=true`;
 const TAGS_URL = `${BASE}/tags`;
+const TOTALS_URL = `${BASE}/transactions/category-totals?from=2026-10-01&to=2026-10-31`;
+const NOTHING_MOVED: CategoryTotals = { baseCurrency: 'PEN', categories: [], missingRates: [] };
 
 const HOUSING: Category = {
   id: 'c-housing',
@@ -39,7 +42,14 @@ describe('Categories', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(withInterceptors([apiErrorInterceptor])), provideHttpClientTesting(), provideSession()] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([apiErrorInterceptor])),
+        provideHttpClientTesting(),
+        provideSession(),
+        { provide: TODAY, useValue: () => new Date(2026, 9, 13) },
+      ],
+    });
     await TestBed.inject(WorkspaceStore).ensureLoaded();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Categories);
@@ -47,10 +57,15 @@ describe('Categories', () => {
     TestBed.tick();
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // What each category moved is asked once and is extra: a test that never answers it is still complete.
+    http.match(TOTALS_URL);
+    http.verify();
+  });
 
-  /** Answers the two requests the page makes when it opens and every time it reloads. */
+  /** Answers the two requests the page makes when it opens and every time it reloads, and the totals if still waiting. */
   async function load(categories: Category[] = [HOUSING, EDUCATION, SALARY, OLD], tags: Tag[] = TAGS): Promise<void> {
+    http.match(TOTALS_URL).forEach((request) => request.flush(NOTHING_MOVED));
     http.expectOne(CATEGORIES_URL).flush(categories);
     http.expectOne(TAGS_URL).flush(tags);
     await fixture.whenStable();
@@ -101,6 +116,28 @@ describe('Categories', () => {
     expect(Array.from(element.querySelectorAll('app-stat-card .value')).map((node) => node.textContent)).toEqual(['3', '1', '3']);
     expect(element.querySelector('.rows .names span')?.textContent).toBe('1 subcategoría · Gasto');
     expect(Array.from(element.querySelectorAll('.rows li:first-child .tags .tag')).map((node) => node.textContent?.trim())).toEqual(['#fijo', '#hogar', 'addEtiqueta']);
+  });
+
+  it('says what each category moved in the month of the top bar, subcategories included', async () => {
+    http.expectOne(TOTALS_URL).flush({
+      baseCurrency: 'PEN',
+      categories: [
+        { categoryId: 'c-housing', amount: 300, count: 1 },
+        { categoryId: 's-rent', amount: 1200.5, count: 1 },
+        { categoryId: 'c-salary', amount: 4500, count: 1 },
+      ],
+      missingRates: [],
+    });
+    await load();
+
+    expect(Array.from(element.querySelectorAll('.rows .names span')).map((node) => node.textContent)).toEqual([
+      '1 subcategoría · Gasto · S/ 1,500.50 en octubre 2026',
+      'Sin subcategorías · Gasto',
+      'Sin subcategorías · Ingreso · S/ 4,500.00 en octubre 2026',
+    ]);
+
+    await expandFirst();
+    expect(element.querySelector('.subcategories .badge')?.textContent).toBe('S/ 1,200.50');
   });
 
   it('offers the suggested categories to someone who has none, and loads them', async () => {

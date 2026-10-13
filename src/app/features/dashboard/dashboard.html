@@ -1,0 +1,131 @@
+<app-page-header [eyebrow]="periodLabel()" title="Inicio" [subtitle]="greeting()">
+  <a class="button button--primary" routerLink="/transactions">Ir a transacciones</a>
+</app-page-header>
+
+@if (!dashboard.hasValue() && dashboard.isLoading()) {
+  <div class="loading" aria-busy="true" aria-label="Cargando el resumen">
+    <app-skeleton height="96px" />
+    <app-skeleton height="220px" />
+    <app-skeleton height="220px" />
+  </div>
+} @else if (dashboard.error()) {
+  <app-error-state title="No se pudo cargar tu resumen" (retry)="dashboard.reload()" />
+} @else if (dashboard.value(); as data) {
+  @if (data.accounts.length === 0) {
+    <app-empty-state icon="space_dashboard" title="Tu resumen empieza con una cuenta" message="Crea tu primera cuenta con el saldo que tiene hoy y registra lo que entra y lo que sale. Aquí verás cómo va tu mes.">
+      <a class="button button--primary button--small" routerLink="/accounts">Crear una cuenta</a>
+    </app-empty-state>
+  } @else {
+    @let currency = data.baseCurrency ?? '';
+    @if (data.missingRates.length > 0) {
+      <div class="alert alert--info" role="status">
+        Estas cifras no incluyen lo que tienes en {{ data.missingRates.join(', ') }}: falta su tipo de cambio.
+        <a class="link" routerLink="/accounts">Definirlo en Cuentas</a>
+      </div>
+    }
+
+    <ul class="kpis" aria-label="Cifras del mes">
+      @for (kpi of kpis(); track kpi.label) {
+        <li class="card kpi">
+          <span class="kpi-label">{{ kpi.label }}</span>
+          <strong>{{ kpi.value }}</strong>
+          <span class="kpi-note" [attr.data-tone]="kpi.tone">{{ kpi.note }}</span>
+        </li>
+      }
+    </ul>
+
+    <div class="grid">
+      <section class="card panel" aria-labelledby="cashflow-title">
+        <header>
+          <h2 id="cashflow-title">Flujo de los últimos 6 meses</h2>
+          <span class="legend"><i class="dot dot--in"></i>Ingresos <i class="dot dot--out"></i>Gastos</span>
+        </header>
+        @if (hasCashflow()) {
+          <ul class="chart">
+            @for (month of cashflow(); track month.month) {
+              <li [attr.aria-label]="month.summary" [title]="month.summary">
+                <span class="bars" aria-hidden="true">
+                  <span class="bar bar--in" [style.height.%]="month.income"></span>
+                  <span class="bar bar--out" [style.height.%]="month.expense"></span>
+                </span>
+                <span class="month" aria-hidden="true">{{ month.label }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="none">Todavía no hay ingresos ni gastos en estos meses.</p>
+        }
+      </section>
+
+      <section class="card panel" aria-labelledby="categories-title">
+        <header>
+          <h2 id="categories-title">En qué se fue</h2>
+          <a class="link" routerLink="/categories">Categorías</a>
+        </header>
+        <ul class="rows">
+          @for (category of data.topCategories; track category.categoryId) {
+            <li>
+              <app-icon-tile [icon]="category.icon" [color]="tile(category.color)" [size]="34" />
+              <span class="names">
+                <strong>{{ category.name }}</strong>
+                <span class="meter" [style.--meter]="category.share"></span>
+              </span>
+              <span class="figure">
+                <strong>{{ category.amount | money: currency }}</strong>
+                <span>{{ category.share }}%</span>
+              </span>
+            </li>
+          } @empty {
+            <li class="none">Sin gastos este mes.</li>
+          }
+        </ul>
+      </section>
+
+      <section class="card panel" aria-labelledby="recent-title">
+        <header>
+          <h2 id="recent-title">Últimos movimientos</h2>
+          <a class="link" routerLink="/transactions">Ver todos</a>
+        </header>
+        <ul class="rows">
+          @for (movement of data.recentMovements; track movement.id) {
+            @let look = lookOf(movement);
+            <li>
+              <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="34" />
+              <span class="names">
+                <strong>{{ movement.description }}</strong>
+                <span>{{ placeOf(movement) }}</span>
+              </span>
+              @if (movement.kind === 'transfer') {
+                <strong class="figure">{{ magnitude(movement.signedAmount) | money: movement.currency }}</strong>
+              } @else {
+                <strong class="figure" [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</strong>
+              }
+            </li>
+          } @empty {
+            <li class="none">Sin movimientos este mes.</li>
+          }
+        </ul>
+      </section>
+
+      <section class="card panel" aria-labelledby="accounts-title">
+        <header>
+          <h2 id="accounts-title">Tus cuentas</h2>
+          <a class="link" routerLink="/accounts">Ver todas</a>
+        </header>
+        <ul class="rows">
+          @for (account of data.accounts; track account.id) {
+            @let look = accountLook(account);
+            <li>
+              <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="34" />
+              <span class="names">
+                <strong>{{ account.name }}</strong>
+                <span>{{ account.currency }}</span>
+              </span>
+              <strong class="figure" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</strong>
+            </li>
+          }
+        </ul>
+      </section>
+    </div>
+  }
+}
