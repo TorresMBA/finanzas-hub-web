@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Icon } from '../../shared/ui/icon';
-import { BrandMark } from '../brand-mark';
+import { BrandMark } from '../../shared/ui/brand-mark';
 import { NAV_GROUPS } from '../navigation';
 
 /** Full sidebar on desktop; the same list collapses to an icon rail on tablet. Hidden on mobile. */

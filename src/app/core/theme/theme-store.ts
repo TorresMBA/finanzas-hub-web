@@ -23,6 +23,10 @@ export class ThemeStore {
     });
   }
 
+  set(theme: Theme): void {
+    this.current.set(theme);
+  }
+
   toggle(): void {
     this.current.update((theme) => (theme === 'dark' ? 'light' : 'dark'));
   }

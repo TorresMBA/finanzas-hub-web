@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../../app.routes';
+import { provideSession } from '../../core/testing/signed-in';
 import { MOBILE_MORE, MOBILE_TABS, NAV_ITEMS } from '../navigation';
 
 describe('Shell', () => {
@@ -12,7 +13,7 @@ describe('Shell', () => {
   beforeEach(async () => {
     localStorage.clear();
     // Same router features as app.config.ts: the placeholder page receives its inputs from route data.
-    TestBed.configureTestingModule({ providers: [provideRouter(routes, withComponentInputBinding())] });
+    TestBed.configureTestingModule({ providers: [provideRouter(routes, withComponentInputBinding()), provideSession()] });
     harness = await RouterTestingHarness.create('/');
     fixture = harness.fixture;
     element = fixture.nativeElement;

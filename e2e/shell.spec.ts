@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { signUp } from './support';
 
 // The three layouts of the mock.
 const DESKTOP = { width: 1440, height: 900 };
@@ -6,6 +7,11 @@ const TABLET = { width: 768, height: 1024 };
 const MOBILE = { width: 390, height: 844 };
 
 test.describe('shell', () => {
+  // The shell is for signed-in people with a workspace that is set up.
+  test.beforeEach(async ({ page }) => {
+    await signUp(page);
+  });
+
   test('desktop shows the full sidebar and navigates between sections', async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     await page.goto('/');

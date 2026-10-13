@@ -1,0 +1,149 @@
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+<section class="card panel">
+  <h2>Espacio</h2>
+  @if (workspaces.canAdminister()) {
+    <form class="form-stack" (submit)="$event.preventDefault(); saveDetails()" novalidate>
+      <div class="row">
+        <app-field label="Nombre" [state]="detailsForm.name()">
+          <input class="input" type="text" [formField]="detailsForm.name" />
+        </app-field>
+        <app-field label="Zona horaria" [state]="detailsForm.timeZone()">
+          <select class="input" [formField]="detailsForm.timeZone">
+            @for (zone of timeZones(); track zone) {
+              <option [value]="zone">{{ zone }}</option>
+            }
+          </select>
+        </app-field>
+      </div>
+      <div class="readonly">
+        <span class="label">Moneda principal</span>
+        <span>{{ workspace()?.baseCurrency ?? 'Sin configurar' }}</span>
+      </div>
+      <button class="button button--primary" type="submit" [disabled]="busy()">Guardar</button>
+    </form>
+  } @else {
+    <div class="readonly">
+      <span class="label">Nombre</span>
+      <span>{{ workspace()?.name }}</span>
+    </div>
+    <div class="readonly">
+      <span class="label">Moneda principal y zona horaria</span>
+      <span>{{ workspace()?.baseCurrency ?? 'Sin configurar' }} · {{ workspace()?.timeZone }}</span>
+    </div>
+  }
+</section>
+
+<section class="card panel" aria-labelledby="members-heading">
+  <h2 id="members-heading">Miembros</h2>
+  <p class="lead">
+    Los miembros se ven entre sí y pueden compartir metas y gastos. Nadie, tampoco el propietario, ve las cuentas ni los
+    movimientos de otra persona.
+  </p>
+  @if (members.isLoading()) {
+    <app-skeleton />
+  } @else if (members.error()) {
+    <app-error-state (retry)="members.reload()" />
+  } @else {
+    <ul>
+      @for (member of members.value(); track member.userId) {
+        <li>
+          <div class="who">
+            <strong>{{ member.displayName }}{{ member.isYou ? ' (tú)' : '' }}</strong>
+            <span>{{ member.email }}</span>
+          </div>
+          @if (canManage(member)) {
+            <select
+              class="input compact"
+              [attr.aria-label]="'Rol de ' + member.displayName"
+              [value]="member.role"
+              [disabled]="busy()"
+              (change)="changeRole(member, $any($event.target).value)"
+            >
+              <option value="member">Miembro</option>
+              @if (isOwner() || member.role === 'admin') {
+                <option value="admin">Administrador</option>
+              }
+            </select>
+            <div class="actions">
+              @if (isOwner()) {
+                <button class="button button--small" type="button" [disabled]="busy()" (click)="transferTo(member)">
+                  Hacer propietario
+                </button>
+              }
+              <button class="button button--small button--danger" type="button" [disabled]="busy()" (click)="remove(member)">
+                Quitar
+              </button>
+            </div>
+          } @else {
+            <span class="badge" [class.badge--accent]="member.role === 'owner'" [class.badge--info]="member.role === 'admin'">
+              {{ roleLabels[member.role] }}
+            </span>
+            @if (member.isYou && member.role !== 'owner') {
+              <button class="button button--small button--danger" type="button" [disabled]="busy()" (click)="leave(member)">
+                Salir del espacio
+              </button>
+            }
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>
+
+@if (workspaces.canAdminister()) {
+  <section class="card panel" aria-labelledby="invitations-heading">
+    <h2 id="invitations-heading">Invitar</h2>
+    <form class="row" (submit)="$event.preventDefault(); invite()" novalidate>
+      <app-field label="Correo" [state]="inviteForm.email()">
+        <input class="input" type="email" autocomplete="off" [formField]="inviteForm.email" />
+      </app-field>
+      <app-field label="Rol">
+        <select class="input" [formField]="inviteForm.role">
+          <option value="member">Miembro</option>
+          @if (isOwner()) {
+            <option value="admin">Administrador</option>
+          }
+        </select>
+      </app-field>
+      <button class="button button--primary" type="submit" [disabled]="busy()">Enviar invitación</button>
+    </form>
+
+    @if (invitations.isLoading()) {
+      <app-skeleton />
+    } @else if (invitations.error()) {
+      <app-error-state (retry)="invitations.reload()" />
+    } @else if (invitations.value()?.length) {
+      <ul aria-label="Invitaciones pendientes">
+        @for (invitation of invitations.value(); track invitation.id) {
+          <li>
+            <div class="who">
+              <strong>{{ invitation.email }}</strong>
+              <span>{{ roleLabels[invitation.role] }}</span>
+            </div>
+            <span class="badge" [class.badge--warn]="invitation.expired">{{ invitation.expired ? 'Caducada' : 'Pendiente' }}</span>
+            <button class="button button--small" type="button" [disabled]="busy()" (click)="revoke(invitation)">Revocar</button>
+          </li>
+        }
+      </ul>
+    } @else {
+      <app-empty-state icon="mail" title="Sin invitaciones pendientes" message="Las invitaciones caducan a los 7 días." />
+    }
+  </section>
+}
+
+<section class="card panel">
+  <h2>Otro espacio</h2>
+  <p class="lead">Por ejemplo, uno para tu hogar y otro para un viaje. Cada espacio tiene sus propios miembros y sus propios datos.</p>
+  <form class="row" (submit)="$event.preventDefault(); createWorkspace()" novalidate>
+    <app-field label="Nombre del espacio nuevo" [state]="newWorkspaceForm.name()">
+      <input class="input" type="text" [formField]="newWorkspaceForm.name" />
+    </app-field>
+    <button class="button" type="submit" [disabled]="busy()">Crear espacio</button>
+  </form>
+</section>

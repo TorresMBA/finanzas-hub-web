@@ -6,6 +6,18 @@
   </span>
 </a>
 
+@if (workspaces.workspaces().length > 0) {
+  <label class="workspace">
+    <span class="sr-only">Espacio</span>
+    <app-icon name="workspaces" [size]="18" />
+    <select [value]="workspaces.current()?.id" (change)="switchWorkspace($any($event.target).value)">
+      @for (workspace of workspaces.workspaces(); track workspace.id) {
+        <option [value]="workspace.id" [selected]="workspace.id === workspaces.current()?.id">{{ workspace.name }}</option>
+      }
+    </select>
+  </label>
+}
+
 <div class="spacer"></div>
 
 <div class="month" role="group" aria-label="Mes seleccionado">
@@ -30,3 +42,10 @@
 <a class="icon-button notifications" routerLink="/notifications" aria-label="Notificaciones">
   <app-icon name="notifications" [size]="19" />
 </a>
+
+@if (session.user(); as user) {
+  <a class="avatar" routerLink="/settings/profile" [attr.aria-label]="'Tu perfil: ' + user.displayName">{{ initials() }}</a>
+  <button type="button" class="icon-button" aria-label="Cerrar sesión" (click)="signOut()">
+    <app-icon name="logout" [size]="19" />
+  </button>
+}

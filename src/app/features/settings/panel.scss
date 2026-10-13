@@ -1,0 +1,113 @@
+// Shared by the pages of the settings section.
+@use 'mixins' as m;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 720px;
+}
+
+.panel {
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  @include m.tablet-up {
+    padding: 22px;
+  }
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.lead {
+  margin-top: -8px;
+  font-size: 13px;
+  color: var(--mu);
+  text-wrap: pretty;
+}
+
+.form-stack > .button {
+  align-self: flex-start;
+}
+
+.readonly {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+
+  .label {
+    flex-basis: 100%;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--tx2);
+  }
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+
+  app-field {
+    flex: 1 1 200px;
+  }
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--bd);
+
+  &:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+}
+
+.who {
+  flex: 1 1 180px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+
+  strong {
+    @include m.truncate;
+  }
+
+  span {
+    font-size: 12.5px;
+    color: var(--mu);
+    @include m.truncate;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compact {
+  width: auto;
+  height: 34px;
+  font-size: 12.5px;
+}
