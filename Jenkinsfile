@@ -24,7 +24,7 @@ pipeline {
   stages {
     stage('CI') {
       // Angular 22 pide Node ^22.22.3 o ^24.15; en local se usa Node 24. Publicarlo: ./mercury agents node:24
-      agent { label 'node-24' }
+      agent { label 'node-22' }
       options {
         timeout(time: 45, unit: 'MINUTES')
       }
