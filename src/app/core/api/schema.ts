@@ -788,6 +788,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListGoals"];
+        put?: never;
+        post: operations["CreateGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/goals/{goalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetGoal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["UpdateGoal"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/goals/{goalId}/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AddGoalParticipant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/goals/{goalId}/participants/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["RemoveGoalParticipant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/goals/{goalId}/contributions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ContributeToGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/goals/{goalId}/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["WithdrawFromGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/goals/{goalId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ArchiveGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/goals/{goalId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CancelGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/categories": {
         parameters: {
             query?: never;
@@ -985,7 +1113,11 @@ export interface components {
             currencies: components["schemas"]["CurrencyPositionResponse"][];
         };
         /** @enum {unknown} */
-        AccountType: "bank" | "cash" | "wallet" | "creditCard";
+        AccountType: "bank" | "cash" | "wallet" | "creditCard" | "goalFund";
+        AddGoalParticipantRequest: {
+            /** Format: uuid */
+            userId: null | string;
+        };
         AdjustAccountBalanceRequest: {
             /** Format: double */
             actualBalance: null | number | string;
@@ -1175,6 +1307,8 @@ export interface components {
             /** Format: double */
             amount?: null | number | string;
         };
+        /** @enum {unknown} */
+        ContributionType: "contribution" | "withdrawal";
         CreateBudgetRequest: {
             /** Format: uuid */
             categoryId: null | string;
@@ -1192,6 +1326,15 @@ export interface components {
             icon?: null | string;
             color?: null | components["schemas"]["CategoryColor"];
             tags?: null | string[];
+        };
+        CreateGoalRequest: {
+            name: string;
+            /** Format: double */
+            targetAmount: null | number | string;
+            currency?: null | string;
+            /** Format: date */
+            targetDate?: null | string;
+            participantUserIds?: null | string[];
         };
         CreateRecurringRuleRequest: {
             type: null | components["schemas"]["RuleType"];
@@ -1288,6 +1431,19 @@ export interface components {
             /** Format: double */
             share: number | string;
         };
+        DashboardGoalResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: double */
+            saved: number | string;
+            /** Format: double */
+            targetAmount: number | string;
+            currency: string;
+            /** Format: double */
+            percent: number | string;
+            isShared: boolean;
+        };
         DashboardMonthResponse: {
             month: string;
             /** Format: double */
@@ -1343,6 +1499,7 @@ export interface components {
             accounts: components["schemas"]["DashboardAccountResponse"][];
             budget: null | components["schemas"]["DashboardBudgetResponse"];
             upcoming: components["schemas"]["DashboardUpcomingResponse"][];
+            goals: components["schemas"]["DashboardGoalResponse"][];
             missingRates: string[];
         };
         DashboardUpcomingResponse: {
@@ -1380,6 +1537,89 @@ export interface components {
         ForgotPasswordRequest: {
             email: string;
         };
+        GoalContributionResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            displayName: string;
+            type: components["schemas"]["ContributionType"];
+            /** Format: double */
+            amount: number | string;
+            /** Format: date */
+            occurredOn: string;
+            isMine: boolean;
+        };
+        GoalDetailResponse: {
+            goal: components["schemas"]["GoalResponse"];
+            contributions: components["schemas"]["GoalContributionResponse"][];
+            monthly: components["schemas"]["GoalMonthResponse"][];
+        };
+        /** @enum {unknown} */
+        GoalHealth: "onTrack" | "adjustPace" | "behind" | "completed";
+        GoalMemberResponse: {
+            /** Format: uuid */
+            userId: string;
+            displayName: string;
+        };
+        GoalMoneyRequest: {
+            /** Format: double */
+            amount: null | number | string;
+            /** Format: uuid */
+            accountId: null | string;
+            /** Format: date */
+            occurredOn?: null | string;
+        };
+        GoalMonthResponse: {
+            month: string;
+            /** Format: double */
+            amount: number | string;
+        };
+        GoalParticipantResponse: {
+            /** Format: uuid */
+            userId: string;
+            displayName: string;
+            role: components["schemas"]["ParticipantRole"];
+            /** Format: double */
+            saved: number | string;
+            isMe: boolean;
+        };
+        GoalResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: double */
+            targetAmount: number | string;
+            currency: string;
+            /** Format: date */
+            targetDate: null | string;
+            status: components["schemas"]["GoalStatus"];
+            isShared: boolean;
+            isOwner: boolean;
+            /** Format: double */
+            saved: number | string;
+            /** Format: double */
+            mySaved: number | string;
+            /** Format: double */
+            remaining: number | string;
+            /** Format: double */
+            percent: number | string;
+            /** Format: double */
+            requiredMonthly: null | number | string;
+            /** Format: double */
+            averageMonthly: number | string;
+            health: components["schemas"]["GoalHealth"];
+            participants: components["schemas"]["GoalParticipantResponse"][];
+            /** Format: uuid */
+            myFundAccountId: null | string;
+        };
+        GoalsResponse: {
+            goals: components["schemas"]["GoalResponse"][];
+            members: components["schemas"]["GoalMemberResponse"][];
+            baseCurrency: null | string;
+        };
+        /** @enum {unknown} */
+        GoalStatus: "active" | "archived" | "cancelled";
         InvitationPreviewResponse: {
             workspaceName: string;
             email: string;
@@ -1397,13 +1637,14 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
             expired: boolean;
+            acceptLink?: null | string;
         };
         InviteMemberRequest: {
             email: string;
             role: null | components["schemas"]["WorkspaceRole"];
         };
         /** @enum {unknown} */
-        LedgerAccountType: "bank" | "cash" | "wallet" | "creditCard";
+        LedgerAccountType: "bank" | "cash" | "wallet" | "creditCard" | "goalFund";
         /** @enum {unknown} */
         LedgerMovementKind: "income" | "expense" | "transfer";
         LoginRequest: {
@@ -1430,7 +1671,7 @@ export interface components {
             preferences: components["schemas"]["PreferencesResponse"];
         };
         /** @enum {unknown} */
-        NotificationCategory: "budget" | "largeMovement" | "bills";
+        NotificationCategory: "budget" | "largeMovement" | "bills" | "goals";
         NotificationListResponse: {
             items: components["schemas"]["NotificationResponse"][];
             /** Format: int32 */
@@ -1484,6 +1725,8 @@ export interface components {
         OperationKind: "income" | "expense" | "refund" | "transfer" | "adjustment" | "openingBalance";
         /** @enum {unknown} */
         OperationStatus: "pending" | "confirmed" | "voided";
+        /** @enum {unknown} */
+        ParticipantRole: "owner" | "participant";
         PayCreditCardRequest: {
             /** Format: uuid */
             fromAccountId: null | string;
@@ -1694,6 +1937,13 @@ export interface components {
             icon?: null | string;
             color?: null | components["schemas"]["CategoryColor"];
         };
+        UpdateGoalRequest: {
+            name: string;
+            /** Format: double */
+            targetAmount: null | number | string;
+            /** Format: date */
+            targetDate?: null | string;
+        };
         UpdateNotificationSettingsRequest: {
             quietHoursEnabled?: boolean;
             /** Format: time */
@@ -1749,6 +1999,8 @@ export interface components {
             role: components["schemas"]["WorkspaceRole"];
             /** Format: int32 */
             memberCount: number | string;
+            isPersonal: boolean;
+            ownerName?: null | string;
         };
         /** @enum {unknown} */
         WorkspaceRole: "member" | "admin" | "owner";
@@ -4791,6 +5043,608 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListGoals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGoalRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalDetailResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGoalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AddGoalParticipant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddGoalParticipantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RemoveGoalParticipant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                goalId: string;
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ContributeToGoal: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalMoneyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    WithdrawFromGoal: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalMoneyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ArchiveGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

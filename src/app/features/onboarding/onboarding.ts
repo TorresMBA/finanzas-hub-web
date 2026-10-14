@@ -21,7 +21,7 @@ const CURRENCIES = [
     <main>
       <div class="brand"><app-brand-mark /><span>FinanzasHub</span></div>
       <section class="card">
-        <h1>Configura «{{ workspaces.current()?.name }}»</h1>
+        <h1>{{ workspaces.pendingSetup()?.isPersonal ? 'Configura tu espacio personal' : 'Configura «' + (workspaces.pendingSetup()?.name ?? '') + '»' }}</h1>
         <p class="lead">Dos datos antes de empezar. La moneda es la de tus reportes y presupuestos; tus cuentas pueden estar en otras.</p>
         <form class="form-stack" (submit)="$event.preventDefault(); finish()" novalidate>
           @if (failure(); as text) {

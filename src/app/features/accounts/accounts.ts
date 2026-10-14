@@ -118,6 +118,8 @@ export class Accounts {
       { id: 'banks', label: 'Cuentas bancarias', accounts: visible.filter((account) => account.type === 'bank') },
       { id: 'wallets', label: 'Efectivo y billeteras', accounts: visible.filter((account) => account.type === 'cash' || account.type === 'wallet') },
       { id: 'cards', label: 'Tarjetas de crédito', accounts: visible.filter((account) => account.type === 'creditCard') },
+      // What the person put aside for their goals. It moves from Metas, not from here.
+      { id: 'goals', label: 'Fondos de metas', accounts: visible.filter((account) => account.type === 'goalFund') },
     ]
       .filter((group) => (tab === 'all' || tab === group.id) && group.accounts.length > 0)
       .map((group) => ({ ...group, totals: totalsByCurrency(group.accounts.filter((account) => !account.isArchived)) }));

@@ -8,11 +8,11 @@
 
 @if (workspaces.workspaces().length > 0) {
   <label class="workspace">
-    <span class="sr-only">Espacio</span>
+    <span class="sr-only">Espacio para metas y gastos compartidos</span>
     <app-icon name="workspaces" [size]="18" />
     <select [value]="workspaces.current()?.id" (change)="switchWorkspace($any($event.target).value)">
       @for (workspace of workspaces.workspaces(); track workspace.id) {
-        <option [value]="workspace.id" [selected]="workspace.id === workspaces.current()?.id">{{ workspace.name }}</option>
+        <option [value]="workspace.id" [selected]="workspace.id === workspaces.current()?.id">{{ label(workspace) }}</option>
       }
     </select>
   </label>

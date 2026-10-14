@@ -54,6 +54,7 @@ const OCTOBER: DashboardData = {
   ],
   budget: null,
   upcoming: [],
+  goals: [],
   missingRates: [],
 };
 const NOTHING: DashboardData = {

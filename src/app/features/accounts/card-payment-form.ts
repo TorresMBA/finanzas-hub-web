@@ -89,7 +89,7 @@ export class CardPaymentForm {
   readonly closed = output<void>();
 
   /** A card is paid with money, so another card is not offered. */
-  protected readonly sources = computed(() => this.accounts().filter((account) => !account.isArchived && account.type !== 'creditCard'));
+  protected readonly sources = computed(() => this.accounts().filter((account) => !account.isArchived && account.type !== 'creditCard' && account.type !== 'goalFund'));
 
   protected readonly model = linkedSignal<PaymentModel>(() => {
     const owed = Number(this.card().creditCard?.used ?? 0);

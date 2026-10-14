@@ -1,0 +1,228 @@
+@use 'mixins' as m;
+
+:host {
+  display: block;
+}
+
+.alert {
+  margin-bottom: 16px;
+}
+
+.loading,
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.layout {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+
+  @include m.desktop {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+h3 {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tx2);
+}
+
+.lead,
+.none {
+  font-size: 12.5px;
+  color: var(--mu);
+}
+
+.is-negative {
+  color: var(--rd);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filters {
+  align-self: flex-start;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.goal {
+  width: 100%;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+
+  &:hover,
+  &[aria-pressed='true'] {
+    background: var(--sf2);
+  }
+
+  &[aria-pressed='true'] {
+    border-color: var(--ac);
+  }
+
+  .meter {
+    display: block;
+  }
+}
+
+.goal-head,
+.goal-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  strong {
+    @include m.truncate;
+  }
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  strong {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// The global badge covers neutral, accent, info and warn; the state of a goal also needs "over".
+.badge {
+  flex: none;
+
+  &[data-tone='ok'] {
+    background: var(--acs);
+    color: var(--ac);
+  }
+
+  &[data-tone='warn'] {
+    background: var(--ams);
+    color: var(--am);
+  }
+
+  &[data-tone='over'] {
+    background: var(--rds);
+    color: var(--rd);
+  }
+
+  &[data-tone='info'] {
+    background: var(--bls);
+    color: var(--bl);
+  }
+}
+
+.detail {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  @include m.desktop {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+.detail-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.left-line {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tx2);
+  text-wrap: pretty;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.people {
+  border-top: 1px solid var(--bd);
+  margin-bottom: 8px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--bd);
+    font-size: 13.5px;
+  }
+}
+
+.names {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.monthly {
+  height: 96px;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.month {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+}
+
+.bar-box {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.bar {
+  width: 60%;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--ac);
+}

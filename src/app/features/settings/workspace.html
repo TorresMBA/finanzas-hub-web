@@ -5,8 +5,42 @@
   <div class="alert alert--ok" role="status">{{ text }}</div>
 }
 
+<section class="card panel" aria-labelledby="mine-heading">
+  <h2 id="mine-heading">Tus espacios</h2>
+  <p class="lead">
+    Tus cuentas, movimientos y presupuestos son tuyos y se ven igual en cualquier espacio. Un espacio compartido añade miembros, metas y gastos
+    compartidos: esos son los del espacio abierto, que cambias aquí o en la barra superior.
+  </p>
+  <ul aria-label="Tus espacios">
+    @for (item of workspaces.workspaces(); track item.id) {
+      <li>
+        <div class="who">
+          <strong>{{ label(item) }}</strong>
+          @if (item.isPersonal) {
+            <span class="badge badge--info">Personal</span>
+          }
+          <span>{{ roleLabels[item.role] }} · {{ item.memberCount }} {{ +item.memberCount === 1 ? 'miembro' : 'miembros' }}</span>
+        </div>
+        @if (item.id === workspace()?.id) {
+          <span class="badge badge--accent">Abierto</span>
+        } @else {
+          <button class="button button--small" type="button" (click)="open(item)">Abrir</button>
+        }
+        @if (item.role !== 'owner') {
+          @if (leaving() === item.id) {
+            <button class="button button--small button--danger" type="button" [disabled]="busy()" (click)="leaveWorkspace(item)">Sí, salir</button>
+            <button class="button button--small" type="button" (click)="leaving.set(null)">No</button>
+          } @else {
+            <button class="button button--small" type="button" (click)="leaving.set(item.id)">Salir</button>
+          }
+        }
+      </li>
+    }
+  </ul>
+</section>
+
 <section class="card panel">
-  <h2>Espacio</h2>
+  <h2>Espacio abierto: {{ workspace() ? label(workspace()!) : '' }}</h2>
   @if (workspaces.canAdminister()) {
     <form class="form-stack" (submit)="$event.preventDefault(); saveDetails()" novalidate>
       <div class="row">
@@ -113,6 +147,20 @@
       </app-field>
       <button class="button button--primary" type="submit" [disabled]="busy()">Enviar invitación</button>
     </form>
+
+    @if (lastInvite(); as invite) {
+      <div class="alert alert--info invite-link" role="group" aria-label="Enlace de invitación">
+        <p>
+          Envíale este enlace a <strong>{{ invite.email }}</strong>. Vale 7 días, solo sirve con ese correo y solo se muestra ahora: si lo pierdes, revoca la
+          invitación y crea otra.
+        </p>
+        <div class="invite-link-row">
+          <input class="input" type="text" readonly aria-label="Enlace para aceptar la invitación" [value]="invite.link" (focus)="$any($event.target).select()" />
+          <button class="button button--small" type="button" (click)="copyLink(invite.link)">{{ copied() ? 'Copiado' : 'Copiar' }}</button>
+          <button class="button button--small" type="button" (click)="lastInvite.set(null)">Listo</button>
+        </div>
+      </div>
+    }
 
     @if (invitations.isLoading()) {
       <app-skeleton />

@@ -6,6 +6,7 @@ import { Notification, NotificationList, NotificationSettings } from '../../core
 import { errorMessage } from '../../core/errors/error-messages';
 import { NotificationCenter } from '../../core/notifications/notification-center';
 import { TODAY } from '../../core/period/period-store';
+import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { toIsoDate } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
@@ -36,6 +37,7 @@ export class Notifications {
   private readonly api = inject(NotificationsApi);
   private readonly center = inject(NotificationCenter);
   private readonly router = inject(Router);
+  private readonly workspaces = inject(WorkspaceStore);
   private readonly today = inject(TODAY);
 
   protected readonly categoryLook = CATEGORY_LOOK;
@@ -82,6 +84,7 @@ export class Notifications {
       emailBudget: email.get('budget') ?? true,
       emailLargeMovement: email.get('largeMovement') ?? false,
       emailBills: email.get('bills') ?? true,
+      emailGoals: email.get('goals') ?? false,
       quietHoursEnabled: settings?.quietHoursEnabled ?? true,
       quietFrom: (settings?.quietFrom ?? '22:00').slice(0, 5),
       quietTo: (settings?.quietTo ?? '07:00').slice(0, 5),
@@ -113,6 +116,12 @@ export class Notifications {
     }
 
     if (notification.link) {
+      // The inbox is of the person, the notice of one workspace: what it points to only exists there.
+      const target = notification.workspaceId;
+      if (target && target !== this.workspaces.current()?.id && this.workspaces.workspaces().some((workspace) => workspace.id === target)) {
+        this.workspaces.select(target);
+      }
+
       await this.router.navigateByUrl(notification.link);
     }
   }
@@ -137,6 +146,7 @@ export class Notifications {
             { category: 'budget', emailEnabled: model.emailBudget },
             { category: 'largeMovement', emailEnabled: model.emailLargeMovement },
             { category: 'bills', emailEnabled: model.emailBills },
+            { category: 'goals', emailEnabled: model.emailGoals },
           ],
         });
         this.notice.set('Preferencias guardadas.');

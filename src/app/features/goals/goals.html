@@ -1,0 +1,183 @@
+<app-page-header eyebrow="Planificación" title="Metas" subtitle="Ahorra con propósito, a solas o con otros miembros. Una meta compartida solo la ven quienes participan.">
+  <!-- Not before the list arrived: it brings the members to choose from and the currency of the workspace. -->
+  <button class="button button--primary" type="button" [disabled]="!goals.hasValue()" (click)="openCreate()"><app-icon name="add" [size]="18" />Nueva meta</button>
+</app-page-header>
+
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+@if (!goals.hasValue() && goals.isLoading()) {
+  <div class="loading" aria-busy="true" aria-label="Cargando metas">
+    @for (row of [1, 2, 3]; track row) {
+      <app-skeleton height="110px" />
+    }
+  </div>
+} @else if (goals.error()) {
+  <app-error-state title="No se pudieron cargar tus metas" (retry)="reload()" />
+} @else if (all().length === 0) {
+  <app-empty-state icon="flag" title="Todavía no tienes metas" message="Crea una con su objetivo y su fecha, y aporta desde tus cuentas. Puedes invitar a otros miembros a ahorrar contigo.">
+    <button class="button button--primary button--small" type="button" (click)="openCreate()">Crear una meta</button>
+  </app-empty-state>
+} @else {
+  <ul class="stats" aria-label="Resumen de metas">
+    @for (stat of stats(); track stat.label) {
+      <li><app-stat-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [color]="stat.color" /></li>
+    }
+  </ul>
+
+  <div class="layout">
+    <div class="main">
+      <div class="segmented filters" role="group" aria-label="Qué metas ver">
+        @for (option of filters; track option.value) {
+          <button type="button" [attr.aria-pressed]="filter() === option.value" (click)="filter.set(option.value)">{{ option.label }}</button>
+        }
+      </div>
+
+      <ul class="cards" aria-label="Metas">
+        @for (row of rows(); track row.goal.id) {
+          <li>
+            <button type="button" class="card goal" [attr.aria-pressed]="selected()?.id === row.goal.id" (click)="select(row.goal)">
+              <span class="goal-head">
+                <strong>{{ row.goal.name }}</strong>
+                @if (row.goal.status === 'active') {
+                  <span class="badge" [attr.data-tone]="row.look.tone">{{ row.look.label }}</span>
+                } @else {
+                  <span class="badge">{{ row.goal.status === 'cancelled' ? 'Cancelada' : 'Archivada' }}</span>
+                }
+              </span>
+              <span class="figure">
+                <strong>{{ row.goal.saved | money: row.goal.currency }}</strong>
+                <span class="lead">de {{ row.goal.targetAmount | money: row.goal.currency }} · {{ row.goal.percent }}%</span>
+              </span>
+              <span class="meter" [style.--meter]="row.meter"></span>
+              <span class="lead goal-foot">
+                <span>{{ row.goal.targetDate ? 'Para el ' + formatShortDate(row.goal.targetDate) : 'Sin fecha' }}</span>
+                <span>{{ row.goal.isShared ? row.goal.participants.length + ' participantes' : 'Solo tú' }}</span>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          <li class="none">No hay metas en ese estado.</li>
+        }
+      </ul>
+    </div>
+
+    @if (selected(); as goal) {
+      <aside class="card detail" aria-label="Detalle de la meta">
+        <header class="detail-head">
+          <h2>{{ goal.name }}</h2>
+          <span class="lead">Tú llevas {{ goal.mySaved | money: goal.currency }}</span>
+        </header>
+        @if (goal.requiredMonthly !== null && goal.status === 'active') {
+          <p class="left-line">Para llegar a tiempo: {{ goal.requiredMonthly | money: goal.currency }} al mes. Van {{ goal.averageMonthly | money: goal.currency }} al mes.</p>
+        }
+
+        <div class="detail-actions">
+          @if (goal.status === 'active') {
+            <button type="button" class="button button--small button--primary" (click)="openMoney(goal, 'contribute')">Aportar</button>
+          }
+          @if (+goal.mySaved > 0) {
+            <button type="button" class="button button--small" (click)="openMoney(goal, 'withdraw')">Retirar</button>
+          }
+          @if (goal.isOwner && goal.status === 'active') {
+            <button type="button" class="button button--small" (click)="openEdit(goal)">Editar</button>
+          }
+        </div>
+
+        <section aria-labelledby="participants-title">
+          <h3 id="participants-title">Participantes</h3>
+          <ul class="people">
+            @for (participant of goal.participants; track participant.userId) {
+              <li>
+                <span class="names">
+                  <strong>{{ participant.displayName }}{{ participant.isMe ? ' (tú)' : '' }}</strong>
+                  <span class="lead">{{ participant.role === 'owner' ? 'Creó la meta' : 'Participa' }}</span>
+                </span>
+                <strong class="tabular">{{ participant.saved | money: goal.currency }}</strong>
+                @if (goal.isOwner && !participant.isMe && goal.status === 'active') {
+                  <button type="button" class="link" [disabled]="busy()" (click)="removeParticipant(goal, participant.userId, participant.displayName)">Quitar</button>
+                }
+              </li>
+            }
+          </ul>
+          @if (goal.isOwner && goal.status === 'active' && candidates().length > 0) {
+            @if (inviting()) {
+              <ul class="people people--candidates" aria-label="Miembros que puedes sumar">
+                @for (member of candidates(); track member.userId) {
+                  <li>
+                    <span class="names"><strong>{{ member.displayName }}</strong></span>
+                    <button type="button" class="link" [disabled]="busy()" (click)="addParticipant(goal, member.userId, member.displayName)">Sumar</button>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <button type="button" class="link" (click)="inviting.set(true)">Sumar a alguien del espacio</button>
+            }
+          }
+        </section>
+
+        @if (!detail.hasValue() && detail.isLoading()) {
+          <app-skeleton height="120px" />
+        } @else if (detail.error()) {
+          <p class="none">No se pudieron cargar los aportes. <button type="button" class="link" (click)="detail.reload()">Reintentar</button></p>
+        } @else if (detail.value(); as data) {
+          <section aria-labelledby="monthly-title">
+            <h3 id="monthly-title">Aportes de 6 meses</h3>
+            <div class="monthly" role="img" aria-label="Lo que entró a la meta cada mes">
+              @for (month of monthly(); track month.month) {
+                <span class="month">
+                  <span class="bar-box"><span class="bar" [style.height.%]="month.height"></span></span>
+                  <span class="lead">{{ month.label }}</span>
+                </span>
+              }
+            </div>
+          </section>
+          <section aria-labelledby="contributions-title">
+            <h3 id="contributions-title">Movimientos de la meta</h3>
+            <ul class="people">
+              @for (contribution of data.contributions; track contribution.id) {
+                <li>
+                  <span class="names">
+                    <strong>{{ contribution.displayName }}{{ contribution.isMine ? ' (tú)' : '' }}</strong>
+                    <span class="lead">{{ contribution.type === 'withdrawal' ? 'Retiró' : 'Aportó' }} · {{ formatShortDate(contribution.occurredOn) }}</span>
+                  </span>
+                  <strong class="tabular" [class.is-negative]="contribution.type === 'withdrawal'">
+                    {{ contribution.type === 'withdrawal' ? '−' : '+' }}{{ contribution.amount | money: goal.currency }}
+                  </strong>
+                </li>
+              } @empty {
+                <li class="none">Todavía nadie aportó.</li>
+              }
+            </ul>
+          </section>
+        }
+
+        <div class="detail-actions">
+          @if (confirming(); as what) {
+            <span class="lead">
+              {{ what === 'leave' ? '¿Salir de la meta?' : what === 'cancel' ? '¿Cancelar la meta? Nadie pierde dinero: cada quien retira lo suyo.' : '¿Archivar la meta?' }}
+            </span>
+            <button type="button" class="button button--small button--danger" [disabled]="busy()" (click)="confirm(goal)">Sí</button>
+            <button type="button" class="button button--small" (click)="confirming.set(null)">No</button>
+          } @else if (goal.isOwner && goal.status === 'active') {
+            <button type="button" class="link" (click)="confirming.set('archive')">Archivar</button>
+            <button type="button" class="link" (click)="confirming.set('cancel')">Cancelar meta</button>
+          } @else if (!goal.isOwner) {
+            <button type="button" class="link" (click)="confirming.set('leave')">Salir de la meta</button>
+          }
+        </div>
+      </aside>
+    }
+  </div>
+}
+
+@if (formTarget(); as target) {
+  <app-goal-form [target]="target" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+}
+@if (moneyTarget(); as target) {
+  <app-goal-money-form [target]="target" (saved)="onSaved($event)" (closed)="moneyTarget.set(null)" />
+}

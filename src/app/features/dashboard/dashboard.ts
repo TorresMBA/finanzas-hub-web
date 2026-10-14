@@ -20,6 +20,7 @@ const ACCOUNT_LOOK: Readonly<Record<DashboardAccount['type'], { icon: string; co
   cash: { icon: 'payments', color: 'green' },
   wallet: { icon: 'account_balance_wallet', color: 'violet' },
   creditCard: { icon: 'credit_card', color: 'amber' },
+  goalFund: { icon: 'flag', color: 'violet' },
 };
 
 /** "may" from "2026-05". */

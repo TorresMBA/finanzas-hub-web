@@ -4,7 +4,7 @@ import { SessionStore } from '../../core/auth/session-store';
 import { NotificationCenter } from '../../core/notifications/notification-center';
 import { PeriodStore } from '../../core/period/period-store';
 import { ThemeStore } from '../../core/theme/theme-store';
-import { WorkspaceStore } from '../../core/workspace/workspace-store';
+import { WorkspaceStore, workspaceLabel } from '../../core/workspace/workspace-store';
 import { BrandMark } from '../../shared/ui/brand-mark';
 import { Icon } from '../../shared/ui/icon';
 
@@ -23,6 +23,7 @@ export class Topbar {
   private readonly router = inject(Router);
   protected readonly period = inject(PeriodStore);
   protected readonly center = inject(NotificationCenter);
+  protected readonly label = workspaceLabel;
   protected readonly theme = inject(ThemeStore);
   protected readonly session = inject(SessionStore);
   protected readonly workspaces = inject(WorkspaceStore);

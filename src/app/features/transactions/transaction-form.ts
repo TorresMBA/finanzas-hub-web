@@ -231,7 +231,8 @@ export class TransactionForm {
   protected readonly accountOptions = computed(() => {
     const target = this.target();
     const current = target.mode === 'edit' ? target.transaction.accountId : undefined;
-    return this.accounts().filter((account) => !account.isArchived || account.id === current);
+    // The fund of a goal only moves from the goal.
+    return this.accounts().filter((account) => account.type !== 'goalFund' && (!account.isArchived || account.id === current));
   });
 
   protected readonly currency = computed(() => this.currencyOf(this.model().accountId));
@@ -246,7 +247,7 @@ export class TransactionForm {
     // With a single account there is nothing to choose. The accounts may arrive after the dialog opened, so
     // this fills the one field without touching what the person already typed in the others.
     effect(() => {
-      const open = this.accounts().filter((account) => !account.isArchived);
+      const open = this.accounts().filter((account) => !account.isArchived && account.type !== 'goalFund');
       untracked(() => {
         if (this.target().mode === 'post' && this.model().accountId === '' && open.length === 1) {
           this.model.update((model) => ({ ...model, accountId: open[0].id }));

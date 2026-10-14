@@ -3,10 +3,11 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import { FormField, email, form, maxLength, required, submit } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { Invitation, Member, WorkspaceRole } from '../../core/api/api-types';
+import { Invitation, Member, Workspace, WorkspaceRole } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { timeZonesWith } from '../../core/workspace/time-zones';
-import { WorkspaceStore } from '../../core/workspace/workspace-store';
+import { SessionStore } from '../../core/auth/session-store';
+import { WorkspaceStore, workspaceLabel } from '../../core/workspace/workspace-store';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Field } from '../../shared/ui/field';
@@ -26,6 +27,8 @@ export class SettingsWorkspace {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   protected readonly workspaces = inject(WorkspaceStore);
+  private readonly session = inject(SessionStore);
+  protected readonly label = workspaceLabel;
 
   protected readonly roleLabels = ROLE_LABELS;
   protected readonly workspace = this.workspaces.current;
@@ -50,6 +53,13 @@ export class SettingsWorkspace {
   });
 
   protected readonly inviteModel = signal({ email: '', role: 'member' as WorkspaceRole });
+
+  // The link of the invitation just created. The server answers it once and does not keep it, so it lives only here.
+  protected readonly lastInvite = signal<{ email: string; link: string } | null>(null);
+  protected readonly copied = signal(false);
+
+  /** The workspace the person is being asked to confirm they want to leave. */
+  protected readonly leaving = signal<string | null>(null);
   protected readonly inviteForm = form(this.inviteModel, (path) => {
     required(path.email, { message: 'Escribe el correo de la persona.' });
     email(path.email, { message: 'El correo no es válido.' });
@@ -75,8 +85,10 @@ export class SettingsWorkspace {
 
   protected invite(): void {
     void submit(this.inviteForm, () =>
-      this.run(`Invitación enviada a ${this.inviteModel().email}.`, async () => {
-        await firstValueFrom(this.http.post(`${this.base()}/invitations`, this.inviteModel()));
+      this.run(`Invitación creada para ${this.inviteModel().email}.`, async () => {
+        const invitation = await firstValueFrom(this.http.post<Invitation>(`${this.base()}/invitations`, this.inviteModel()));
+        this.copied.set(false);
+        this.lastInvite.set(invitation.acceptLink ? { email: invitation.email, link: invitation.acceptLink } : null);
         this.inviteModel.set({ email: '', role: 'member' });
         this.inviteForm().reset();
         this.invitations.reload();
@@ -84,7 +96,35 @@ export class SettingsWorkspace {
     );
   }
 
+  /** Puts the link on the clipboard. Where the browser does not allow it, the person still selects it in the box. */
+  protected async copyLink(link: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(link);
+      this.copied.set(true);
+    } catch {
+      this.copied.set(false);
+    }
+  }
+
+  /** Shows another of the person's workspaces. What is on screen belongs to this one, so it starts from the home page. */
+  protected async open(workspace: Workspace): Promise<void> {
+    this.workspaces.select(workspace.id);
+    await this.router.navigateByUrl(this.workspaces.needsOnboarding() ? '/onboarding' : '/');
+  }
+
+  /** Leaves a workspace the person was invited to, whichever is on screen. Their own money in it stays theirs, out of reach until they are invited back. */
+  protected leaveWorkspace(workspace: Workspace): Promise<void> {
+    const me = this.session.user()?.id;
+    return this.run(`Saliste de «${workspaceLabel(workspace)}».`, async () => {
+      await firstValueFrom(this.http.delete(`/api/v1/workspaces/${workspace.id}/members/${me}`));
+      this.leaving.set(null);
+      await this.workspaces.refresh();
+    });
+  }
+
   protected revoke(invitation: Invitation): Promise<void> {
+    // The link on screen may be the one being revoked.
+    this.lastInvite.set(null);
     return this.run('Invitación revocada.', async () => {
       await firstValueFrom(this.http.delete(`${this.base()}/invitations/${invitation.id}`));
       this.invitations.reload();

@@ -160,7 +160,7 @@ export class Calendar {
   }
 
   protected openForm(): void {
-    const accounts = this.accounts.value() ?? [];
+    const accounts = (this.accounts.value() ?? []).filter((account) => account.type !== 'goalFund');
     if (accounts.length === 0) {
       this.notice.set(null);
       this.failure.set('Crea primero una cuenta: un movimiento programado necesita saber de dónde sale o a dónde llega el dinero.');

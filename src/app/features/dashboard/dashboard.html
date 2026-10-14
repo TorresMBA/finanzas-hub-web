@@ -107,6 +107,27 @@
         </ul>
       </section>
 
+      @if (data.goals.length > 0) {
+        <section class="card panel" aria-labelledby="goals-title">
+          <header>
+            <h2 id="goals-title">Tus metas</h2>
+            <a class="link" routerLink="/goals">Ver todas</a>
+          </header>
+          <ul class="rows">
+            @for (goal of data.goals; track goal.id) {
+              <li>
+                <app-icon-tile icon="flag" color="violet" [size]="34" />
+                <span class="names">
+                  <strong>{{ goal.name }}</strong>
+                  <span>{{ goal.percent }}% de {{ goal.targetAmount | money: goal.currency }}{{ goal.isShared ? ' · compartida' : '' }}</span>
+                </span>
+                <strong class="figure">{{ goal.saved | money: goal.currency }}</strong>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
       @if (data.upcoming.length > 0) {
         <section class="card panel" aria-labelledby="upcoming-title">
           <header>

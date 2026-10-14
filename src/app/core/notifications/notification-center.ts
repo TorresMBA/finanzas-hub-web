@@ -16,6 +16,12 @@ interface NotificationCreated {
   readonly title: string;
 }
 
+/** Something shared changed. Only that travels: the page asks for the new state over HTTP, where authorization applies. */
+export interface ResourceChanged {
+  readonly resource: string;
+  readonly id: string;
+}
+
 /**
  * How many notices the person has not read, kept current while they are signed in. A signal from the hub
  * updates it at once; asking again every minute and when the window gets the focus back covers a lost
@@ -29,6 +35,7 @@ export class NotificationCenter {
   private readonly count = signal(0);
   private readonly latest = signal<NotificationCreated | null>(null);
   private readonly arrivals = signal(0);
+  private readonly changes = signal<ResourceChanged | null>(null);
 
   private timer: ReturnType<typeof setInterval> | undefined;
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -42,6 +49,12 @@ export class NotificationCenter {
 
   /** Goes up with every notice that arrives while the application is open; a list reads it to know when to reload. */
   readonly arrived = this.arrivals.asReadonly();
+
+  /**
+   * The last "this changed" the hub sent about something shared, like a goal another participant contributed
+   * to. A new object each time, so a page that reads it reloads even when the same thing changes twice.
+   */
+  readonly resourceChanged = this.changes.asReadonly();
 
   /** Called by the frame of the signed-in pages when it appears. */
   start(): void {
@@ -89,6 +102,7 @@ export class NotificationCenter {
       const { HubConnectionBuilder, LogLevel } = await import('@microsoft/signalr');
       const connection = new HubConnectionBuilder().withUrl('/hubs/realtime').withAutomaticReconnect().configureLogging(LogLevel.None).build();
       connection.on('notification.created', (notice: NotificationCreated) => this.onCreated(notice));
+      connection.on('resource.changed', (change: ResourceChanged) => this.changes.set({ ...change }));
       connection.onreconnected(() => void this.refresh());
       this.connection = connection;
       await connection.start();

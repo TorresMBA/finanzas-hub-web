@@ -9,7 +9,7 @@ import { WorkspaceStore } from './workspace-store';
 
 describe('WorkspaceStore', () => {
   const personal: Workspace = { ...TEST_WORKSPACE, id: 'personal', name: 'Personal', status: 'pendingSetup' };
-  const home: Workspace = { ...TEST_WORKSPACE, id: 'home', name: 'Hogar', role: 'member' };
+  const home: Workspace = { ...TEST_WORKSPACE, id: 'home', name: 'Hogar', role: 'member', isPersonal: false };
   const user = signal<Me | null>(TEST_USER);
   let store: WorkspaceStore;
   let http: HttpTestingController;
@@ -56,14 +56,21 @@ describe('WorkspaceStore', () => {
     expect(store.current()?.id).toBe('home');
   });
 
-  it('asks only the owner to set up a workspace that is pending', async () => {
-    await load([personal, { ...home, status: 'pendingSetup' }]);
-    expect(store.needsOnboarding()).toBe(true);
+  it('asks for the personal workspace to be set up whichever one is open', async () => {
+    await load([personal, home]);
+    store.select('home');
 
+    // Private finances live in the personal workspace: without its currency nothing can be registered anywhere.
+    expect(store.needsOnboarding()).toBe(true);
+    expect(store.pendingSetup()?.id).toBe('personal');
+    expect(store.canAdminister()).toBe(false);
+  });
+
+  it('does not ask a member to set up a workspace they do not own', async () => {
+    await load([{ ...personal, status: 'active' }, { ...home, status: 'pendingSetup' }]);
     store.select('home');
 
     expect(store.needsOnboarding()).toBe(false);
-    expect(store.canAdminister()).toBe(false);
   });
 
   it('forgets everything when the session ends', async () => {

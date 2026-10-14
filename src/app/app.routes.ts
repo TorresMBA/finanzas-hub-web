@@ -10,6 +10,7 @@ const BUILT: Readonly<Record<string, Pick<Route, 'loadChildren'>>> = {
   accounts: { loadChildren: () => import('./features/accounts/accounts.routes').then((m) => m.ACCOUNTS_ROUTES) },
   notifications: { loadChildren: () => import('./features/notifications/notifications.routes').then((m) => m.NOTIFICATIONS_ROUTES) },
   calendar: { loadChildren: () => import('./features/calendar/calendar.routes').then((m) => m.CALENDAR_ROUTES) },
+  goals: { loadChildren: () => import('./features/goals/goals.routes').then((m) => m.GOALS_ROUTES) },
   budgets: { loadChildren: () => import('./features/budgets/budgets.routes').then((m) => m.BUDGETS_ROUTES) },
   categories: { loadChildren: () => import('./features/categories/categories.routes').then((m) => m.CATEGORIES_ROUTES) },
   transactions: { loadChildren: () => import('./features/transactions/transactions.routes').then((m) => m.TRANSACTIONS_ROUTES) },

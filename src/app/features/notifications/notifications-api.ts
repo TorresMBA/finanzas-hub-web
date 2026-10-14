@@ -7,6 +7,7 @@ import { NotificationCategory, NotificationSettings, UpdateNotificationSettingsR
 export const CATEGORY_LOOK: Readonly<Record<NotificationCategory, { label: string; hint: string; icon: string }>> = {
   budget: { label: 'Alertas de presupuesto', hint: 'Cuando llegas al aviso que elegiste o pasas el límite.', icon: 'donut_large' },
   largeMovement: { label: 'Movimientos grandes', hint: 'Un ingreso o un gasto desde el monto que indiques.', icon: 'payments' },
+  goals: { label: 'Metas', hint: 'Aportes de otros participantes y metas alcanzadas.', icon: 'flag' },
   bills: { label: 'Pagos y vencimientos', hint: 'Recordatorios de lo que programaste y tarjetas por vencer.', icon: 'event' },
 };
 

@@ -11,6 +11,11 @@ const STORAGE_KEY = 'ph.workspace';
  * The workspaces of the signed-in person and the one the application is showing. Every workspace request
  * carries the selected id in its URL, so two tabs can show two workspaces without interfering.
  */
+/** How a workspace is called in a list: with its owner when it is someone else's, since everyone has a "Personal". */
+export function workspaceLabel(workspace: Workspace): string {
+  return workspace.role === 'owner' || !workspace.ownerName ? workspace.name : `${workspace.name} · de ${workspace.ownerName}`;
+}
+
 @Injectable({ providedIn: 'root' })
 export class WorkspaceStore {
   private readonly http = inject(HttpClient);
@@ -34,11 +39,27 @@ export class WorkspaceStore {
     );
   });
 
-  /** The owner still has to choose the base currency before the workspace can hold data. */
-  readonly needsOnboarding = computed(() => {
+  /**
+   * The workspace the person got with their account. Their accounts, movements and budgets live there and are
+   * the same whichever workspace is open; the others only add what is shared.
+   */
+  readonly personal = computed<Workspace | null>(() => this.list().find((workspace) => workspace.isPersonal) ?? null);
+
+  /**
+   * The workspace whose owner still has to choose its currency: the personal one first, because nothing private
+   * can be registered without it, then the one open.
+   */
+  readonly pendingSetup = computed<Workspace | null>(() => {
+    const personal = this.personal();
+    if (personal?.status === 'pendingSetup') {
+      return personal;
+    }
+
     const workspace = this.current();
-    return workspace?.status === 'pendingSetup' && workspace.role === 'owner';
+    return workspace?.status === 'pendingSetup' && workspace.role === 'owner' ? workspace : null;
   });
+
+  readonly needsOnboarding = computed(() => this.pendingSetup() !== null);
 
   readonly canAdminister = computed(() => {
     const role = this.current()?.role;
@@ -81,7 +102,7 @@ export class WorkspaceStore {
   }
 
   async completeOnboarding(baseCurrency: string, timeZone: string): Promise<void> {
-    const workspace = this.requireCurrent();
+    const workspace = this.pendingSetup() ?? this.requireCurrent();
     await firstValueFrom(this.http.post(`/api/v1/workspaces/${workspace.id}/onboarding/complete`, { baseCurrency, timeZone }));
     await this.refresh();
   }

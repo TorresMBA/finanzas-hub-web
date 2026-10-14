@@ -79,6 +79,10 @@
           <input type="checkbox" [formField]="settingsForm.emailBills" />
           <span><strong>{{ categoryLook.bills.label }}</strong> por correo. {{ categoryLook.bills.hint }}</span>
         </label>
+        <label class="form-check">
+          <input type="checkbox" [formField]="settingsForm.emailGoals" />
+          <span><strong>{{ categoryLook.goals.label }}</strong> por correo. {{ categoryLook.goals.hint }}</span>
+        </label>
 
         <label class="form-check">
           <input type="checkbox" [formField]="settingsForm.largeMovementEnabled" />

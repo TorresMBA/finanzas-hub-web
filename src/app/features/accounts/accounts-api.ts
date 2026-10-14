@@ -6,6 +6,8 @@ import { IDEMPOTENCY_KEY } from '../../core/http/api-interceptors';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { TileColor } from '../../shared/ui/icon-tile';
 
+const GOAL_FUND = { value: 'goalFund', label: 'Fondo de meta', icon: 'flag', color: 'violet' } as const;
+
 export const ACCOUNT_TYPES: readonly { value: AccountType; label: string; icon: string; color: TileColor }[] = [
   { value: 'bank', label: 'Banco', icon: 'account_balance', color: 'blue' },
   { value: 'cash', label: 'Efectivo', icon: 'payments', color: 'green' },
@@ -20,7 +22,8 @@ export const CURRENCIES: readonly { code: string; label: string; plural: string 
 ];
 
 export function accountType(type: AccountType) {
-  return ACCOUNT_TYPES.find((candidate) => candidate.value === type) ?? ACCOUNT_TYPES[0];
+  // The fund of a goal is opened by the goal, so it is not among the types a person can choose.
+  return type === 'goalFund' ? GOAL_FUND : (ACCOUNT_TYPES.find((candidate) => candidate.value === type) ?? ACCOUNT_TYPES[0]);
 }
 
 export function currencyName(code: string): string {

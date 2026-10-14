@@ -29,6 +29,8 @@ export const TEST_WORKSPACE: Workspace = {
   status: 'active',
   role: 'owner',
   memberCount: 1,
+  isPersonal: true,
+  ownerName: null,
 };
 
 /**
@@ -56,6 +58,8 @@ export function provideSession(user: Me | null = TEST_USER, workspaces: readonly
   const store: Partial<WorkspaceStore> = {
     workspaces: list.asReadonly(),
     current: selected,
+    personal: computed(() => list().find((workspace) => workspace.isPersonal) ?? null),
+    pendingSetup: computed(() => (selected()?.status === 'pendingSetup' && selected()?.role === 'owner' ? selected() : null)),
     needsOnboarding: computed(() => selected()?.status === 'pendingSetup' && selected()?.role === 'owner'),
     canAdminister: computed(() => selected() !== null && selected()?.role !== 'member'),
     ensureLoaded: async () => {

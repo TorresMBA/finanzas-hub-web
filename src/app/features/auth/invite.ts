@@ -19,7 +19,7 @@ const ROLE_LABELS = { member: 'miembro', admin: 'administrador', owner: 'propiet
   imports: [AuthPage, RouterLink],
   template: `
     <app-auth-page heading="Invitación">
-      @if (preview.isLoading()) {
+      @if (preview.isLoading() || !sessionChecked()) {
         <p role="status">Buscando la invitación…</p>
       } @else if (preview.error()) {
         <div class="alert" role="alert">No encontramos esta invitación. Pide a quien te invitó que te envíe otra.</div>
@@ -77,6 +77,13 @@ export class Invite {
   protected readonly preview = httpResource<InvitationPreview>(() => `/api/v1/invitations/${encodeURIComponent(this.token())}`);
   protected readonly busy = signal(false);
   protected readonly failure = signal<string | null>(null);
+
+  // The link is opened cold, with no guard before it: without asking, a signed-in person would look signed out.
+  protected readonly sessionChecked = signal(false);
+
+  constructor() {
+    void this.session.ensureLoaded().finally(() => this.sessionChecked.set(true));
+  }
 
   protected readonly roleLabel = computed(() => ROLE_LABELS[this.preview.value()?.role ?? 'member']);
   protected readonly wrongAccount = computed(

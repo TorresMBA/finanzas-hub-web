@@ -41,7 +41,7 @@ describe('route guards', () => {
   });
 
   it('does not ask a member to set up a workspace they do not own', async () => {
-    expect(await open('/accounts', TEST_USER, [{ ...pending, role: 'member' }])).toBe('/accounts');
+    expect(await open('/accounts', TEST_USER, [{ ...pending, role: 'member', isPersonal: false }])).toBe('/accounts');
   });
 
   it('has no onboarding page for a workspace that is already set up', async () => {

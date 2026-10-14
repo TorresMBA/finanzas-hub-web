@@ -111,3 +111,22 @@ li {
   height: 34px;
   font-size: 12.5px;
 }
+
+// The link of an invitation just created, for whoever invited to hand over.
+.invite-link {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invite-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .input {
+    flex: 1;
+    min-width: 200px;
+  }
+}

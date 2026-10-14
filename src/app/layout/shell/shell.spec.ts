@@ -35,13 +35,13 @@ describe('Shell', () => {
   });
 
   it('shows the placeholder of the section with the phase that delivers it', async () => {
-    await harness.navigateByUrl('/goals');
+    await harness.navigateByUrl('/investments');
 
     const page = element.querySelector('app-feature-placeholder');
-    expect(document.title).toBe('Metas · FinanzasHub');
-    expect(page?.querySelector('h1')?.textContent).toBe('Metas');
-    expect(page?.textContent).toContain('Llega en la fase 8');
-    expect(element.querySelector('app-sidebar a[aria-current="page"]')?.getAttribute('aria-label')).toBe('Metas');
+    expect(document.title).toBe('Inversiones · FinanzasHub');
+    expect(page?.querySelector('h1')?.textContent).toBe('Inversiones');
+    expect(page?.textContent).toContain('Llega en la fase 13');
+    expect(element.querySelector('app-sidebar a[aria-current="page"]')?.getAttribute('aria-label')).toBe('Inversiones');
   });
 
   it('opens the sheet with the remaining sections from the mobile tab bar and closes it again', async () => {

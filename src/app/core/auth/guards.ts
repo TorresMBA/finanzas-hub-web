@@ -42,8 +42,14 @@ export const onboardingGuard: CanActivateFn = async (_route, state) => {
 };
 
 /** Sign-in pages make no sense with a session: go to the application instead. */
-export const guestGuard: CanActivateFn = async () => {
+export const guestGuard: CanActivateFn = async (route) => {
   // Injected before the await: afterwards there is no injection context any more.
   const router = inject(Router);
-  return (await inject(SessionStore).ensureLoaded()) ? router.createUrlTree(['/']) : true;
+  if (!(await inject(SessionStore).ensureLoaded())) {
+    return true;
+  }
+
+  // Someone already signed in who was sent here on the way somewhere, like an invitation, goes on to it.
+  const returnUrl = route.queryParamMap.get('returnUrl');
+  return returnUrl?.startsWith('/') && !returnUrl.startsWith('//') ? router.parseUrl(returnUrl) : router.createUrlTree(['/']);
 };
