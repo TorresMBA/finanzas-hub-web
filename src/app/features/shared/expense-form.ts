@@ -3,6 +3,7 @@ import { FormField, form, submit, validate } from '@angular/forms/signals';
 import { Account, Category, SharedGroupDetail, SplitType } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
+import { TODAY } from '../../core/period/period-store';
 import { todayIso } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
@@ -142,6 +143,7 @@ const REQUIRED = { kind: 'required', message: 'Este dato es necesario.' };
 })
 export class ExpenseForm {
   private readonly api = inject(SharedApi);
+  private readonly today = inject(TODAY);
 
   // Created with the form, so sending it twice registers the expense once.
   private readonly idempotencyKey = newIdempotencyKey();
@@ -164,7 +166,7 @@ export class ExpenseForm {
   protected readonly model = linkedSignal(() => ({
     description: '',
     total: '',
-    date: todayIso(),
+    date: todayIso(this.today()),
     paidBy: this.members().find((member) => member.isMe)?.userId ?? this.members()[0]?.userId ?? '',
     toLedger: false,
     accountId: '',

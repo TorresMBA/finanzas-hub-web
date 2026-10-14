@@ -233,6 +233,7 @@ describe('Transactions', () => {
     expect(texts('app-transaction-form [role="alert"]')).toEqual(['Escribe el monto.', 'Elige una cuenta.', 'Elige la cuenta que recibe.']);
 
     await fill('Monto', '375');
+    await fill('Fecha', '2026-10-13');
     await fill('Desde', 'a-bcp');
     await fill('Hacia', 'a-bcp');
     await send();
@@ -359,6 +360,7 @@ describe('Transactions', () => {
     expect(texts('app-transaction-form [role="alert"]')).toEqual(['Escribe el monto.', 'Escribe una descripción.', 'Elige una categoría.', 'Elige una cuenta.']);
 
     await fill('Monto', '54,90');
+    await fill('Fecha', '2026-10-13');
     await fill('Descripción', ' Wong ');
     await fill('Categoría', 's-pantry');
     await fill('Cuenta', 'a-bcp');

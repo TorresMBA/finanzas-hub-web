@@ -151,7 +151,7 @@ export class Accounts {
   protected select(account: Account): void {
     this.selectedId.set(account.id);
     // Below the desktop width the detail is under the list: bring it into view so the tap visibly did something.
-    afterNextRender(() => this.detail()?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), { injector: this.injector });
+    afterNextRender(() => this.detail()?.nativeElement.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }), { injector: this.injector });
   }
 
   protected open(target: AccountFormTarget): void {

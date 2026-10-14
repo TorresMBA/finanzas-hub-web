@@ -3,6 +3,7 @@ import { FormField, form, maxLength, required, submit, validate } from '@angular
 import { Account, AccountType } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
+import { TODAY } from '../../core/period/period-store';
 import { todayIso } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
@@ -29,7 +30,7 @@ interface AccountFormModel {
   includeInNetWorth: boolean;
 }
 
-function initialModel(target: AccountFormTarget, currency: string): AccountFormModel {
+function initialModel(target: AccountFormTarget, currency: string, today: Date): AccountFormModel {
   const account = target.mode === 'open' ? null : target.account;
   const card = account?.creditCard ?? null;
   // A card shows its debt as a positive number: nobody thinks of what they owe as "minus 200".
@@ -40,7 +41,7 @@ function initialModel(target: AccountFormTarget, currency: string): AccountFormM
     currency: account?.currency ?? currency,
     institution: account?.institution ?? '',
     balance: target.mode === 'adjust' ? (shown === 0 ? '0.00' : shown.toFixed(2)) : '',
-    date: todayIso(),
+    date: todayIso(today),
     creditLimit: card ? Number(card.creditLimit).toFixed(2) : '',
     paymentDay: card ? String(card.paymentDay) : '',
     closingDay: card?.closingDay ? String(card.closingDay) : '',
@@ -148,6 +149,7 @@ function dayOfMonth(text: string): number | null {
 })
 export class AccountForm {
   private readonly api = inject(AccountsApi);
+  private readonly today = inject(TODAY);
 
   // One key for the life of this dialog: a second click or a retry repeats the request instead of the effect.
   private readonly idempotencyKey = newIdempotencyKey();
@@ -164,7 +166,7 @@ export class AccountForm {
   protected readonly types = ACCOUNT_TYPES;
   protected readonly currencies = CURRENCIES;
 
-  protected readonly model = linkedSignal(() => initialModel(this.target(), this.defaultCurrency()));
+  protected readonly model = linkedSignal(() => initialModel(this.target(), this.defaultCurrency(), this.today()));
   protected readonly isCard = computed(() => this.model().type === 'creditCard');
 
   protected readonly accountForm = form(this.model, (path) => {

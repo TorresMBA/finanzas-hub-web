@@ -3,6 +3,7 @@ import { FormField, form, maxLength, required, submit, validate } from '@angular
 import { Account, Category, Transaction, TransactionType } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
+import { TODAY } from '../../core/period/period-store';
 import { sameDayNextMonth, todayIso } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
@@ -153,6 +154,7 @@ const AMOUNT_ERROR = { kind: 'amount', message: 'Un monto mayor que cero, con ha
 })
 export class TransactionForm {
   private readonly api = inject(TransactionsApi);
+  private readonly today = inject(TODAY);
 
   // One key for the life of this dialog: a second click or a retry repeats the request instead of the effect.
   private readonly idempotencyKey = newIdempotencyKey();
@@ -366,7 +368,7 @@ export class TransactionForm {
     }
 
     return {
-      ...blank, type: 'expense', amount: '', description: '', categoryId: '', accountId: target.accountId ?? '', date: todayIso(), tags: '', pending: false, repeat: false, merchant: '', note: '',
+      ...blank, type: 'expense', amount: '', description: '', categoryId: '', accountId: target.accountId ?? '', date: todayIso(this.today()), tags: '', pending: false, repeat: false, merchant: '', note: '',
     };
   }
 }

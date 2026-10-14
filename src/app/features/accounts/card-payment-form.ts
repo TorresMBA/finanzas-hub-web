@@ -3,6 +3,7 @@ import { FormField, form, required, submit, validate } from '@angular/forms/sign
 import { Account } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
+import { TODAY } from '../../core/period/period-store';
 import { todayIso } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
@@ -77,6 +78,7 @@ const AMOUNT_ERROR = { kind: 'amount', message: 'Un monto mayor que cero, con ha
 })
 export class CardPaymentForm {
   private readonly api = inject(AccountsApi);
+  private readonly today = inject(TODAY);
 
   // One key for the life of this dialog: a second click or a retry repeats the request instead of the effect.
   private readonly idempotencyKey = newIdempotencyKey();
@@ -94,7 +96,7 @@ export class CardPaymentForm {
   protected readonly model = linkedSignal<PaymentModel>(() => {
     const owed = Number(this.card().creditCard?.used ?? 0);
     const sources = this.sources();
-    return { fromAccountId: sources.length === 1 ? sources[0].id : '', amount: owed > 0 ? owed.toFixed(2) : '', sourceAmount: '', date: todayIso() };
+    return { fromAccountId: sources.length === 1 ? sources[0].id : '', amount: owed > 0 ? owed.toFixed(2) : '', sourceAmount: '', date: todayIso(this.today()) };
   });
 
   protected readonly source = computed(() => this.sources().find((account) => account.id === this.model().fromAccountId) ?? null);
