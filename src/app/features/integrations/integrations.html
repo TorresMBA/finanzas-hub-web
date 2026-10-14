@@ -1,0 +1,282 @@
+<app-page-header
+  eyebrow="Sistema"
+  title="Integraciones"
+  subtitle="Importa movimientos desde un archivo de tu banco o desde la app Bluecoins. Nada entra a tus cuentas hasta que lo confirmes."
+/>
+
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+@if (openId()) {
+  <!-- Reviewing one import: where its accounts and categories go, then line by line. -->
+  @if (!detail.hasValue() && detail.isLoading()) {
+    <app-skeleton height="320px" />
+  } @else if (detail.error()) {
+    <app-error-state title="No se pudo cargar la importación" (retry)="detail.reload()" />
+  } @else if (detail.value(); as data) {
+    @let counts = this.counts();
+    <section class="card review" aria-labelledby="review-title">
+      <button type="button" class="link back" (click)="close()"><app-icon name="arrow_back" [size]="16" />Importaciones</button>
+      <header class="review-head">
+        <div>
+          <h2 id="review-title">{{ data.import.fileName }}</h2>
+          <span class="lead">{{ formatLabel[data.import.format] }} · {{ data.import.recordCount }} líneas · {{ day(data.import.createdAt) }}</span>
+        </div>
+        @if (isOpen()) {
+          <div class="actions">
+            <button type="button" class="button" [disabled]="busy()" (click)="discard(data)">Descartar</button>
+            <button type="button" class="button button--primary" [disabled]="busy() || counts.pending > 0 || counts.ready === 0" (click)="commit(data)">
+              Importar {{ counts.ready }} {{ counts.ready === 1 ? 'movimiento' : 'movimientos' }}
+            </button>
+          </div>
+        } @else {
+          <span class="badge" data-tone="ok">{{ data.import.importedCount }} importados</span>
+        }
+      </header>
+      <ul class="counts" aria-label="Resumen de la importación">
+        <li><strong class="tabular">{{ counts.ready }}</strong><span> listos</span></li>
+        <li [class.is-warn]="counts.pending > 0"><strong class="tabular">{{ counts.pending }}</strong><span> por resolver</span></li>
+        <li><strong class="tabular">{{ counts.duplicates }}</strong><span> ya registrados</span></li>
+        <li [class.is-over]="counts.invalid > 0"><strong class="tabular">{{ counts.invalid }}</strong><span> no se pudieron leer</span></li>
+        @if (counts.imported > 0) {
+          <li><strong class="tabular">{{ counts.imported }}</strong><span> importados</span></li>
+        }
+      </ul>
+      @if (isOpen()) {
+        <p class="lead">
+          @if (counts.pending > 0) {
+            Hay {{ counts.pending }} {{ counts.pending === 1 ? 'movimiento' : 'movimientos' }} sin cuenta o sin categoría: elígelas abajo o exclúyelos.
+          } @else if (counts.ready === 0) {
+            No hay nada nuevo que importar: tus cuentas ya tienen estos movimientos.
+          } @else {
+            Todo listo. Lo que ya tenías registrado (misma cuenta, día y monto) queda fuera; inclúyelo si es otro movimiento.
+          }
+        </p>
+      }
+    </section>
+
+    @if (isOpen() && (data.accounts.length > 1 || !data.accounts[0]?.accountId)) {
+      <section class="card panel" aria-labelledby="accounts-title">
+        <h3 id="accounts-title">Cuentas del archivo</h3>
+        <ul class="rows" aria-label="Cuentas del archivo">
+          @for (mapping of data.accounts; track mapping.id) {
+            <li>
+              <span class="names">
+                <strong>{{ mapping.sourceName || 'Extracto' }}</strong>
+                <span class="lead">{{ mapping.recordCount }} líneas · {{ mapping.currency }}</span>
+              </span>
+              <select class="input" [attr.aria-label]="'Cuenta para ' + (mapping.sourceName || 'el extracto')" [disabled]="busy()"
+                (change)="mapAccount(data, mapping, $any($event.target).value)">
+                <option value="" disabled [selected]="!accountValue(mapping)">Elige una cuenta</option>
+                @for (account of usableAccounts(); track account.id) {
+                  <option [value]="'account:' + account.id" [selected]="accountValue(mapping) === 'account:' + account.id">{{ account.name }} · {{ account.currency }}</option>
+                }
+                @if (mapping.sourceName) {
+                  @for (type of newAccountTypes; track type.value) {
+                    <option [value]="'new:' + type.value" [selected]="accountValue(mapping) === 'new:' + type.value">Crear «{{ mapping.sourceName }}» ({{ type.label }})</option>
+                  }
+                }
+              </select>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (isOpen() && data.categories.length > 0) {
+      <section class="card panel" aria-labelledby="categories-title">
+        <h3 id="categories-title">Categorías del archivo</h3>
+        <ul class="rows" aria-label="Categorías del archivo">
+          @for (mapping of data.categories; track mapping.id) {
+            <li>
+              <span class="names">
+                <strong>{{ sourceCategory(mapping) }}</strong>
+                <span class="lead">{{ mapping.isIncome ? 'Ingreso' : 'Gasto' }} · {{ mapping.recordCount }} líneas</span>
+              </span>
+              <select class="input" [attr.aria-label]="'Categoría para ' + sourceCategory(mapping)" [disabled]="busy()"
+                (change)="mapCategory(data, mapping, $any($event.target).value)">
+                <option value="" [disabled]="!mapping.sourceName" [selected]="!categoryValue(mapping)">{{ mapping.sourceName ? 'Elige una categoría' : 'Clasificar una por una' }}</option>
+                @if (mapping.sourceName) {
+                  <option value="new" [selected]="mapping.create">Crear «{{ sourceCategory(mapping) }}»</option>
+                }
+                @for (option of mapping.isIncome ? incomeCategories() : expenseCategories(); track option.id) {
+                  <option [value]="option.id" [selected]="mapping.categoryId === option.id">{{ option.label }}</option>
+                }
+              </select>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+
+    <section class="card panel" aria-labelledby="records-title">
+      <header>
+        <h3 id="records-title">Movimientos</h3>
+        <div class="segmented filters" role="group" aria-label="Qué movimientos ver">
+          @for (option of filters(); track option.value) {
+            <button type="button" [attr.aria-pressed]="filter() === option.value" (click)="setFilter(option.value)">{{ option.label }} ({{ option.count }})</button>
+          }
+        </div>
+      </header>
+      <ul class="records" aria-label="Movimientos del archivo">
+        @for (record of data.records; track record.id) {
+          @let look = stateLook[record.state];
+          <li [class.is-out]="record.state === 'excluded' || record.state === 'duplicate' || record.state === 'invalid'">
+            <span class="names">
+              <strong>{{ record.description }}</strong>
+              <span class="lead">
+                Línea {{ record.line }}
+                @if (record.occurredOn) {
+                  · {{ formatShortDate(record.occurredOn) }}
+                }
+                @if (record.kind === 'transfer') {
+                  · {{ record.sourceAccount }} → {{ record.sourceCounterAccount }}
+                } @else if (record.kind === 'openingBalance') {
+                  · Saldo inicial de {{ record.sourceAccount }}
+                } @else if (record.sourceAccount) {
+                  · {{ record.sourceAccount }}
+                }
+                @if (record.error) {
+                  · {{ record.error }}
+                }
+              </span>
+            </span>
+            <span class="side">
+              @if (isOpen() && (record.kind === 'income' || record.kind === 'expense') && record.state !== 'invalid') {
+                <select class="input input--small" [attr.aria-label]="'Categoría de ' + record.description" [disabled]="busy()"
+                  (change)="classify(data, record, $any($event.target).value)">
+                  <option value="" disabled [selected]="!record.categoryId">{{ record.sourceCategory || 'Sin categoría' }}</option>
+                  @for (option of record.kind === 'income' ? incomeCategories() : expenseCategories(); track option.id) {
+                    <option [value]="option.id" [selected]="record.categoryId === option.id">{{ option.label }}</option>
+                  }
+                </select>
+              }
+              <strong class="tabular" [class.is-negative]="signed(record) < 0 && record.kind !== 'transfer'" [class.is-positive]="signed(record) > 0 && record.kind !== 'transfer'">
+                {{ record.kind === 'transfer' ? (record.amount | money: (record.currency ?? 'PEN')) : (signed(record) | money: (record.currency ?? 'PEN')) }}
+              </strong>
+              <span class="badge" [attr.data-tone]="look.tone">{{ look.label }}</span>
+              @if (isOpen() && record.state !== 'invalid') {
+                <button type="button" class="link" [disabled]="busy()" (click)="toggle(data, record)">
+                  {{ record.state === 'excluded' || record.state === 'duplicate' ? 'Incluir' : 'Excluir' }}
+                </button>
+              }
+            </span>
+          </li>
+        } @empty {
+          <li class="none">Ningún movimiento en ese estado.</li>
+        }
+      </ul>
+      @if (hasPrevious() || hasNext()) {
+        <div class="pager">
+          <button type="button" class="link" [disabled]="!hasPrevious()" (click)="page(-1)">Anteriores</button>
+          <span class="lead">{{ offset() + 1 }}–{{ offset() + data.records.length }} de {{ data.matchingRecords }}</span>
+          <button type="button" class="link" [disabled]="!hasNext()" (click)="page(1)">Siguientes</button>
+        </div>
+      }
+    </section>
+  }
+} @else {
+  <div class="layout">
+    <div class="main">
+      <!-- Upload: the file is read and waits for review. -->
+      <section class="card panel upload" aria-labelledby="upload-title">
+        <h2 id="upload-title">Importar un archivo</h2>
+        <label class="drop" [class.has-file]="file()">
+          <app-icon name="upload_file" [size]="28" />
+          <span>{{ file()?.name ?? 'Elige un archivo CSV u OFX' }}</span>
+          <span class="lead">Hasta 10 MB. Lo reconocemos solos: extracto de banco (CSV u OFX) o exportación de Bluecoins.</span>
+          <input type="file" accept=".csv,.txt,.ofx,.qfx" aria-label="Archivo" (change)="chooseFile($event)" />
+        </label>
+        <label class="field">
+          <span>Cuenta del extracto</span>
+          <select class="input" [value]="accountId()" (change)="accountId.set($any($event.target).value)">
+            <option value="">Ninguna (archivo de Bluecoins)</option>
+            @for (account of usableAccounts(); track account.id) {
+              <option [value]="account.id">{{ account.name }} · {{ account.currency }}</option>
+            }
+          </select>
+          <span class="lead">Solo para el archivo de un banco. Bluecoins trae sus propias cuentas y categorías: luego eliges a cuáles tuyas corresponden o las creamos.</span>
+        </label>
+        <button type="button" class="button button--primary" [disabled]="!file() || busy()" (click)="upload()"><app-icon name="upload" [size]="18" />Leer archivo</button>
+      </section>
+
+      <section class="card panel" aria-labelledby="history-title">
+        <h2 id="history-title">Importaciones</h2>
+        @if (!imports.hasValue() && imports.isLoading()) {
+          <app-skeleton height="120px" />
+        } @else if (imports.error()) {
+          <app-error-state title="No se pudieron cargar tus importaciones" (retry)="imports.reload()" />
+        } @else if ((imports.value() ?? []).length === 0) {
+          <app-empty-state icon="sync_alt" title="Todavía no importaste nada" message="Sube el extracto de tu banco o tu exportación de Bluecoins para traer tus movimientos sin escribirlos uno por uno." />
+        } @else {
+          <ul class="rows" aria-label="Importaciones">
+            @for (item of imports.value(); track item.id) {
+              <li>
+                <span class="names">
+                  <strong>{{ item.fileName }}</strong>
+                  <span class="lead">{{ formatLabel[item.format] }} · {{ item.recordCount }} líneas · {{ day(item.createdAt) }}</span>
+                </span>
+                <span class="side">
+                  @if (item.status === 'review') {
+                    <span class="badge" data-tone="warn">En revisión</span>
+                  } @else {
+                    <span class="badge" data-tone="ok">{{ item.importedCount }} importados</span>
+                  }
+                  <button type="button" class="link" (click)="open(item.id)">{{ item.status === 'review' ? 'Revisar' : 'Ver' }}</button>
+                </span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </div>
+
+    <!-- Rules: what a description contains says its category in later imports. -->
+    <section class="card panel" aria-labelledby="rules-title">
+      <h2 id="rules-title">Reglas de clasificación</h2>
+      <p class="lead">Si la descripción de un movimiento importado contiene el texto, se clasifica solo. Sirve para los archivos de banco, que no traen categoría.</p>
+      @if (!rules.hasValue() && rules.isLoading()) {
+        <app-skeleton height="80px" />
+      } @else if (rules.error()) {
+        <app-error-state title="No se pudieron cargar tus reglas" (retry)="rules.reload()" />
+      } @else {
+        <ul class="rows" aria-label="Reglas">
+          @for (rule of rules.value(); track rule.id) {
+            <li [class.is-out]="!rule.isActive">
+              <span class="names">
+                <strong>«{{ rule.pattern }}»</strong>
+                <span class="lead">→ {{ rule.categoryName }}</span>
+              </span>
+              <span class="side">
+                <button type="button" class="link" [disabled]="busy()" (click)="toggleRule(rule)">{{ rule.isActive ? 'Pausar' : 'Activar' }}</button>
+                <button type="button" class="link danger" [disabled]="busy()" (click)="deleteRule(rule)">Eliminar</button>
+              </span>
+            </li>
+          } @empty {
+            <li class="none">Todavía no tienes reglas.</li>
+          }
+        </ul>
+      }
+      <form class="rule-form" (submit)="$event.preventDefault(); addRule()">
+        <label class="field">
+          <span>Si contiene</span>
+          <input class="input" maxlength="60" placeholder="Ej. NETFLIX" [value]="rulePattern()" (input)="rulePattern.set($any($event.target).value)" />
+        </label>
+        <label class="field">
+          <span>Categoría</span>
+          <select class="input" [value]="ruleCategory()" (change)="ruleCategory.set($any($event.target).value)">
+            <option value="" disabled>Elige una categoría</option>
+            @for (option of categoryOptions(); track option.id) {
+              <option [value]="option.id">{{ option.label }}{{ option.isIncome ? ' (ingreso)' : '' }}</option>
+            }
+          </select>
+        </label>
+        <button type="submit" class="button" [disabled]="busy() || rulePattern().trim().length < 2 || !ruleCategory()">Añadir regla</button>
+      </form>
+    </section>
+  </div>
+}

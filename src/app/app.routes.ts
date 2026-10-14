@@ -12,6 +12,7 @@ const BUILT: Readonly<Record<string, Pick<Route, 'loadChildren'>>> = {
   calendar: { loadChildren: () => import('./features/calendar/calendar.routes').then((m) => m.CALENDAR_ROUTES) },
   goals: { loadChildren: () => import('./features/goals/goals.routes').then((m) => m.GOALS_ROUTES) },
   shared: { loadChildren: () => import('./features/shared/shared.routes').then((m) => m.SHARED_ROUTES) },
+  integrations: { loadChildren: () => import('./features/integrations/integrations.routes').then((m) => m.INTEGRATIONS_ROUTES) },
   budgets: { loadChildren: () => import('./features/budgets/budgets.routes').then((m) => m.BUDGETS_ROUTES) },
   categories: { loadChildren: () => import('./features/categories/categories.routes').then((m) => m.CATEGORIES_ROUTES) },
   transactions: { loadChildren: () => import('./features/transactions/transactions.routes').then((m) => m.TRANSACTIONS_ROUTES) },

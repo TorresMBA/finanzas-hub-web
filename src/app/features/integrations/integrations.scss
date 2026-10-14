@@ -1,0 +1,273 @@
+@use 'mixins' as m;
+
+:host {
+  display: block;
+}
+
+.alert {
+  margin-bottom: 16px;
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+h3 {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.lead,
+.none {
+  font-size: 12.5px;
+  color: var(--mu);
+}
+
+.none {
+  padding: 12px 0;
+}
+
+.is-negative {
+  color: var(--rd);
+}
+
+.is-positive {
+  color: var(--ac);
+}
+
+.layout {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+
+  @include m.desktop {
+    grid-template-columns: minmax(0, 1fr) 380px;
+  }
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.panel,
+.review {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+
+  > header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+.layout .panel {
+  margin-bottom: 0;
+}
+
+.drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px 16px;
+  border: 1.5px dashed var(--bd);
+  border-radius: 14px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--tx2);
+
+  &:hover,
+  &.has-file {
+    border-color: var(--ac);
+    background: var(--acs);
+  }
+
+  input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+
+  .lead {
+    font-weight: 400;
+  }
+}
+
+.upload > .button {
+  align-self: flex-start;
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  h2 {
+    font-size: 18px;
+    word-break: break-word;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--sf2);
+    font-size: 12.5px;
+    color: var(--mu);
+  }
+
+  strong {
+    font-size: 20px;
+    color: var(--tx);
+  }
+
+  .is-warn strong {
+    color: var(--am);
+  }
+
+  .is-over strong {
+    color: var(--rd);
+  }
+}
+
+.filters {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.rows li,
+.records li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 0;
+  font-size: 13.5px;
+
+  & + li {
+    border-top: 1px solid var(--bd);
+  }
+
+  &.is-out .names {
+    opacity: 0.55;
+  }
+}
+
+.rows select {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.names {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  strong {
+    word-break: break-word;
+  }
+}
+
+.side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 10px;
+
+  select {
+    max-width: 220px;
+  }
+}
+
+.badge {
+  flex: none;
+
+  &[data-tone='ok'] {
+    background: var(--acs);
+    color: var(--ac);
+  }
+
+  &[data-tone='warn'] {
+    background: var(--ams);
+    color: var(--am);
+  }
+
+  &[data-tone='over'] {
+    background: var(--rds);
+    color: var(--rd);
+  }
+
+  &[data-tone='info'] {
+    background: var(--bls);
+    color: var(--bl);
+  }
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.rule-form {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bd);
+
+  .button {
+    justify-self: start;
+  }
+}
