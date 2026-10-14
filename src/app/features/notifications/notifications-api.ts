@@ -8,6 +8,7 @@ export const CATEGORY_LOOK: Readonly<Record<NotificationCategory, { label: strin
   budget: { label: 'Alertas de presupuesto', hint: 'Cuando llegas al aviso que elegiste o pasas el límite.', icon: 'donut_large' },
   largeMovement: { label: 'Movimientos grandes', hint: 'Un ingreso o un gasto desde el monto que indiques.', icon: 'payments' },
   goals: { label: 'Metas', hint: 'Aportes de otros participantes y metas alcanzadas.', icon: 'flag' },
+  shared: { label: 'Gastos compartidos', hint: 'Un gasto nuevo con tu parte, un pago o un recordatorio.', icon: 'group' },
   bills: { label: 'Pagos y vencimientos', hint: 'Recordatorios de lo que programaste y tarjetas por vencer.', icon: 'event' },
 };
 

@@ -1,0 +1,396 @@
+@use 'mixins' as m;
+
+:host {
+  display: block;
+}
+
+.alert {
+  margin-bottom: 16px;
+}
+
+.loading,
+.list,
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.detail {
+  gap: 16px;
+}
+
+// Side by side on a wide screen. Below that the list and the detail take turns, like two pages.
+.layout {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+
+  @include m.desktop {
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+}
+
+.detail,
+:host(.is-detail) .list {
+  display: none;
+}
+
+:host(.is-detail) .detail {
+  display: flex;
+}
+
+@include m.desktop {
+  .list,
+  .detail,
+  :host(.is-detail) .list {
+    display: flex;
+  }
+
+  .back {
+    display: none !important;
+  }
+}
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+h3 {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.lead,
+.none {
+  font-size: 12.5px;
+  color: var(--mu);
+}
+
+.none {
+  padding: 12px 0;
+}
+
+.is-negative {
+  color: var(--rd);
+}
+
+.is-positive {
+  color: var(--ac);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filters {
+  flex-wrap: wrap;
+  align-self: flex-start;
+}
+
+// The global badge covers neutral, accent, info and warn by class; here the state picks the tone.
+.badge {
+  flex: none;
+
+  &[data-tone='ok'] {
+    background: var(--acs);
+    color: var(--ac);
+  }
+
+  &[data-tone='warn'] {
+    background: var(--ams);
+    color: var(--am);
+  }
+
+  &[data-tone='over'] {
+    background: var(--rds);
+    color: var(--rd);
+  }
+
+  &[data-tone='info'] {
+    background: var(--bls);
+    color: var(--bl);
+  }
+}
+
+.avatar {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--vis);
+  color: var(--vi);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.avatar--more {
+  background: var(--sf3);
+  color: var(--tx2);
+}
+
+.avatar--small,
+.avatars .avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 10px;
+}
+
+.avatars {
+  display: flex;
+
+  .avatar {
+    box-shadow: 0 0 0 2px var(--sf);
+
+    & + .avatar {
+      margin-left: -6px;
+    }
+  }
+}
+
+// --- The list of groups.
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group {
+  width: 100%;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+
+  &:hover {
+    background: var(--sf2);
+  }
+
+  @include m.desktop {
+    &[aria-pressed='true'] {
+      background: var(--sf2);
+      border-color: var(--ac);
+    }
+  }
+}
+
+.group-top,
+.group-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  strong {
+    font-size: 15px;
+    @include m.truncate;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+// --- The detail of a group.
+
+.detail-head {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-title {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  h2 {
+    font-size: 20px;
+  }
+}
+
+.balance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--bd);
+
+  dt {
+    font-size: 12.5px;
+    color: var(--mu);
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-size: 20px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.panel {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  > header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+.rows li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 0;
+  font-size: 13.5px;
+
+  & + li {
+    border-top: 1px solid var(--bd);
+  }
+}
+
+.is-cancelled > .names,
+.is-cancelled > summary .names {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.names {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 10px;
+}
+
+// An expense opens to show who has repaid their part.
+.expenses > li + li {
+  border-top: 1px solid var(--bd);
+}
+
+.expense {
+  padding: 4px 0;
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 13.5px;
+  }
+
+  > .link {
+    margin: 4px 0 8px;
+  }
+}
+
+.chevron {
+  flex: none;
+  color: var(--mu);
+}
+
+.expense-side,
+.share-side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.shares {
+  margin: 2px 0 8px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: var(--sf2);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 13px;
+
+    & + li {
+      border-top: 1px solid var(--bd);
+    }
+  }
+
+  .names {
+    gap: 5px;
+  }
+
+  .meter {
+    max-width: 180px;
+  }
+}
+
+// Payments and members fold away: they are looked at now and then, not every time.
+.fold > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+summary {
+  cursor: pointer;
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+details[open] > summary .chevron {
+  transform: rotate(180deg);
+}
+
+.fold-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}

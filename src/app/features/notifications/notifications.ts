@@ -85,6 +85,7 @@ export class Notifications {
       emailLargeMovement: email.get('largeMovement') ?? false,
       emailBills: email.get('bills') ?? true,
       emailGoals: email.get('goals') ?? false,
+      emailShared: email.get('shared') ?? false,
       quietHoursEnabled: settings?.quietHoursEnabled ?? true,
       quietFrom: (settings?.quietFrom ?? '22:00').slice(0, 5),
       quietTo: (settings?.quietTo ?? '07:00').slice(0, 5),
@@ -147,6 +148,7 @@ export class Notifications {
             { category: 'largeMovement', emailEnabled: model.emailLargeMovement },
             { category: 'bills', emailEnabled: model.emailBills },
             { category: 'goals', emailEnabled: model.emailGoals },
+            { category: 'shared', emailEnabled: model.emailShared },
           ],
         });
         this.notice.set('Preferencias guardadas.');

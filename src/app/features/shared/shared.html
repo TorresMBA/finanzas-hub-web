@@ -1,0 +1,321 @@
+<app-page-header eyebrow="Compartir" title="Gastos compartidos" subtitle="Divide gastos con otros miembros y lleva la cuenta de lo que se deben. De un grupo ves solo los gastos y pagos en los que participas.">
+  <!-- Not before the list arrived: it brings the members to choose from and the currency of the workspace. -->
+  <button class="button button--primary" type="button" [disabled]="!groups.hasValue()" (click)="openGroupForm()"><app-icon name="add" [size]="18" />Nuevo grupo</button>
+</app-page-header>
+
+@if (failure(); as text) {
+  <div class="alert" role="alert">{{ text }}</div>
+}
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+@if (!groups.hasValue() && groups.isLoading()) {
+  <div class="loading" aria-busy="true" aria-label="Cargando grupos">
+    @for (row of [1, 2, 3]; track row) {
+      <app-skeleton height="96px" />
+    }
+  </div>
+} @else if (groups.error()) {
+  <app-error-state title="No se pudieron cargar tus grupos" (retry)="reload()" />
+} @else if (all().length === 0) {
+  <app-empty-state icon="group" title="Todavía no divides gastos con nadie" message="Crea un grupo con otros miembros del espacio, registra lo que paga cada quien y la aplicación lleva la cuenta de lo que se deben.">
+    <button class="button button--primary button--small" type="button" (click)="openGroupForm()">Crear un grupo</button>
+  </app-empty-state>
+} @else {
+  @if (stats().length > 0) {
+    <ul class="stats" aria-label="Lo que te deben y lo que debes">
+      @for (stat of stats(); track stat.label) {
+        <li><app-stat-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [color]="stat.color" /></li>
+      }
+    </ul>
+  }
+
+  <div class="layout">
+    <!-- The list: every group with, at a glance, whether there is something to settle in it. -->
+    <section class="list" aria-labelledby="groups-title">
+      <h2 id="groups-title">Tus grupos</h2>
+      <div class="segmented filters" role="group" aria-label="Qué grupos ver">
+        @for (option of groupFilters; track option.value) {
+          @if (option.value === 'all' || filterCounts().get(option.value)) {
+            <button type="button" [attr.aria-pressed]="groupFilter() === option.value" (click)="groupFilter.set(option.value)">
+              {{ option.label }} ({{ filterCounts().get(option.value) }})
+            </button>
+          }
+        }
+      </div>
+      @if (showSearch()) {
+        <input class="input" type="search" placeholder="Buscar un grupo" aria-label="Buscar un grupo" [value]="query()" (input)="query.set($any($event.target).value)" />
+      }
+
+      <ul class="groups" aria-label="Grupos">
+        @for (row of groupRows(); track row.group.id) {
+          <li>
+            <button type="button" class="card group" [attr.aria-pressed]="selectedId() === row.group.id" (click)="select(row.group.id)">
+              <span class="group-top">
+                <strong>{{ row.group.name }}</strong>
+                <app-icon class="chevron" name="chevron_right" [size]="18" />
+              </span>
+              <span class="chips">
+                @if (row.group.status === 'archived') {
+                  <span class="badge">Archivado</span>
+                } @else if (row.owed === 0 && row.owe === 0) {
+                  <span class="badge" data-tone="ok">A mano</span>
+                } @else {
+                  @if (row.owed > 0) {
+                    <span class="badge" data-tone="ok">Te deben {{ row.owed | money: row.group.currency }}</span>
+                  }
+                  @if (row.owe > 0) {
+                    <span class="badge" data-tone="over">Debes {{ row.owe | money: row.group.currency }}</span>
+                  }
+                }
+              </span>
+              <span class="group-foot">
+                <span class="avatars" aria-hidden="true">
+                  @for (avatar of row.avatars; track $index) {
+                    <span class="avatar" [title]="avatar.name">{{ avatar.initials }}</span>
+                  }
+                  @if (row.more > 0) {
+                    <span class="avatar avatar--more">+{{ row.more }}</span>
+                  }
+                </span>
+                <span class="lead">
+                  {{ row.group.memberCount }} {{ +row.group.memberCount === 1 ? 'miembro' : 'miembros' }}
+                  @if (+row.group.pendingExpenses > 0) {
+                    · {{ row.group.pendingExpenses }} por saldar
+                  }
+                  @if (row.group.lastActivityOn; as day) {
+                    · {{ formatShortDate(day) }}
+                  }
+                </span>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          <li class="none">Ningún grupo coincide.</li>
+        }
+      </ul>
+    </section>
+
+    <!-- The detail: what there is to do with each person first, then each expense with who has repaid. -->
+    <section class="detail" aria-label="Detalle del grupo">
+      @if (!detail.hasValue() && detail.isLoading()) {
+        <app-skeleton height="320px" />
+      } @else if (detail.error()) {
+        <app-error-state title="No se pudo cargar el grupo" (retry)="detail.reload()" />
+      } @else if (detail.value(); as data) {
+        @let currency = data.group.currency;
+        @let open = data.group.status === 'active';
+
+        <header class="card detail-head">
+          <button type="button" class="link back" (click)="detailOpen.set(false)"><app-icon name="arrow_back" [size]="16" />Grupos</button>
+          <div class="detail-title">
+            <div>
+              <h2>{{ data.group.name }}</h2>
+              <span class="lead">{{ data.group.memberNames.join(', ') }}{{ open ? '' : ' · Archivado' }}</span>
+            </div>
+            @if (open) {
+              <button class="button button--primary" type="button" (click)="openExpenseForm(data)"><app-icon name="add" [size]="18" />Nuevo gasto</button>
+            }
+          </div>
+          <dl class="balance">
+            <div>
+              <dt>Te deben</dt>
+              <dd [class.is-positive]="+data.group.owedToMe > 0">{{ data.group.owedToMe | money: currency }}</dd>
+            </div>
+            <div>
+              <dt>Debes</dt>
+              <dd [class.is-negative]="+data.group.iOwe > 0">{{ data.group.iOwe | money: currency }}</dd>
+            </div>
+          </dl>
+        </header>
+
+        <section class="card panel" aria-labelledby="debts-title">
+          <h3 id="debts-title">Por saldar</h3>
+          <ul class="rows" aria-label="Deudas">
+            @for (person of people(); track person.debt.fromUserId + person.debt.toUserId) {
+              <li>
+                <span class="avatar" aria-hidden="true">{{ person.initials }}</span>
+                <span class="names">
+                  <strong>{{ person.name }}</strong>
+                  <span class="lead" [class.is-negative]="person.iPay" [class.is-positive]="!person.iPay">
+                    {{ person.iPay ? 'Le debes' : 'Te debe' }} {{ person.debt.amount | money: currency }}
+                  </span>
+                </span>
+                <span class="side">
+                  @if (person.iPay) {
+                    <button type="button" class="button button--small button--primary" (click)="settle(data, person.debt)">Pagar</button>
+                  } @else {
+                    <button type="button" class="button button--small" (click)="settle(data, person.debt)">Registrar cobro</button>
+                    <button type="button" class="link" [disabled]="busy()" (click)="remind(data, person.debt)">Recordar</button>
+                  }
+                </span>
+              </li>
+            } @empty {
+              <li class="none">Estás a mano con todos.</li>
+            }
+          </ul>
+        </section>
+
+        <section class="card panel" aria-labelledby="expenses-title">
+          <header>
+            <h3 id="expenses-title">Gastos</h3>
+            <div class="segmented" role="group" aria-label="Qué gastos ver">
+              @for (option of expenseFilters; track option.value) {
+                <button type="button" [attr.aria-pressed]="expenseFilter() === option.value" (click)="expenseFilter.set(option.value)">{{ option.label }}</button>
+              }
+            </div>
+          </header>
+          <ul class="expenses" aria-label="Gastos del grupo">
+            @for (row of expenseRows(); track row.expense.id) {
+              <li>
+                <!-- Closed it says what the expense means for the person; open, who has repaid their part and who still owes. -->
+                <details class="expense" [class.is-cancelled]="row.expense.status === 'cancelled'">
+                  <summary>
+                    <span class="names">
+                      <strong>{{ row.expense.description }}</strong>
+                      <span class="lead">Pagó {{ row.iPaid ? 'tú' : row.expense.paidByName }} · {{ formatShortDate(row.expense.occurredOn) }}</span>
+                    </span>
+                    <span class="expense-side">
+                      <strong class="tabular">{{ row.expense.totalAmount | money: currency }}</strong>
+                      @if (row.expense.status === 'cancelled') {
+                        <span class="badge">{{ row.look.label }}</span>
+                      } @else if (+row.expense.myPending > 0) {
+                        <span class="badge" data-tone="over">Debes {{ row.expense.myPending | money: currency }}</span>
+                      } @else if (row.owedToMe > 0) {
+                        <span class="badge" data-tone="warn">Te deben {{ row.owedToMe | money: currency }}</span>
+                      } @else {
+                        <span class="badge" [attr.data-tone]="row.look.tone">{{ row.look.label }}</span>
+                      }
+                    </span>
+                    <app-icon class="chevron" name="expand_more" [size]="18" />
+                  </summary>
+                  <ul class="shares" [attr.aria-label]="'Quién pagó su parte de ' + row.expense.description">
+                    @for (share of row.shares; track share.userId) {
+                      <li>
+                        <span class="avatar avatar--small" aria-hidden="true">{{ share.initials }}</span>
+                        <span class="names">
+                          <span>{{ share.displayName }}{{ share.isMe ? ' (tú)' : '' }}</span>
+                          <span class="meter" [style.--meter]="share.meter" [attr.data-level]="share.pending > 0 ? 'warn' : null"></span>
+                        </span>
+                        <span class="share-side">
+                          <span class="tabular">{{ share.amount | money: currency }}</span>
+                          <span class="lead" [class.is-negative]="share.pending > 0">
+                            @if (share.isPayer) {
+                              Pagó el gasto
+                            } @else if (share.pending === 0) {
+                              Ya pagó
+                            } @else if (+share.paidAmount > 0) {
+                              Debe {{ share.pending | money: currency }} · pagó {{ share.paidAmount | money: currency }}
+                            } @else {
+                              Debe {{ share.pending | money: currency }}
+                            }
+                          </span>
+                        </span>
+                      </li>
+                    }
+                  </ul>
+                  @if (row.expense.canCancel && row.expense.status === 'pending') {
+                    <button type="button" class="link" [disabled]="busy()" (click)="cancelExpense(data, row.expense)">Cancelar este gasto</button>
+                  }
+                </details>
+              </li>
+            } @empty {
+              <li class="none">{{ expenseFilter() === 'all' ? 'Todavía no hay gastos tuyos en este grupo.' : 'Ningún gasto en ese estado.' }}</li>
+            }
+          </ul>
+        </section>
+
+        <details class="card panel fold" open>
+          <summary><h3>Tus pagos y cobros</h3><app-icon class="chevron" name="expand_more" [size]="18" /></summary>
+          <ul class="rows" aria-label="Pagos del grupo">
+            @for (settlement of data.settlements; track settlement.id) {
+              <li [class.is-cancelled]="settlement.isVoided">
+                <span class="names">
+                  <strong>{{ settlement.fromName }} pagó a {{ settlement.toName }}</strong>
+                  <span class="lead">{{ formatShortDate(settlement.occurredOn) }}{{ settlement.isVoided ? ' · Anulado' : '' }}</span>
+                </span>
+                <span class="side">
+                  <strong class="tabular">{{ settlement.amount | money: currency }}</strong>
+                  @if (settlement.canLinkAccount) {
+                    <button type="button" class="link" (click)="linkAccount(data, settlement)">Registrar en mi cuenta</button>
+                  }
+                  @if (settlement.canVoid) {
+                    <button type="button" class="link" [disabled]="busy()" (click)="voidSettlement(data, settlement)">Anular</button>
+                  }
+                </span>
+              </li>
+            } @empty {
+              <li class="none">Todavía no pagaste ni te pagaron.</li>
+            }
+          </ul>
+          <p class="lead">
+            Un pago se puede anular hasta un día después de registrarlo, y como máximo tres al día. Hoy te
+            {{ +data.voidsLeftToday === 1 ? 'queda 1 anulación' : 'quedan ' + data.voidsLeftToday + ' anulaciones' }}. Al anularlo se anula también el movimiento que registraste
+            en tu cuenta.
+          </p>
+        </details>
+
+        <details class="card panel fold">
+          <summary><h3>Miembros ({{ data.members.length }})</h3><app-icon class="chevron" name="expand_more" [size]="18" /></summary>
+          <ul class="rows" aria-label="Miembros del grupo">
+            @for (member of data.members; track member.userId) {
+              <li>
+                <span class="avatar" aria-hidden="true">{{ initials(member.displayName) }}</span>
+                <span class="names">
+                  <strong>{{ member.displayName }}{{ member.isMe ? ' (tú)' : '' }}</strong>
+                  <span class="lead">
+                    @if (+member.balance === 0) {
+                      {{ member.isMe ? 'Estás a mano' : 'A mano contigo' }}
+                    } @else if (member.isMe) {
+                      {{ +member.balance > 0 ? 'Te deben' : 'Debes' }} {{ abs(member.balance) | money: currency }}
+                    } @else {
+                      {{ +member.balance > 0 ? 'Te debe' : 'Le debes' }} {{ abs(member.balance) | money: currency }}
+                    }
+                  </span>
+                </span>
+                <span class="side">
+                  @if (member.role === 'admin') {
+                    <span class="badge">Creó el grupo</span>
+                  } @else if (data.isAdmin || member.isMe) {
+                    <button type="button" class="link" [disabled]="busy()" (click)="removeMember(data, member.userId, member.displayName)">
+                      {{ member.isMe ? 'Salir' : 'Quitar' }}
+                    </button>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+          @if (data.isAdmin && open) {
+            @if (inviting()) {
+              <ul class="rows" aria-label="Miembros que puedes sumar">
+                @for (candidate of candidates(); track candidate.userId) {
+                  <li>
+                    <span class="names"><strong>{{ candidate.displayName }}</strong></span>
+                    <button type="button" class="link" [disabled]="busy()" (click)="addMember(data, candidate.userId, candidate.displayName)">Sumar</button>
+                  </li>
+                }
+              </ul>
+            }
+            <div class="fold-actions">
+              @if (!inviting() && candidates().length > 0) {
+                <button type="button" class="link" (click)="inviting.set(true)">Sumar a alguien del espacio</button>
+              }
+              <button type="button" class="link" [disabled]="busy()" (click)="archive(data)">Archivar grupo</button>
+            </div>
+          }
+        </details>
+      }
+    </section>
+  </div>
+}
+
+@if (groupForm(); as target) {
+  <app-group-form [target]="target" (saved)="onGroupSaved($event)" (closed)="groupForm.set(null)" />
+}
+@if (expenseForm(); as target) {
+  <app-expense-form [target]="target" (saved)="onSaved($event)" (closed)="expenseForm.set(null)" />
+}
+@if (settlementForm(); as target) {
+  <app-settlement-form [target]="target" (saved)="onSaved($event)" (closed)="settlementForm.set(null)" />
+}
