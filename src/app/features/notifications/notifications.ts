@@ -1,8 +1,8 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
-import { FormField, form, submit, validate } from '@angular/forms/signals';
+import { FormField, disabled, form, submit, validate } from '@angular/forms/signals';
 import { Router } from '@angular/router';
-import { Notification, NotificationList, NotificationSettings } from '../../core/api/api-types';
+import { Notification, NotificationCategory, NotificationList, NotificationSettings, WhatsAppChannel as Channel } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { NotificationCenter } from '../../core/notifications/notification-center';
 import { TODAY } from '../../core/period/period-store';
@@ -16,9 +16,19 @@ import { parseAmount } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { CATEGORY_LOOK, NotificationsApi } from './notifications-api';
+import { WhatsAppChannel } from './whatsapp-channel';
 
 const TIME = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit' });
 const DATE = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' });
+
+/** The categories in the order they are offered, with the fields of the form that say where each one goes. */
+const CHANNEL_ROWS = [
+  { category: 'budget', email: 'emailBudget', whatsApp: 'whatsAppBudget' },
+  { category: 'largeMovement', email: 'emailLargeMovement', whatsApp: 'whatsAppLargeMovement' },
+  { category: 'bills', email: 'emailBills', whatsApp: 'whatsAppBills' },
+  { category: 'goals', email: 'emailGoals', whatsApp: 'whatsAppGoals' },
+  { category: 'shared', email: 'emailShared', whatsApp: 'whatsAppShared' },
+] as const satisfies readonly { category: NotificationCategory; email: string; whatsApp: string }[];
 
 const SEVERITY_COLOR: Readonly<Record<Notification['severity'], TileColor>> = { info: 'blue', warning: 'amber', critical: 'red' };
 
@@ -28,7 +38,7 @@ const SEVERITY_COLOR: Readonly<Record<Notification['severity'], TileColor>> = { 
  */
 @Component({
   selector: 'app-notifications',
-  imports: [EmptyState, ErrorState, Field, FormField, IconTile, PageHeader, Skeleton],
+  imports: [EmptyState, ErrorState, Field, FormField, IconTile, PageHeader, Skeleton, WhatsAppChannel],
   templateUrl: './notifications.html',
   styleUrl: './notifications.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,10 +51,15 @@ export class Notifications {
   private readonly today = inject(TODAY);
 
   protected readonly categoryLook = CATEGORY_LOOK;
+  protected readonly channelRows = CHANNEL_ROWS;
 
   protected readonly unreadOnly = signal(false);
   protected readonly list = httpResource<NotificationList>(() => this.api.listUrl(this.unreadOnly()));
   protected readonly settings = httpResource<NotificationSettings>(() => this.api.settingsUrl);
+  protected readonly whatsApp = httpResource<Channel>(() => this.api.whatsAppUrl);
+
+  /** Notices go to WhatsApp only once the number is proven. */
+  protected readonly whatsAppReady = computed(() => !!this.whatsApp.value()?.phone);
 
   protected readonly failure = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
@@ -80,12 +95,18 @@ export class Notifications {
   protected readonly model = linkedSignal(() => {
     const settings = this.settings.value();
     const email = new Map((settings?.preferences ?? []).map((preference) => [preference.category, preference.emailEnabled]));
+    const whatsApp = new Map((settings?.preferences ?? []).map((preference) => [preference.category, preference.whatsAppEnabled]));
     return {
       emailBudget: email.get('budget') ?? true,
       emailLargeMovement: email.get('largeMovement') ?? false,
       emailBills: email.get('bills') ?? true,
       emailGoals: email.get('goals') ?? false,
       emailShared: email.get('shared') ?? false,
+      whatsAppBudget: whatsApp.get('budget') ?? false,
+      whatsAppLargeMovement: whatsApp.get('largeMovement') ?? false,
+      whatsAppBills: whatsApp.get('bills') ?? false,
+      whatsAppGoals: whatsApp.get('goals') ?? false,
+      whatsAppShared: whatsApp.get('shared') ?? false,
       quietHoursEnabled: settings?.quietHoursEnabled ?? true,
       quietFrom: (settings?.quietFrom ?? '22:00').slice(0, 5),
       quietTo: (settings?.quietTo ?? '07:00').slice(0, 5),
@@ -94,6 +115,10 @@ export class Notifications {
     };
   });
   protected readonly settingsForm = form(this.model, (path) => {
+    for (const row of CHANNEL_ROWS) {
+      disabled(path[row.whatsApp], () => !this.whatsAppReady());
+    }
+
     validate(path.largeMovementThreshold, ({ value, valueOf }) =>
       !valueOf(path.largeMovementEnabled) || (parseAmount(value()) ?? 0) > 0
         ? undefined
@@ -143,13 +168,12 @@ export class Notifications {
           quietFrom: model.quietFrom,
           quietTo: model.quietTo,
           largeMovementThreshold: model.largeMovementEnabled ? parseAmount(model.largeMovementThreshold) : null,
-          preferences: [
-            { category: 'budget', emailEnabled: model.emailBudget },
-            { category: 'largeMovement', emailEnabled: model.emailLargeMovement },
-            { category: 'bills', emailEnabled: model.emailBills },
-            { category: 'goals', emailEnabled: model.emailGoals },
-            { category: 'shared', emailEnabled: model.emailShared },
-          ],
+          // Without a proven number the WhatsApp choices are left as they are.
+          preferences: CHANNEL_ROWS.map((row) => ({
+            category: row.category,
+            emailEnabled: model[row.email],
+            whatsAppEnabled: this.whatsAppReady() ? model[row.whatsApp] : null,
+          })),
         });
         this.notice.set('Preferencias guardadas.');
         this.settings.reload();

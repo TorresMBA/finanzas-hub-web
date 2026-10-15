@@ -60,33 +60,40 @@
 
   <aside class="card settings" aria-labelledby="settings-title">
     <h2 id="settings-title">Cómo te avisamos</h2>
+    @if (!whatsApp.hasValue() && whatsApp.isLoading()) {
+      <app-skeleton height="96px" />
+    } @else if (whatsApp.error()) {
+      <app-error-state title="No se pudo cargar tu WhatsApp" (retry)="whatsApp.reload()" />
+    } @else if (whatsApp.value(); as channel) {
+      <app-whatsapp-channel [channel]="channel" (changed)="whatsApp.reload(); settings.reload()" />
+    }
     @if (!settings.hasValue() && settings.isLoading()) {
       <app-skeleton height="220px" />
     } @else if (settings.error()) {
       <app-error-state title="No se pudieron cargar tus preferencias" (retry)="settings.reload()" />
     } @else {
       <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
-        <p class="form-note">Todo aviso llega a esta bandeja. Elige cuáles quieres recibir también por correo.</p>
-        <label class="form-check">
-          <input type="checkbox" [formField]="settingsForm.emailBudget" />
-          <span><strong>{{ categoryLook.budget.label }}</strong> por correo. {{ categoryLook.budget.hint }}</span>
-        </label>
-        <label class="form-check">
-          <input type="checkbox" [formField]="settingsForm.emailLargeMovement" />
-          <span><strong>{{ categoryLook.largeMovement.label }}</strong> por correo. {{ categoryLook.largeMovement.hint }}</span>
-        </label>
-        <label class="form-check">
-          <input type="checkbox" [formField]="settingsForm.emailBills" />
-          <span><strong>{{ categoryLook.bills.label }}</strong> por correo. {{ categoryLook.bills.hint }}</span>
-        </label>
-        <label class="form-check">
-          <input type="checkbox" [formField]="settingsForm.emailGoals" />
-          <span><strong>{{ categoryLook.goals.label }}</strong> por correo. {{ categoryLook.goals.hint }}</span>
-        </label>
-        <label class="form-check">
-          <input type="checkbox" [formField]="settingsForm.emailShared" />
-          <span><strong>{{ categoryLook.shared.label }}</strong> por correo. {{ categoryLook.shared.hint }}</span>
-        </label>
+        <fieldset class="channels">
+          <legend>Todo aviso llega a esta bandeja. Elige cuáles llegan también por correo o WhatsApp.</legend>
+          <div class="channel-row channel-head" aria-hidden="true">
+            <span></span>
+            <span>Correo</span>
+            <span>WhatsApp</span>
+          </div>
+          @for (row of channelRows; track row.category) {
+            <div class="channel-row">
+              <span class="channel-name">
+                <strong>{{ categoryLook[row.category].label }}</strong>
+                <small>{{ categoryLook[row.category].hint }}</small>
+              </span>
+              <input type="checkbox" [formField]="settingsForm[row.email]" [attr.aria-label]="categoryLook[row.category].label + ' por correo'" />
+              <input type="checkbox" [formField]="settingsForm[row.whatsApp]" [attr.aria-label]="categoryLook[row.category].label + ' por WhatsApp'" />
+            </div>
+          }
+          @if (whatsApp.hasValue() && !whatsAppReady()) {
+            <p class="form-note">Para recibir avisos por WhatsApp, verifica primero tu número.</p>
+          }
+        </fieldset>
 
         <label class="form-check">
           <input type="checkbox" [formField]="settingsForm.largeMovementEnabled" />
@@ -100,7 +107,7 @@
 
         <label class="form-check">
           <input type="checkbox" [formField]="settingsForm.quietHoursEnabled" />
-          <span>Horario silencioso: los correos que no son urgentes esperan a que termine.</span>
+          <span>Horario silencioso: los correos y mensajes de WhatsApp que no son urgentes esperan a que termine.</span>
         </label>
         @if (model().quietHoursEnabled) {
           <div class="form-pair">

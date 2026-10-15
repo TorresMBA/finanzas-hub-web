@@ -564,6 +564,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/channels/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetWhatsAppChannel"];
+        put?: never;
+        post?: never;
+        delete: operations["RemoveWhatsAppChannel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/channels/whatsapp/verify-start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StartWhatsAppVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/channels/whatsapp/verify-confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmWhatsAppVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/accounts": {
         parameters: {
             query?: never;
@@ -1625,6 +1673,9 @@ export interface components {
             /** Format: double */
             amount?: null | number | string;
         };
+        ConfirmWhatsAppVerificationRequest: {
+            code: null | string;
+        };
         /** @enum {unknown} */
         ContributionType: "contribution" | "withdrawal";
         CreateBudgetRequest: {
@@ -2130,10 +2181,12 @@ export interface components {
         NotificationPreferenceRequest: {
             category: null | components["schemas"]["NotificationCategory"];
             emailEnabled?: boolean;
+            whatsAppEnabled?: null | boolean;
         };
         NotificationPreferenceResponse: {
             category: components["schemas"]["NotificationCategory"];
             emailEnabled: boolean;
+            whatsAppEnabled: boolean;
         };
         NotificationResponse: {
             /** Format: uuid */
@@ -2444,6 +2497,9 @@ export interface components {
         };
         /** @enum {unknown} */
         SplitType: "equal" | "percentage" | "fixedAmount" | "shares";
+        StartWhatsAppVerificationRequest: {
+            phone: null | string;
+        };
         SubcategoryResponse: {
             /** Format: uuid */
             id: string;
@@ -2587,6 +2643,17 @@ export interface components {
         };
         /** @enum {unknown} */
         WeekStart: "monday" | "sunday";
+        WhatsAppChannelResponse: {
+            phone: null | string;
+            pendingPhone: null | string;
+            /** Format: date-time */
+            codeExpiresAt: null | string;
+            isVerified?: boolean;
+        };
+        WhatsAppVerificationResponse: {
+            channel: components["schemas"]["WhatsAppChannelResponse"];
+            developmentCode: null | string;
+        };
         WorkspaceResponse: {
             /** Format: uuid */
             id: string;
@@ -4790,6 +4857,166 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWhatsAppChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppChannelResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RemoveWhatsAppChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppChannelResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StartWhatsAppVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartWhatsAppVerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppVerificationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmWhatsAppVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmWhatsAppVerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsAppChannelResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

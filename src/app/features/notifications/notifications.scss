@@ -106,3 +106,56 @@ h2 {
     top: 16px;
   }
 }
+
+.channels {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  legend {
+    padding: 0;
+    margin-bottom: 8px;
+    color: var(--mu);
+    font-size: 13px;
+  }
+}
+
+.channel-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 72px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--bd);
+
+  input {
+    justify-self: center;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--ac);
+  }
+}
+
+.channel-head {
+  padding: 0;
+  border: 0;
+  color: var(--mu);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.channel-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+
+  small {
+    color: var(--mu);
+    font-size: 12px;
+  }
+}

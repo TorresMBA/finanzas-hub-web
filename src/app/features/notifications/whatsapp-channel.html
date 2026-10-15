@@ -1,0 +1,47 @@
+<section class="whatsapp" aria-labelledby="whatsapp-title">
+  <h3 id="whatsapp-title"><app-icon name="chat" /> WhatsApp</h3>
+
+  @if (failure(); as text) {
+    <div class="alert" role="alert">{{ text }}</div>
+  }
+
+  @if (channel().phone && !channel().pendingPhone && !changing()) {
+    <p class="verified">
+      <span class="badge badge--accent">Verificado</span>
+      <strong>{{ channel().phone }}</strong>
+    </p>
+    <p class="form-note">Elige abajo qué avisos llegan ahí. Escribe <strong>saldo</strong> a nuestro número para ver tus cuentas, o <strong>ayuda</strong>.</p>
+    <div class="actions">
+      <button class="button" type="button" [disabled]="busy()" (click)="changing.set(true)">Cambiar número</button>
+      <button class="button" type="button" [disabled]="busy()" (click)="remove()">Quitar</button>
+    </div>
+  } @else if (channel().pendingPhone && !changing()) {
+    <form class="form-stack" (submit)="$event.preventDefault(); confirm()" novalidate>
+      <p class="form-note">Te enviamos un código por WhatsApp a <strong>{{ channel().pendingPhone }}</strong>. Vence en 10 minutos.</p>
+      @if (developmentCode(); as shown) {
+        <p class="dev-code" role="note">Sin cuenta de WhatsApp configurada, el código es <strong>{{ shown }}</strong> (solo en desarrollo).</p>
+      }
+      <app-field label="Código">
+        <input class="input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" [value]="code()" (input)="code.set($any($event.target).value)" />
+      </app-field>
+      <div class="actions">
+        <button class="button button--primary" type="submit" [disabled]="busy() || code().trim().length !== 6">Confirmar</button>
+        <button class="button" type="button" [disabled]="busy()" (click)="start(channel().pendingPhone!)">Enviar otro</button>
+        <button class="button" type="button" [disabled]="busy()" (click)="changing.set(true)">Otro número</button>
+      </div>
+    </form>
+  } @else {
+    <form class="form-stack" (submit)="$event.preventDefault(); start(phone())" novalidate>
+      <p class="form-note">Recibe avisos por WhatsApp y consulta tus saldos escribiendo «saldo». Primero confirma que el número es tuyo.</p>
+      <app-field label="Tu número de WhatsApp" hint="Con el código de tu país.">
+        <input class="input" type="tel" autocomplete="tel" placeholder="+51 987 654 321" [value]="phone()" (input)="phone.set($any($event.target).value)" />
+      </app-field>
+      <div class="actions">
+        <button class="button button--primary" type="submit" [disabled]="busy() || phone().trim().length < 8">Enviar código</button>
+        @if (changing()) {
+          <button class="button" type="button" (click)="changing.set(false)">Cancelar</button>
+        }
+      </div>
+    </form>
+  }
+</section>

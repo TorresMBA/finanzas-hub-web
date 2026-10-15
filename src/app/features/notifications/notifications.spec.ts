@@ -30,8 +30,8 @@ const SETTINGS: NotificationSettings = {
   quietTo: '07:00:00',
   largeMovementThreshold: 500,
   preferences: [
-    { category: 'budget', emailEnabled: true },
-    { category: 'largeMovement', emailEnabled: false },
+    { category: 'budget', emailEnabled: true, whatsAppEnabled: false },
+    { category: 'largeMovement', emailEnabled: false, whatsAppEnabled: false },
   ],
 };
 
@@ -66,11 +66,15 @@ describe('Notifications', () => {
   it('groups the notices by day, and opening an unread one marks it read and goes where it points', async () => {
     http.expectOne(LIST_URL).flush(LIST);
     http.expectOne(SETTINGS_URL).flush(SETTINGS);
+    http.expectOne('/api/v1/me/channels/whatsapp').flush({ phone: null, pendingPhone: null, codeExpiresAt: null });
     await fixture.whenStable();
 
     expect(Array.from(element.querySelectorAll('section h2')).map((node) => node.textContent)).toEqual(['Hoy', 'Anteriores']);
     expect(element.querySelectorAll('.notice.is-unread').length).toBe(1);
     expect(element.querySelector<HTMLInputElement>('input[type="time"]')!.value).toBe('22:00');
+    // Without a proven number nothing can go to WhatsApp; the email still can.
+    expect(element.querySelector<HTMLInputElement>('[aria-label="Alertas de presupuesto por WhatsApp"]')!.disabled).toBe(true);
+    expect(element.querySelector<HTMLInputElement>('[aria-label="Alertas de presupuesto por correo"]')!.checked).toBe(true);
 
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     element.querySelector<HTMLButtonElement>('.notice.is-unread')!.click();

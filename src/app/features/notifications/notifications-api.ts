@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { NotificationCategory, NotificationSettings, UpdateNotificationSettingsRequest } from '../../core/api/api-types';
+import { NotificationCategory, NotificationSettings, UpdateNotificationSettingsRequest, WhatsAppChannel, WhatsAppVerification } from '../../core/api/api-types';
 
 /** How each category is called, what it is for and how it looks in the inbox. */
 export const CATEGORY_LOOK: Readonly<Record<NotificationCategory, { label: string; hint: string; icon: string }>> = {
@@ -18,6 +18,7 @@ export class NotificationsApi {
   private readonly http = inject(HttpClient);
 
   readonly settingsUrl = '/api/v1/me/notification-settings';
+  readonly whatsAppUrl = '/api/v1/me/channels/whatsapp';
 
   listUrl(unreadOnly: boolean): string {
     return `/api/v1/me/notifications?unreadOnly=${unreadOnly}`;
@@ -33,5 +34,17 @@ export class NotificationsApi {
 
   updateSettings(request: UpdateNotificationSettingsRequest): Promise<NotificationSettings> {
     return firstValueFrom(this.http.put<NotificationSettings>(this.settingsUrl, request));
+  }
+
+  startWhatsApp(phone: string): Promise<WhatsAppVerification> {
+    return firstValueFrom(this.http.post<WhatsAppVerification>(`${this.whatsAppUrl}/verify-start`, { phone }));
+  }
+
+  confirmWhatsApp(code: string): Promise<WhatsAppChannel> {
+    return firstValueFrom(this.http.post<WhatsAppChannel>(`${this.whatsAppUrl}/verify-confirm`, { code }));
+  }
+
+  removeWhatsApp(): Promise<WhatsAppChannel> {
+    return firstValueFrom(this.http.delete<WhatsAppChannel>(this.whatsAppUrl));
   }
 }

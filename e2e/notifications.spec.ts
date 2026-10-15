@@ -42,3 +42,31 @@ test('crossing 90 % of a budget raises the badge without reloading and leaves a 
   await expect(page).toHaveURL(/\/budgets$/);
   await expect(page.getByRole('link', { name: 'Notificaciones', exact: true }).first()).toBeVisible();
 });
+
+test('a WhatsApp number is proven with its code before any notice can go to it', async ({ page }) => {
+  await signUp(page);
+  await page.goto('/notifications');
+  const whatsAppBudget = page.getByLabel('Alertas de presupuesto por WhatsApp');
+  await expect(whatsAppBudget).toBeDisabled();
+
+  const phone = `+519${Math.floor(10_000_000 + Math.random() * 89_999_999)}`;
+  await page.getByLabel('Tu número de WhatsApp').fill(phone);
+  await page.getByRole('button', { name: 'Enviar código' }).click();
+
+  // Without a WhatsApp account a development machine shows the code it would have sent.
+  const shown = page.getByRole('note');
+  await expect(shown).toContainText('solo en desarrollo');
+  const code = (await shown.locator('strong').textContent())!.trim();
+  await page.getByLabel('Código').fill(code);
+  await page.getByRole('button', { name: 'Confirmar' }).click();
+
+  await expect(page.getByText('Verificado')).toBeVisible();
+  await expect(page.getByText(phone)).toBeVisible();
+  await expect(whatsAppBudget).toBeEnabled();
+  await whatsAppBudget.check();
+  await page.getByRole('button', { name: 'Guardar preferencias' }).click();
+  await expect(page.getByRole('status')).toHaveText('Preferencias guardadas.');
+
+  await page.reload();
+  await expect(page.getByLabel('Alertas de presupuesto por WhatsApp')).toBeChecked();
+});
