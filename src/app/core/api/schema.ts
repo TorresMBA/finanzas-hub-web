@@ -484,6 +484,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/reports/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetReportSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/reports/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExportReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["Search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/notifications": {
         parameters: {
             query?: never;
@@ -1915,6 +1963,10 @@ export interface components {
             note?: null | string;
             tags?: null | string[];
         };
+        EntityTagHeaderValue: {
+            tag?: components["schemas"]["StringSegment"];
+            isWeak?: boolean;
+        };
         ExchangeRateResponse: {
             currency: string;
             baseCurrency: string;
@@ -1922,6 +1974,16 @@ export interface components {
             rate: number | string;
             /** Format: date */
             asOf: string;
+        };
+        FileContentResult: {
+            /** Format: byte */
+            fileContents?: string;
+            contentType?: null | string;
+            fileDownloadName?: null | string;
+            /** Format: date-time */
+            lastModified?: null | string;
+            entityTag?: null | components["schemas"]["EntityTagHeaderValue"];
+            enableRangeProcessing?: boolean;
         };
         ForgotPasswordRequest: {
             email: string;
@@ -2060,7 +2122,7 @@ export interface components {
             matchingRecords: number | string;
         };
         /** @enum {unknown} */
-        ImportFormat: "csv" | "bluecoins" | "ofx";
+        ImportFormat: "csv" | "bluecoins" | "ofx" | "xlsx";
         /** @enum {unknown} */
         ImportKind: "income" | "expense" | "transfer" | "openingBalance";
         ImportRecordResponse: {
@@ -2339,6 +2401,74 @@ export interface components {
             displayName: string;
             invitationToken?: null | string;
         };
+        ReportCategoryResponse: {
+            /** Format: uuid */
+            categoryId: string;
+            name: string;
+            icon: string;
+            color: string;
+            /** Format: double */
+            amount: number | string;
+            /** Format: double */
+            share: number | string;
+            /** Format: double */
+            previousAmount: number | string;
+            /** Format: double */
+            change: null | number | string;
+        };
+        /** @enum {unknown} */
+        ReportFormat: "xlsx" | "csv" | null;
+        ReportMerchantResponse: {
+            name: string;
+            /** Format: int32 */
+            count: number | string;
+            /** Format: double */
+            amount: number | string;
+        };
+        ReportMonthResponse: {
+            month: string;
+            /** Format: double */
+            income: number | string;
+            /** Format: double */
+            expense: number | string;
+            /** Format: double */
+            savingsRate: null | number | string;
+        };
+        /** @enum {unknown} */
+        ReportPeriodKind: "month" | "quarter" | "year";
+        ReportSummaryResponse: {
+            period: components["schemas"]["ReportPeriodKind"];
+            label: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** Format: date */
+            previousFrom: string;
+            /** Format: date */
+            previousTo: string;
+            baseCurrency: null | string;
+            current: components["schemas"]["ReportTotalsResponse"];
+            previous: components["schemas"]["ReportTotalsResponse"];
+            categories: components["schemas"]["ReportCategoryResponse"][];
+            merchants: components["schemas"]["ReportMerchantResponse"][];
+            months: components["schemas"]["ReportMonthResponse"][];
+            missingRates: string[];
+        };
+        ReportTotalsResponse: {
+            /** Format: double */
+            income: number | string;
+            /** Format: double */
+            expense: number | string;
+            /** Format: double */
+            savings: number | string;
+            /** Format: double */
+            savingsRate: null | number | string;
+            /** Format: double */
+            dailyExpense: number | string;
+            /** Format: int32 */
+            days: number | string;
+        };
         ResetPasswordRequest: {
             email: string;
             token: string;
@@ -2360,6 +2490,46 @@ export interface components {
             /** Format: uuid */
             categoryId: null | string;
             isActive?: boolean;
+        };
+        SearchAccountResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            type: components["schemas"]["LedgerAccountType"];
+            currency: string;
+            /** Format: double */
+            balance: number | string;
+        };
+        SearchGoalResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: double */
+            saved: number | string;
+            /** Format: double */
+            targetAmount: number | string;
+            currency: string;
+            /** Format: double */
+            percent: number | string;
+            isShared: boolean;
+        };
+        SearchMovementResponse: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["LedgerMovementKind"];
+            /** Format: date */
+            occurredOn: string;
+            description: string;
+            /** Format: double */
+            signedAmount: number | string;
+            currency: string;
+            accountName: string;
+            categoryName: null | string;
+        };
+        SearchResponse: {
+            movements: components["schemas"]["SearchMovementResponse"][];
+            accounts: components["schemas"]["SearchAccountResponse"][];
+            goals: components["schemas"]["SearchGoalResponse"][];
         };
         SeededCategoriesResponse: {
             /** Format: int32 */
@@ -2499,6 +2669,15 @@ export interface components {
         SplitType: "equal" | "percentage" | "fixedAmount" | "shares";
         StartWhatsAppVerificationRequest: {
             phone: null | string;
+        };
+        StringSegment: {
+            buffer?: null | string;
+            /** Format: int32 */
+            offset?: number | string;
+            /** Format: int32 */
+            length?: number | string;
+            value?: null | string;
+            hasValue?: boolean;
         };
         SubcategoryResponse: {
             /** Format: uuid */
@@ -4639,6 +4818,163 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetReportSummary: {
+        parameters: {
+            query: {
+                period: components["schemas"]["ReportPeriodKind"];
+                anchor: string;
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSummaryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ExportReport: {
+        parameters: {
+            query: {
+                period: components["schemas"]["ReportPeriodKind"];
+                anchor: string;
+                format: components["schemas"]["ReportFormat"];
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": components["schemas"]["FileContentResult"];
+                    "text/csv": components["schemas"]["FileContentResult"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    Search: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResponse"];
                 };
             };
             /** @description Bad Request */

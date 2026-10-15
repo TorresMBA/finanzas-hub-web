@@ -187,9 +187,9 @@
         <h2 id="upload-title">Importar un archivo</h2>
         <label class="drop" [class.has-file]="file()">
           <app-icon name="upload_file" [size]="28" />
-          <span>{{ file()?.name ?? 'Elige un archivo CSV u OFX' }}</span>
-          <span class="lead">Hasta 10 MB. Lo reconocemos solos: extracto de banco (CSV u OFX) o exportación de Bluecoins.</span>
-          <input type="file" accept=".csv,.txt,.ofx,.qfx" aria-label="Archivo" (change)="chooseFile($event)" />
+          <span>{{ file()?.name ?? 'Elige un archivo CSV, Excel u OFX' }}</span>
+          <span class="lead">Hasta 10 MB. Lo reconocemos solos: extracto de banco (CSV, Excel u OFX) o exportación de Bluecoins.</span>
+          <input type="file" accept=".csv,.txt,.ofx,.qfx,.xlsx" aria-label="Archivo" (change)="chooseFile($event)" />
         </label>
         <label class="field">
           <span>Cuenta del extracto</span>

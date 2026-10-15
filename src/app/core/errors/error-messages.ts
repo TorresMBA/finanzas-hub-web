@@ -166,6 +166,7 @@ const MESSAGES: Readonly<Record<string, string>> = {
   'ledger.exchange_rate.no_base_currency': 'Este espacio todavía no tiene moneda base. Termina de configurarlo.',
   'ledger.period_invalid': 'El periodo termina antes de empezar.',
   'reporting.month_invalid': 'El mes no es válido.',
+  'reporting.search_invalid': 'Escribe entre 2 y 80 caracteres para buscar.',
   'ledger.transaction.voided': 'Un movimiento anulado no se puede cambiar.',
   'ledger.transaction.owned_by_module': 'Este movimiento lo creó otra sección de la aplicación y se cambia desde allí.',
   'ledger.transaction.void_reason_invalid': 'El motivo admite hasta 200 caracteres.',

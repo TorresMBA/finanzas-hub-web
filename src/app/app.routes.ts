@@ -17,6 +17,7 @@ const BUILT: Readonly<Record<string, Pick<Route, 'loadChildren'>>> = {
   categories: { loadChildren: () => import('./features/categories/categories.routes').then((m) => m.CATEGORIES_ROUTES) },
   transactions: { loadChildren: () => import('./features/transactions/transactions.routes').then((m) => m.TRANSACTIONS_ROUTES) },
   settings: { loadChildren: () => import('./features/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
+  reports: { loadChildren: () => import('./features/reports/reports.routes').then((m) => m.REPORTS_ROUTES) },
 };
 
 /**

@@ -49,6 +49,9 @@ export class Transactions {
   /** From the URL: the account whose movements to show, when arriving from its page. */
   readonly accountId = input<string>();
 
+  /** A text to search for on arrival, from the global search. */
+  readonly q = input<string>();
+
   protected readonly tabs = TABS;
   protected readonly statusLabels = STATUS_LABELS;
   protected readonly lookOf = lookOf;
@@ -60,8 +63,8 @@ export class Transactions {
   protected readonly tab = signal<Tab>('all');
   protected readonly account = linkedSignal(() => this.accountId() ?? '');
   protected readonly showVoided = signal(false);
-  protected readonly searchText = signal('');
-  private readonly appliedText = signal('');
+  protected readonly searchText = linkedSignal(() => this.q() ?? '');
+  private readonly appliedText = linkedSignal(() => (this.q() ?? '').trim());
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly items = signal<readonly Transaction[]>([]);

@@ -1,0 +1,113 @@
+<app-page-header eyebrow="Análisis" title="Reportes" subtitle="Entiende en qué se va tu dinero y cómo evoluciona tu ahorro. Solo tú lo ves." />
+
+<div class="toolbar">
+  <div class="segmented" role="group" aria-label="Periodo del reporte">
+    @for (option of periods; track option.value) {
+      <button type="button" [attr.aria-pressed]="kind() === option.value" (click)="kind.set(option.value)">{{ option.label }}</button>
+    }
+  </div>
+  @if (report.hasValue() && !isEmpty()) {
+    <div class="downloads">
+      <a class="button button--small" [href]="exportUrl('xlsx')" download><app-icon name="table_view" [size]="17" />Excel</a>
+      <a class="button button--small" [href]="exportUrl('csv')" download><app-icon name="download" [size]="17" />CSV</a>
+    </div>
+  }
+</div>
+
+@if (!report.hasValue() && report.isLoading()) {
+  <div class="loading" aria-busy="true" aria-label="Cargando el reporte">
+    <app-skeleton height="96px" />
+    <app-skeleton height="260px" />
+  </div>
+} @else if (report.error()) {
+  <app-error-state title="No se pudo cargar el reporte" (retry)="report.reload()" />
+} @else if (report.value(); as data) {
+  <p class="period" aria-live="polite">{{ title() }}</p>
+  @if (isEmpty()) {
+    <app-empty-state icon="bar_chart" title="Nada que reportar en este periodo" message="Cuando registres ingresos y gastos, aquí verás en qué se fue tu dinero y cuánto ahorraste.">
+      <a class="button button--primary button--small" routerLink="/transactions">Ir a transacciones</a>
+    </app-empty-state>
+  } @else {
+    @let currency = data.baseCurrency ?? '';
+    @if (data.missingRates.length > 0) {
+      <div class="alert alert--info" role="status">Estas cifras no incluyen lo que tienes en {{ data.missingRates.join(', ') }}: falta su tipo de cambio.</div>
+    }
+
+    <ul class="kpis" aria-label="Cifras del periodo">
+      @for (kpi of kpis(); track kpi.label) {
+        <li class="card kpi">
+          <span class="muted">{{ kpi.label }}</span>
+          <strong>{{ kpi.value }}</strong>
+          <span class="muted" [attr.data-tone]="kpi.tone">{{ kpi.note }}</span>
+        </li>
+      }
+    </ul>
+
+    <div class="grid">
+      <section class="card panel" aria-labelledby="donut-title">
+        <h2 id="donut-title">Gasto por categoría</h2>
+        @if (donut().slices.length > 0) {
+          <div class="donut-row">
+            <div class="donut" [style.background]="donut().gradient" role="img" [attr.aria-label]="'Gasto total ' + (data.current.expense | money: currency)">
+              <span><small>Total</small>{{ data.current.expense | money: currency }}</span>
+            </div>
+            <ul class="legend" aria-label="Reparto del gasto">
+              @for (slice of donut().slices; track slice.name) {
+                <li><i [style.background]="slice.color"></i><span>{{ slice.name }}</span><strong>{{ slice.share }}%</strong></li>
+              }
+            </ul>
+          </div>
+        } @else {
+          <p class="muted">Sin gastos en este periodo.</p>
+        }
+      </section>
+
+      <section class="card panel" aria-labelledby="changes-title">
+        <h2 id="changes-title">Comparado con el periodo anterior</h2>
+        <ul class="rows" aria-label="Variación por categoría">
+          @for (row of changes(); track row.categoryId) {
+            <li>
+              <app-icon [name]="row.icon" [size]="18" [attr.data-tone]="row.tone" />
+              <span class="name">{{ row.name }}</span>
+              <strong>{{ row.amount | money: currency }}</strong>
+              <span class="delta" [attr.data-tone]="row.tone">{{ row.label }}</span>
+            </li>
+          } @empty {
+            <li class="muted">Sin gastos para comparar.</li>
+          }
+        </ul>
+      </section>
+
+      <section class="card panel" aria-labelledby="merchants-title">
+        <h2 id="merchants-title">Comercios frecuentes</h2>
+        <ol class="rows" aria-label="Comercios frecuentes">
+          @for (merchant of data.merchants; track merchant.name; let index = $index) {
+            <li>
+              <span class="rank">{{ index + 1 }}</span>
+              <span class="name">{{ merchant.name }}<small>{{ merchant.count }} {{ +merchant.count === 1 ? 'compra' : 'compras' }}</small></span>
+              <strong>{{ merchant.amount | money: currency }}</strong>
+            </li>
+          } @empty {
+            <li class="muted">Sin gastos en este periodo.</li>
+          }
+        </ol>
+      </section>
+
+      <section class="card panel" aria-labelledby="savings-title">
+        <h2 id="savings-title">Tasa de ahorro mensual</h2>
+        @if (!hasRates()) {
+          <p class="muted">Sin ingresos en estos meses: la tasa de ahorro aparece cuando registres alguno.</p>
+        }
+        <ul class="trend" aria-label="Tasa de ahorro por mes">
+          @for (month of trend(); track month.month) {
+            <li [attr.aria-label]="month.label + ': ' + month.text">
+              <span class="value" [class.is-negative]="month.negative" aria-hidden="true">{{ month.text }}</span>
+              <span class="track" aria-hidden="true"><span class="fill" [class.is-negative]="month.negative" [style.height.%]="month.height"></span></span>
+              <span class="muted" aria-hidden="true">{{ month.label }}</span>
+            </li>
+          }
+        </ul>
+      </section>
+    </div>
+  }
+}

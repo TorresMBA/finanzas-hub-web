@@ -7,14 +7,15 @@ import { ThemeStore } from '../../core/theme/theme-store';
 import { WorkspaceStore, workspaceLabel } from '../../core/workspace/workspace-store';
 import { BrandMark } from '../../shared/ui/brand-mark';
 import { Icon } from '../../shared/ui/icon';
+import { Search } from '../search/search';
 
 /**
  * Global context of the application: the workspace being shown, the selected month, the theme and who is
- * signed in. The search box and the unread badge of the mock are added with the modules that give them data.
+ * signed in, the global search and the unread notices.
  */
 @Component({
   selector: 'app-topbar',
-  imports: [RouterLink, Icon, BrandMark],
+  imports: [RouterLink, Icon, BrandMark, Search],
   templateUrl: './topbar.html',
   styleUrl: './topbar.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

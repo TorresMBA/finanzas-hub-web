@@ -27,7 +27,7 @@ interface CategoryOption {
   isIncome: boolean;
 }
 
-const FORMAT_LABEL: Readonly<Record<ImportSummary['format'], string>> = { csv: 'CSV de banco', bluecoins: 'Bluecoins', ofx: 'OFX' };
+const FORMAT_LABEL: Readonly<Record<ImportSummary['format'], string>> = { csv: 'CSV de banco', bluecoins: 'Bluecoins', ofx: 'OFX', xlsx: 'Excel de banco' };
 const PAGE = 100;
 
 /**
