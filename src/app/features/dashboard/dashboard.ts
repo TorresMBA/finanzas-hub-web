@@ -21,6 +21,7 @@ const ACCOUNT_LOOK: Readonly<Record<DashboardAccount['type'], { icon: string; co
   wallet: { icon: 'account_balance_wallet', color: 'violet' },
   creditCard: { icon: 'credit_card', color: 'amber' },
   goalFund: { icon: 'flag', color: 'violet' },
+  investment: { icon: 'trending_up', color: 'green' },
 };
 
 /** "may" from "2026-05". */

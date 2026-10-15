@@ -7,6 +7,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { formatMoney, parseAmount } from '../../shared/ui/money';
 import { GoalsApi } from './goals-api';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 
 /** What the dialog needs: the goal, the direction of the money and the accounts of the person it can move with. */
 export interface GoalMoneyTarget {
@@ -94,7 +95,7 @@ export class GoalMoneyForm {
   /** The accounts that hold money in the currency of the goal: not a credit card, not the fund of a goal. */
   protected readonly accounts = computed(() =>
     this.target().accounts.filter(
-      (account) => !account.isArchived && account.currency === this.target().goal.currency && account.type !== 'creditCard' && account.type !== 'goalFund',
+      (account) => !account.isArchived && account.currency === this.target().goal.currency && account.type !== 'creditCard' && !isManagedAccount(account.type),
     ),
   );
   protected readonly hint = computed(() =>

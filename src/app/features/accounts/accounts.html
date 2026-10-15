@@ -188,10 +188,15 @@
               <button class="button button--small button--primary" type="button" (click)="payingCard.set(account)">Pagar tarjeta</button>
             }
             <button class="button button--small" type="button" (click)="open({ mode: 'edit', account: account })">Editar</button>
-            <button class="button button--small" type="button" (click)="open({ mode: 'adjust', account: account })">
-              {{ account.creditCard ? 'Ajustar deuda' : 'Ajustar saldo' }}
-            </button>
-            <button class="button button--small" type="button" [disabled]="busy()" (click)="archive(account)">Archivar</button>
+            @if (isManaged(account)) {
+              <!-- Its money moves from its own section, never by hand. -->
+              <a class="button button--small" [routerLink]="account.type === 'investment' ? '/investments' : '/goals'">{{ account.type === 'investment' ? 'Ver en Inversiones' : 'Ver en Metas' }}</a>
+            } @else {
+              <button class="button button--small" type="button" (click)="open({ mode: 'adjust', account: account })">
+                {{ account.creditCard ? 'Ajustar deuda' : 'Ajustar saldo' }}
+              </button>
+              <button class="button button--small" type="button" [disabled]="busy()" (click)="archive(account)">Archivar</button>
+            }
           }
         </div>
       </aside>

@@ -2,6 +2,7 @@ import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Account, AccountSummary, Transaction, TransactionPage } from '../../core/api/api-types';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { formatShortDate } from '../../shared/ui/dates';
@@ -75,6 +76,7 @@ export class Accounts {
   protected readonly summary = httpResource<AccountSummary>(() => this.api.summaryUrl());
 
   protected readonly tab = signal<Tab>('all');
+  protected readonly isManaged = (account: Account) => isManagedAccount(account.type);
   protected readonly showArchived = signal(false);
   protected readonly formTarget = signal<AccountFormTarget | null>(null);
   protected readonly payingCard = signal<Account | null>(null);
@@ -120,6 +122,8 @@ export class Accounts {
       { id: 'cards', label: 'Tarjetas de crédito', accounts: visible.filter((account) => account.type === 'creditCard') },
       // What the person put aside for their goals. It moves from Metas, not from here.
       { id: 'goals', label: 'Fondos de metas', accounts: visible.filter((account) => account.type === 'goalFund') },
+      // The capital put into investments. It moves from Inversiones.
+      { id: 'investments', label: 'Inversiones', accounts: visible.filter((account) => account.type === 'investment') },
     ]
       .filter((group) => (tab === 'all' || tab === group.id) && group.accounts.length > 0)
       .map((group) => ({ ...group, totals: totalsByCurrency(group.accounts.filter((account) => !account.isArchived)) }));

@@ -9,6 +9,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { formatMoney, parseAmount } from '../../shared/ui/money';
 import { AccountsApi } from './accounts-api';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 
 interface PaymentModel {
   fromAccountId: string;
@@ -91,7 +92,7 @@ export class CardPaymentForm {
   readonly closed = output<void>();
 
   /** A card is paid with money, so another card is not offered. */
-  protected readonly sources = computed(() => this.accounts().filter((account) => !account.isArchived && account.type !== 'creditCard' && account.type !== 'goalFund'));
+  protected readonly sources = computed(() => this.accounts().filter((account) => !account.isArchived && account.type !== 'creditCard' && !isManagedAccount(account.type)));
 
   protected readonly model = linkedSignal<PaymentModel>(() => {
     const owed = Number(this.card().creditCard?.used ?? 0);

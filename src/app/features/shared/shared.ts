@@ -16,6 +16,7 @@ import { ExpenseForm, ExpenseFormTarget } from './expense-form';
 import { GroupForm, GroupFormTarget } from './group-form';
 import { SettlementForm, SettlementFormTarget } from './settlement-form';
 import { STATUS_LOOK, SharedApi } from './shared-api';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 
 type GroupFilter = 'all' | 'owed' | 'owe' | 'even' | 'archived';
 type ExpenseFilter = 'all' | 'open' | 'settled';
@@ -301,7 +302,7 @@ export class Shared {
 
   /** The accounts an expense of the group can be registered in: in its currency, and not the fund of a goal. */
   private usableAccounts(currency: string): Account[] {
-    return (this.accounts.value() ?? []).filter((account) => !account.isArchived && account.currency === currency && account.type !== 'goalFund');
+    return (this.accounts.value() ?? []).filter((account) => !account.isArchived && account.currency === currency && !isManagedAccount(account.type));
   }
 
   private async run(success: string, action: () => Promise<unknown>): Promise<void> {

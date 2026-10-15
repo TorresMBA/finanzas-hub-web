@@ -20,6 +20,7 @@ import { MoneyPipe } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { IntegrationsApi, NEW_ACCOUNT_TYPES, RecordFilter, STATE_LOOK } from './integrations-api';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 
 interface CategoryOption {
   id: string;
@@ -71,7 +72,7 @@ export class Integrations {
   private commitKey = crypto.randomUUID();
 
   /** Where a statement can go: the accounts in use, except the funds of goals, which only their goal moves. */
-  protected readonly usableAccounts = computed(() => (this.accounts.value() ?? []).filter((account) => !account.isArchived && account.type !== 'goalFund'));
+  protected readonly usableAccounts = computed(() => (this.accounts.value() ?? []).filter((account) => !account.isArchived && !isManagedAccount(account.type)));
 
   /** Every category and subcategory in use, as "Comida / Restaurantes". */
   protected readonly categoryOptions = computed<CategoryOption[]>(() =>

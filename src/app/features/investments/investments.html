@@ -1,0 +1,136 @@
+<app-page-header eyebrow="Patrimonio" title="Inversiones" subtitle="Sigue tu portafolio y su rendimiento. Comprar no es gastar: tu patrimonio no cambia al invertir.">
+  <button class="button button--primary" type="button" (click)="open('open')">Registrar inversión</button>
+</app-page-header>
+
+@if (notice(); as text) {
+  <div class="alert alert--ok" role="status">{{ text }}</div>
+}
+
+@if (!summary.hasValue() && summary.isLoading()) {
+  <div class="loading" aria-busy="true" aria-label="Cargando tus inversiones">
+    <app-skeleton height="96px" />
+    <app-skeleton height="260px" />
+  </div>
+} @else if (summary.error()) {
+  <app-error-state title="No se pudieron cargar tus inversiones" (retry)="summary.reload()" />
+} @else if (summary.value(); as data) {
+  @if (data.holdings.length === 0) {
+    <app-empty-state icon="trending_up" title="Tu portafolio empieza aquí" message="Registra un fondo, un depósito a plazo, acciones o cripto con el dinero de una de tus cuentas. Verás cuánto vale y cuánto ganas.">
+      <button class="button button--primary button--small" type="button" (click)="open('open')">Registrar inversión</button>
+    </app-empty-state>
+  } @else {
+    @if (data.missingRates.length > 0) {
+      <div class="alert alert--info" role="status">Los totales no incluyen lo que tienes en {{ data.missingRates.join(', ') }}: falta su tipo de cambio.</div>
+    }
+
+    <ul class="kpis" aria-label="Tu portafolio">
+      @for (kpi of kpis(); track kpi.label) {
+        <li class="card kpi">
+          <span class="muted">{{ kpi.label }}</span>
+          <strong [attr.data-tone]="kpi.tone">{{ kpi.value }}</strong>
+          <span class="muted">{{ kpi.note }}</span>
+        </li>
+      }
+    </ul>
+
+    <section class="card panel" aria-labelledby="distribution-title">
+      <h2 id="distribution-title">Distribución</h2>
+      <div class="bar" role="img" [attr.aria-label]="'Distribución por tipo'">
+        @for (share of distribution(); track share.type) {
+          <span [style.width.%]="share.width" [style.background]="share.color"></span>
+        }
+      </div>
+      <ul class="legend" aria-label="Distribución por tipo">
+        @for (share of distribution(); track share.type) {
+          <li><i [style.background]="share.color"></i>{{ share.label }} <strong>{{ share.share }}%</strong></li>
+        }
+      </ul>
+    </section>
+
+    <div class="segmented filters" role="group" aria-label="Qué inversiones ver">
+      @for (option of filters; track option.value) {
+        <button type="button" [attr.aria-pressed]="filter() === option.value" (click)="filter.set(option.value)">{{ option.label }}</button>
+      }
+    </div>
+
+    <div class="layout">
+      <ul class="card holdings" aria-label="Posiciones">
+        @for (holding of visible(); track holding.id) {
+          <li>
+            <button type="button" class="holding" [class.is-selected]="selected()?.id === holding.id" [attr.aria-pressed]="selected()?.id === holding.id" (click)="choose(holding)">
+              <app-icon-tile [icon]="typeLook[holding.type].icon" [color]="typeLook[holding.type].color" [size]="36" />
+              <span class="name">
+                <strong>{{ holding.name }}{{ holding.ticker ? ' · ' + holding.ticker : '' }}</strong>
+                <small>{{ typeLook[holding.type].label }}{{ holding.institution ? ' · ' + holding.institution : '' }}</small>
+              </span>
+              @let points = sparkline(holding);
+              <svg class="spark" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+                @if (points) {
+                  <polyline [attr.points]="points" [class.is-down]="!rising(holding)" />
+                }
+              </svg>
+              <span class="figure">
+                <strong>{{ holding.value | money: holding.currency }}</strong>
+                <small [attr.data-tone]="rising(holding) ? 'good' : 'bad'">{{ holding.gain | money: holding.currency : { signed: true } }}</small>
+              </span>
+            </button>
+          </li>
+        } @empty {
+          <li class="muted none">No tienes inversiones de este tipo.</li>
+        }
+      </ul>
+
+      @if (selected(); as holding) {
+        <aside class="card detail" [attr.aria-label]="'Detalle de ' + holding.name">
+          <header>
+            <h2>{{ holding.name }}</h2>
+            <strong class="worth">{{ holding.value | money: holding.currency }}</strong>
+            <span class="muted" [attr.data-tone]="rising(holding) ? 'good' : 'bad'">
+              {{ holding.gain | money: holding.currency : { signed: true } }}{{ holding.gainPercent !== null ? ' (' + holding.gainPercent + ' %)' : '' }}
+            </span>
+          </header>
+          <dl>
+            @for (fact of facts(); track fact.label) {
+              <div><dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd></div>
+            }
+          </dl>
+          <div class="actions">
+            @if (holding.type !== 'termDeposit') {
+              <button class="button button--small button--primary" type="button" (click)="open('contribute')">Aportar</button>
+            }
+            <button class="button button--small" type="button" (click)="open('withdraw')">Rescatar</button>
+            @if (holding.type !== 'termDeposit') {
+              <button class="button button--small" type="button" (click)="open('value')">Actualizar valor</button>
+            }
+          </div>
+
+          <h3>Historial</h3>
+          @if (detail.value(); as history) {
+            <ul class="history" aria-label="Historial de la inversión">
+              @for (movement of history.movements; track movement.id) {
+                <li>
+                  <span>{{ movement.kind === 'contribution' ? 'Aporte' : 'Rescate' }}<small>{{ shortDate(movement.occurredOn) }}{{ movement.accountName ? ' · ' + movement.accountName : '' }}</small></span>
+                  <strong>{{ movement.amount | money: holding.currency }}</strong>
+                </li>
+              }
+              @for (valuation of history.valuations; track valuation.id) {
+                <li>
+                  <span>Valor registrado<small>{{ shortDate(valuation.onDate) }}</small></span>
+                  <strong>{{ valuation.value | money: holding.currency }}</strong>
+                </li>
+              }
+            </ul>
+          } @else if (detail.error()) {
+            <p class="muted">No se pudo cargar el historial.</p>
+          } @else {
+            <app-skeleton height="80px" />
+          }
+        </aside>
+      }
+    </div>
+  }
+}
+
+@if (formTarget(); as target) {
+  <app-holding-form [target]="target" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+}

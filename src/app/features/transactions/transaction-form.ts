@@ -10,6 +10,7 @@ import { Field } from '../../shared/ui/field';
 import { formatMoney, parseAmount } from '../../shared/ui/money';
 import { isValidTag, parseTags } from '../../shared/ui/tags';
 import { TransactionsApi } from './transactions-api';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 
 /** What the form is for: a new movement, optionally on a given account, or an income or expense being edited. */
 export type TransactionFormTarget =
@@ -234,7 +235,7 @@ export class TransactionForm {
     const target = this.target();
     const current = target.mode === 'edit' ? target.transaction.accountId : undefined;
     // The fund of a goal only moves from the goal.
-    return this.accounts().filter((account) => account.type !== 'goalFund' && (!account.isArchived || account.id === current));
+    return this.accounts().filter((account) => !isManagedAccount(account.type) && (!account.isArchived || account.id === current));
   });
 
   protected readonly currency = computed(() => this.currencyOf(this.model().accountId));
@@ -249,7 +250,7 @@ export class TransactionForm {
     // With a single account there is nothing to choose. The accounts may arrive after the dialog opened, so
     // this fills the one field without touching what the person already typed in the others.
     effect(() => {
-      const open = this.accounts().filter((account) => !account.isArchived && account.type !== 'goalFund');
+      const open = this.accounts().filter((account) => !account.isArchived && !isManagedAccount(account.type));
       untracked(() => {
         if (this.target().mode === 'post' && this.model().accountId === '' && open.length === 1) {
           this.model.update((model) => ({ ...model, accountId: open[0].id }));

@@ -7,6 +7,7 @@ import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { formatMoney, parseAmount } from '../../shared/ui/money';
 import { SharedApi } from './shared-api';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 
 /**
  * A payment between two members to register, or one already registered that the person now puts in one of
@@ -104,7 +105,7 @@ export class SettlementForm {
 
   /** The accounts that can take it: in the currency of the group and not the fund of a goal. */
   protected readonly accounts = computed(() =>
-    this.target().accounts.filter((account) => !account.isArchived && account.currency === this.target().currency && account.type !== 'goalFund'),
+    this.target().accounts.filter((account) => !account.isArchived && account.currency === this.target().currency && !isManagedAccount(account.type)),
   );
   protected readonly categoryOptions = computed(() =>
     this.target()

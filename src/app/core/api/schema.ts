@@ -900,6 +900,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/investments/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetInvestmentSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/holdings/{holdingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetHolding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/holdings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OpenHolding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/holdings/{holdingId}/contributions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ContributeToHolding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/holdings/{holdingId}/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["WithdrawFromHolding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/holdings/{holdingId}/valuations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["RecordHoldingValuation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/imports": {
         parameters: {
             query?: never;
@@ -1513,7 +1609,7 @@ export interface components {
             currencies: components["schemas"]["CurrencyPositionResponse"][];
         };
         /** @enum {unknown} */
-        AccountType: "bank" | "cash" | "wallet" | "creditCard" | "goalFund";
+        AccountType: "bank" | "cash" | "wallet" | "creditCard" | "goalFund" | "investment";
         AddGoalParticipantRequest: {
             /** Format: uuid */
             userId: null | string;
@@ -2075,6 +2171,87 @@ export interface components {
         GroupRole: "admin" | "member";
         /** @enum {unknown} */
         GroupStatus: "active" | "archived";
+        HoldingDetailResponse: {
+            holding: components["schemas"]["HoldingSummaryResponse"];
+            /** Format: uuid */
+            accountId: string;
+            movements: components["schemas"]["HoldingMovementResponse"][];
+            valuations: components["schemas"]["HoldingValuationResponse"][];
+        };
+        HoldingMoneyRequest: {
+            /** Format: double */
+            amount: null | number | string;
+            /** Format: double */
+            quantity?: null | number | string;
+            /** Format: date */
+            occurredOn: null | string;
+            /** Format: uuid */
+            accountId: null | string;
+        };
+        /** @enum {unknown} */
+        HoldingMovementKind: "contribution" | "withdrawal";
+        HoldingMovementResponse: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["HoldingMovementKind"];
+            /** Format: date */
+            occurredOn: string;
+            /** Format: double */
+            amount: number | string;
+            /** Format: double */
+            capital: number | string;
+            /** Format: double */
+            realized: number | string;
+            /** Format: double */
+            quantity: null | number | string;
+            accountName: null | string;
+        };
+        HoldingSummaryResponse: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["InvestmentType"];
+            name: string;
+            ticker: null | string;
+            institution: null | string;
+            currency: string;
+            /** Format: double */
+            invested: number | string;
+            /** Format: double */
+            value: number | string;
+            /** Format: double */
+            gain: number | string;
+            /** Format: double */
+            gainPercent: null | number | string;
+            /** Format: double */
+            weight: number | string;
+            /** Format: double */
+            quantity: null | number | string;
+            /** Format: date */
+            openedOn: string;
+            /** Format: date */
+            closedOn: null | string;
+            /** Format: date */
+            maturesOn: null | string;
+            /** Format: double */
+            annualRate: null | number | string;
+            /** Format: int32 */
+            termDays: null | number | string;
+            /** Format: double */
+            projectedValue: null | number | string;
+            /** Format: date */
+            lastValuedOn: null | string;
+            trend: (number | string)[];
+        };
+        HoldingValuationResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            onDate: string;
+            /** Format: double */
+            value: number | string;
+            /** Format: double */
+            unitPrice: null | number | string;
+        };
         ImportAccountResponse: {
             /** Format: uuid */
             id: string;
@@ -2165,6 +2342,29 @@ export interface components {
             /** Format: date-time */
             committedAt: null | string;
         };
+        InvestmentSummaryResponse: {
+            baseCurrency: null | string;
+            /** Format: double */
+            value: number | string;
+            /** Format: double */
+            invested: number | string;
+            /** Format: double */
+            gain: number | string;
+            /** Format: double */
+            gainPercent: null | number | string;
+            distribution: components["schemas"]["InvestmentTypeShareResponse"][];
+            holdings: components["schemas"]["HoldingSummaryResponse"][];
+            missingRates: string[];
+        };
+        /** @enum {unknown} */
+        InvestmentType: "mutualFund" | "termDeposit" | "stock" | "etf" | "crypto" | "other";
+        InvestmentTypeShareResponse: {
+            type: components["schemas"]["InvestmentType"];
+            /** Format: double */
+            value: number | string;
+            /** Format: double */
+            share: number | string;
+        };
         InvitationPreviewResponse: {
             workspaceName: string;
             email: string;
@@ -2189,7 +2389,7 @@ export interface components {
             role: null | components["schemas"]["WorkspaceRole"];
         };
         /** @enum {unknown} */
-        LedgerAccountType: "bank" | "cash" | "wallet" | "creditCard" | "goalFund";
+        LedgerAccountType: "bank" | "cash" | "wallet" | "creditCard" | "goalFund" | "investment";
         /** @enum {unknown} */
         LedgerMovementKind: "income" | "expense" | "transfer";
         LinkSettlementAccountRequest: {
@@ -2286,6 +2486,24 @@ export interface components {
             includeInNetWorth?: boolean;
             creditCard?: null | components["schemas"]["CreditCardRequest"];
         };
+        OpenHoldingRequest: {
+            type: null | components["schemas"]["InvestmentType"];
+            name: string;
+            ticker?: null | string;
+            institution?: null | string;
+            /** Format: double */
+            amount: null | number | string;
+            /** Format: double */
+            quantity?: null | number | string;
+            /** Format: date */
+            openedOn: null | string;
+            /** Format: uuid */
+            fromAccountId: null | string;
+            /** Format: double */
+            annualRate?: null | number | string;
+            /** Format: int32 */
+            termDays?: null | number | string;
+        };
         /** @enum {unknown} */
         OperationKind: "income" | "expense" | "refund" | "transfer" | "adjustment" | "openingBalance";
         /** @enum {unknown} */
@@ -2367,6 +2585,14 @@ export interface components {
             accountId?: null | string;
             /** Format: uuid */
             categoryId?: null | string;
+        };
+        RecordValuationRequest: {
+            /** Format: date */
+            onDate: null | string;
+            /** Format: double */
+            value?: null | number | string;
+            /** Format: double */
+            unitPrice?: null | number | string;
         };
         RecurringRuleResponse: {
             /** Format: uuid */
@@ -6465,6 +6691,346 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetInvestmentSummary: {
+        parameters: {
+            query?: {
+                type?: components["schemas"]["InvestmentType"];
+            };
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestmentSummaryResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetHolding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                holdingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldingDetailResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OpenHolding: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenHoldingRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldingDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ContributeToHolding: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+                holdingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoldingMoneyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldingDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    WithdrawFromHolding: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+                holdingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoldingMoneyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldingDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RecordHoldingValuation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                holdingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordValuationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldingDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

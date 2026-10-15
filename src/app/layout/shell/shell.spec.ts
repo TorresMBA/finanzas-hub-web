@@ -34,16 +34,6 @@ describe('Shell', () => {
     expect(current?.getAttribute('aria-label')).toBe('Inicio');
   });
 
-  it('shows the placeholder of the section with the phase that delivers it', async () => {
-    await harness.navigateByUrl('/investments');
-
-    const page = element.querySelector('app-feature-placeholder');
-    expect(document.title).toBe('Inversiones · FinanzasHub');
-    expect(page?.querySelector('h1')?.textContent).toBe('Inversiones');
-    expect(page?.textContent).toContain('Llega en la fase 13');
-    expect(element.querySelector('app-sidebar a[aria-current="page"]')?.getAttribute('aria-label')).toBe('Inversiones');
-  });
-
   it('opens the sheet with the remaining sections from the mobile tab bar and closes it again', async () => {
     expect(text('app-mobile-tab-bar a span')).toEqual(MOBILE_TABS.map((tab) => tab.shortLabel));
     expect(element.querySelector('app-more-sheet')).toBeNull();
