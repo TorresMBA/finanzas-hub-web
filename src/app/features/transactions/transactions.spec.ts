@@ -470,4 +470,26 @@ describe('Transactions', () => {
 
     expect(scoped.nativeElement.querySelector('.account-filter').value).toBe('a-usd');
   });
+
+  it('starts on a category from a budget, and on every date from the global search', async () => {
+    http.match(() => true).forEach((request) => request.flush(request.request.url === LIST_URL ? page([]) : []));
+    const scoped = TestBed.createComponent(Transactions);
+    scoped.componentRef.setInput('categoryId', 'c-groceries');
+    scoped.componentRef.setInput('q', 'wong');
+    scoped.componentRef.setInput('range', 'all');
+    TestBed.tick();
+
+    http.expectOne(`${BASE}/accounts?includeArchived=true`).flush([BCP, DOLLARS]);
+    http.expectOne(`${BASE}/categories?includeArchived=true`).flush([GROCERIES, SALARY]);
+    const request = listRequest();
+    // No month: what the search found in March has to be on the list too.
+    expect(paramsOf(request)).toEqual({ limit: '50', categoryId: 'c-groceries', q: 'wong' });
+    request.flush(page([WONG]));
+    await scoped.whenStable();
+    await fixture.whenStable();
+
+    const view = scoped.nativeElement as HTMLElement;
+    expect(view.querySelector<HTMLSelectElement>('select[aria-label="Categoría"]')!.value).toBe('c-groceries');
+    expect(view.querySelector('app-page-header')!.textContent).toContain('Todas las fechas');
+  });
 });

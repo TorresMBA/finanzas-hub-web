@@ -36,6 +36,7 @@ export type Transfer = Schemas['TransferResponse'];
 export type CreditCard = Schemas['CreditCardResponse'];
 export type UpdateAccountRequest = Schemas['UpdateAccountRequest'];
 export type AccountSummary = Schemas['AccountSummaryResponse'];
+export type NetWorth = Schemas['NetWorthResponse'];
 export type CurrencyPosition = Schemas['CurrencyPositionResponse'];
 export type ExchangeRate = Schemas['ExchangeRateResponse'];
 export type PostTransferRequest = Schemas['PostTransferRequest'];

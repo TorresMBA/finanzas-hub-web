@@ -1,4 +1,4 @@
-<app-page-header [eyebrow]="periodLabel()" title="Transacciones" subtitle="Tus ingresos, gastos y transferencias. Solo tú los ves.">
+<app-page-header [eyebrow]="scopeLabel()" title="Transacciones" subtitle="Tus ingresos, gastos y transferencias. Solo tú los ves.">
   <button class="button button--primary" type="button" (click)="openPost()"><app-icon name="add" [size]="18" />Nueva transacción</button>
 </app-page-header>
 
@@ -28,10 +28,24 @@
         </label>
         <select #accountFilter class="input account-filter" aria-label="Cuenta" (change)="account.set(accountFilter.value)">
           <option value="" [selected]="account() === ''">Todas las cuentas</option>
-          @for (option of accounts.value() ?? []; track option.id) {
+          @for (option of accountOptions().own; track option.id) {
             <option [value]="option.id" [selected]="account() === option.id">{{ option.name }}</option>
           }
+          @if (accountOptions().managed.length > 0) {
+            <optgroup label="Metas e inversiones">
+              @for (option of accountOptions().managed; track option.id) {
+                <option [value]="option.id" [selected]="account() === option.id">{{ option.name }}</option>
+              }
+            </optgroup>
+          }
         </select>
+        <select #categoryFilter class="input account-filter" aria-label="Categoría" (change)="category.set(categoryFilter.value)">
+          <option value="" [selected]="category() === ''">Todas las categorías</option>
+          @for (option of categoryOptions(); track option.id) {
+            <option [value]="option.id" [selected]="category() === option.id">{{ option.label }}</option>
+          }
+        </select>
+        <button type="button" class="chip-toggle" [attr.aria-pressed]="allDates()" (click)="allDates.set(!allDates())">Todas las fechas</button>
         <button type="button" class="chip-toggle" [attr.aria-pressed]="showVoided()" (click)="showVoided.set(!showVoided())">Anuladas</button>
       </div>
 

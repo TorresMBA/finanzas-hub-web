@@ -57,6 +57,9 @@ export class AccountsApi {
   /** Net worth, in the base currency and currency by currency. */
   readonly summaryUrl = computed(() => (this.workspaces.current() ? `${this.base()}/accounts/summary` : undefined));
 
+  /** Net worth with the investments at their market value: the same figure as the home page. */
+  readonly netWorthUrl = computed(() => (this.workspaces.current() ? `${this.base()}/net-worth` : undefined));
+
   /** The last movements of one account. */
   movementsUrl(accountId: string): string {
     return `${this.base()}/transactions?accountId=${accountId}&limit=6`;

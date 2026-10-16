@@ -2,7 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Account, AccountSummary, Transaction, TransactionPage } from '../../core/api/api-types';
+import { Account, AccountSummary, NetWorth, Transaction, TransactionPage } from '../../core/api/api-types';
 import { apiErrorInterceptor, idempotencyKeyInterceptor } from '../../core/http/api-interceptors';
 import { TEST_WORKSPACE, provideSession } from '../../core/testing/signed-in';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
@@ -11,6 +11,7 @@ import { Accounts } from './accounts';
 const BASE = `/api/v1/workspaces/${TEST_WORKSPACE.id}`;
 const ACCOUNTS_URL = `${BASE}/accounts?includeArchived=true`;
 const SUMMARY_URL = `${BASE}/accounts/summary`;
+const NET_WORTH_URL = `${BASE}/net-worth`;
 const movementsUrl = (accountId: string) => `${BASE}/transactions?accountId=${accountId}&limit=6`;
 
 const account = (id: string, name: string, balance: number, extra: Partial<Account> = {}): Account => ({
@@ -47,6 +48,15 @@ const SUMMARY: AccountSummary = {
     { currency: 'USD', assets: 820, debts: 0, net: 820, rate: 3.75, rateDate: '2026-01-01' },
   ],
 };
+/** What the API answers for net worth when the person has no investments: the ledger's figures as they are. */
+const worthOf = (summary: AccountSummary): NetWorth => ({
+  baseCurrency: summary.baseCurrency,
+  amount: summary.netWorth,
+  assets: summary.assets,
+  debts: summary.debts,
+  unrealizedGain: 0,
+  missingRates: summary.missingRates,
+});
 const WITHOUT_RATE: AccountSummary = {
   ...SUMMARY,
   netWorth: 1126.3,
@@ -118,6 +128,7 @@ describe('Accounts', () => {
   async function load(accounts: Account[] = [BCP, DOLLARS, CASH, OLD], selected = 'a-bcp', summary = SUMMARY, movements = page(OPENING)): Promise<void> {
     http.expectOne(ACCOUNTS_URL).flush(accounts);
     http.expectOne(SUMMARY_URL).flush(summary);
+    http.expectOne(NET_WORTH_URL).flush(worthOf(summary));
     await settle();
     if (accounts.some((candidate) => candidate.id === selected)) {
       http.expectOne(movementsUrl(selected)).flush(movements);
@@ -158,6 +169,7 @@ describe('Accounts', () => {
 
     http.expectOne(ACCOUNTS_URL).flush(null, { status: 500, statusText: 'Server Error' });
     http.expectOne(SUMMARY_URL).flush(SUMMARY);
+    http.expectOne(NET_WORTH_URL).flush(worthOf(SUMMARY));
     await fixture.whenStable();
     expect(element.querySelector('app-error-state')?.textContent).toContain('No se pudieron cargar tus cuentas');
 

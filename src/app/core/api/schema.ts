@@ -484,6 +484,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/net-worth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetNetWorth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/reports/summary": {
         parameters: {
             query?: never;
@@ -2430,6 +2446,18 @@ export interface components {
             displayName: string;
             phone: null | string;
             preferences: components["schemas"]["PreferencesResponse"];
+        };
+        NetWorthResponse: {
+            baseCurrency: null | string;
+            /** Format: double */
+            amount: number | string;
+            /** Format: double */
+            assets: number | string;
+            /** Format: double */
+            debts: number | string;
+            /** Format: double */
+            unrealizedGain: number | string;
+            missingRates: string[];
         };
         /** @enum {unknown} */
         NewAccountType: "bank" | "cash" | "wallet" | null;
@@ -5053,6 +5081,46 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetNetWorth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetWorthResponse"];
                 };
             };
             /** @description Unauthorized */

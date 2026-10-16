@@ -161,7 +161,7 @@
             @if (budget.isInForce) {
               <button type="button" class="button button--small" (click)="openAdjust(budget)">Ajustar límite</button>
             }
-            <a class="button button--small" routerLink="/transactions">Ver movimientos</a>
+            <a class="button button--small" routerLink="/transactions" [queryParams]="{ categoryId: budget.categoryId }">Ver movimientos</a>
             @if (budget.isInForce) {
               <button type="button" class="button button--small" (click)="confirmingEnd.set(true)">Quitar</button>
             }

@@ -40,9 +40,12 @@ export interface TransactionFilters {
   readonly type: MovementFilter | null;
   readonly voided: boolean;
   readonly accountId: string;
+  /** Matches the category and its subcategories. */
+  readonly categoryId: string;
   readonly text: string;
-  readonly from: string;
-  readonly to: string;
+  /** Both null for every date. */
+  readonly from: string | null;
+  readonly to: string | null;
 }
 
 /** What a transaction says, as the form sends it. */
@@ -71,10 +74,13 @@ export class TransactionsApi {
   readonly categoriesUrl = computed(() => (this.workspaces.current() ? `${this.base()}/categories?includeArchived=true` : undefined));
 
   list(filters: TransactionFilters, cursor: string | null): Promise<TransactionPage> {
-    let params = new HttpParams().set('from', filters.from).set('to', filters.to).set('limit', 50);
+    let params = new HttpParams().set('limit', 50);
+    if (filters.from) params = params.set('from', filters.from);
+    if (filters.to) params = params.set('to', filters.to);
     if (filters.type) params = params.set('type', filters.type);
     if (filters.voided) params = params.set('status', 'voided');
     if (filters.accountId) params = params.set('accountId', filters.accountId);
+    if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
     if (filters.text) params = params.set('q', filters.text);
     if (cursor) params = params.set('cursor', cursor);
     return firstValueFrom(this.http.get<TransactionPage>(`${this.base()}/transactions`, { params }));

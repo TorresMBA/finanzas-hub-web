@@ -1,7 +1,7 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Account, AccountSummary, Transaction, TransactionPage } from '../../core/api/api-types';
+import { Account, AccountSummary, NetWorth, Transaction, TransactionPage } from '../../core/api/api-types';
 import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
@@ -74,6 +74,7 @@ export class Accounts {
   // Archived ones come too and are hidden here, so showing them is instant.
   protected readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
   protected readonly summary = httpResource<AccountSummary>(() => this.api.summaryUrl());
+  protected readonly netWorth = httpResource<NetWorth>(() => this.api.netWorthUrl());
 
   protected readonly tab = signal<Tab>('all');
   protected readonly isManaged = (account: Account) => isManagedAccount(account.type);
@@ -91,15 +92,18 @@ export class Accounts {
   protected readonly active = computed(() => this.all().filter((account) => !account.isArchived));
   protected readonly archivedCount = computed(() => this.all().length - this.active().length);
 
-  /** Net worth, what is owned and what is owed, in the base currency. Empty until the workspace has one. */
+  /**
+   * Net worth, what is owned and what is owed, in the base currency, with the investments at their market value:
+   * the same figures as the home page. Empty until the workspace has a base currency.
+   */
   protected readonly stats = computed(() => {
-    const summary = this.summary.value();
-    const currency = summary?.baseCurrency;
-    return summary && currency
+    const worth = this.netWorth.value();
+    const currency = worth?.baseCurrency;
+    return worth && currency
       ? [
-          { label: 'Patrimonio', value: formatMoney(summary.netWorth, currency), icon: 'savings', color: 'green' as const },
-          { label: 'Tienes', value: formatMoney(summary.assets, currency), icon: 'account_balance', color: 'blue' as const },
-          { label: 'Debes', value: formatMoney(summary.debts, currency), icon: 'credit_card', color: 'amber' as const },
+          { label: 'Patrimonio', value: formatMoney(worth.amount, currency), icon: 'savings', color: 'green' as const },
+          { label: 'Tienes', value: formatMoney(worth.assets, currency), icon: 'account_balance', color: 'blue' as const },
+          { label: 'Debes', value: formatMoney(worth.debts, currency), icon: 'credit_card', color: 'amber' as const },
         ]
       : [];
   });
@@ -182,6 +186,7 @@ export class Accounts {
   protected reload(): void {
     this.accounts.reload();
     this.summary.reload();
+    this.netWorth.reload();
     this.movements.reload();
   }
 

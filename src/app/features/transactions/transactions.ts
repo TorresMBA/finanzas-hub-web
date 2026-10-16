@@ -3,6 +3,7 @@ import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, linkedSignal, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Account, BaseTotals, Category, CurrencyTotals, Transaction } from '../../core/api/api-types';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
 import { PeriodStore } from '../../core/period/period-store';
 import { formatDay, monthRange } from '../../shared/ui/dates';
@@ -31,7 +32,7 @@ const DESKTOP = '(min-width: 1100px)';
 const SEARCH_DELAY_MS = 300;
 
 /**
- * The person's movements of the month selected in the top bar, newest first. Totals come from the API for
+ * The person's movements of the month selected in the top bar (or of every date), newest first. Totals come from the API for
  * everything the filter matches; this page adds nothing up except the net of each day it is showing.
  */
 @Component({
@@ -52,6 +53,12 @@ export class Transactions {
   /** A text to search for on arrival, from the global search. */
   readonly q = input<string>();
 
+  /** From the URL: the category whose movements to show (with its subcategories), when arriving from a budget. */
+  readonly categoryId = input<string>();
+
+  /** From the URL: `all` to look at every date instead of the month of the top bar, as the global search does. */
+  readonly range = input<string>();
+
   protected readonly tabs = TABS;
   protected readonly statusLabels = STATUS_LABELS;
   protected readonly lookOf = lookOf;
@@ -62,7 +69,26 @@ export class Transactions {
 
   protected readonly tab = signal<Tab>('all');
   protected readonly account = linkedSignal(() => this.accountId() ?? '');
+  protected readonly category = linkedSignal(() => this.categoryId() ?? '');
+  protected readonly allDates = linkedSignal(() => this.range() === 'all');
   protected readonly showVoided = signal(false);
+
+  /** The person's own accounts first; the funds of goals and the capital of investments apart, since other sections move them. */
+  protected readonly accountOptions = computed(() => {
+    const all = this.accounts.value() ?? [];
+    return { own: all.filter((account) => !isManagedAccount(account.type)), managed: all.filter((account) => isManagedAccount(account.type)) };
+  });
+
+  /** The categories with their subcategories right below, for the filter. */
+  protected readonly categoryOptions = computed(() =>
+    (this.categories.value() ?? []).flatMap((parent) => [
+      { id: parent.id, label: parent.name },
+      ...parent.subcategories.map((child) => ({ id: child.id, label: `${parent.name} › ${child.name}` })),
+    ]),
+  );
+
+  /** What the list covers, for the header and the empty state. */
+  protected readonly scopeLabel = computed(() => (this.allDates() ? 'Todas las fechas' : this.periodLabel()));
   protected readonly searchText = linkedSignal(() => this.q() ?? '');
   private readonly appliedText = linkedSignal(() => (this.q() ?? '').trim());
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -91,7 +117,15 @@ export class Transactions {
 
     const { year, month } = this.period.month();
     const tab = this.tab();
-    return { ...monthRange(year, month), type: tab === 'all' ? null : tab, voided: this.showVoided(), accountId: this.account(), text: this.appliedText() };
+    const range = this.allDates() ? { from: null, to: null } : monthRange(year, month);
+    return {
+      ...range,
+      type: tab === 'all' ? null : tab,
+      voided: this.showVoided(),
+      accountId: this.account(),
+      categoryId: this.category(),
+      text: this.appliedText(),
+    };
   });
 
   /**
@@ -104,7 +138,9 @@ export class Transactions {
     return base && (totals.length > 1 || (totals.length === 1 && totals[0].currency !== base.currency)) ? base : null;
   });
 
-  protected readonly hasFilters = computed(() => this.tab() !== 'all' || this.account() !== '' || this.showVoided() || this.appliedText() !== '');
+  protected readonly hasFilters = computed(
+    () => this.tab() !== 'all' || this.account() !== '' || this.category() !== '' || this.allDates() || this.showVoided() || this.appliedText() !== '',
+  );
 
   /**
    * The page by day, each with the net of the income and expenses it shows, one figure per currency. An opening
@@ -162,6 +198,8 @@ export class Transactions {
     clearTimeout(this.searchTimer);
     this.tab.set('all');
     this.account.set('');
+    this.category.set('');
+    this.allDates.set(false);
     this.showVoided.set(false);
     this.searchText.set('');
     this.appliedText.set('');

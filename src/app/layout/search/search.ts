@@ -54,7 +54,7 @@ const MIN_LENGTH = 2;
                 <ul>
                   @for (movement of found.movements; track movement.id) {
                     <li>
-                      <a routerLink="/transactions" [queryParams]="{ q: query() }" (click)="close()">
+                      <a routerLink="/transactions" [queryParams]="{ q: query(), range: 'all' }" (click)="close()">
                         <span class="name">{{ movement.description }}<small>{{ day(movement.occurredOn) }} · {{ movement.accountName }}{{ movement.categoryName ? ' · ' + movement.categoryName : '' }}</small></span>
                         <strong [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</strong>
                       </a>
