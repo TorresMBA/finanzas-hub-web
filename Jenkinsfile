@@ -4,7 +4,7 @@
 // Despliega finanzas-hub-web (contenedor finanzas-hub-web-<env>, puerto 8080). El nginx de la imagen
 // reenvía /api, /hubs y /webhooks al API del mismo ambiente, que se despliega con su propio job.
 // Configuración por ambiente (no versionada): /srv/mercury/apps/<env>/finanzas-hub-web.env
-// con API_UPSTREAM. Ver docs/development/deployment.md en el repo finanzas-hub-api.
+// con API_UPSTREAM. Ver docs/devops/deployment.md en el repo finanzas-hub-api.
 pipeline {
   agent none
 

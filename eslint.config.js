@@ -42,7 +42,7 @@ module.exports = defineConfig([
     },
   },
   {
-    // Architecture of src/app (docs/architecture/frontend.md):
+    // Architecture of src/app (docs/frontend/architecture.md):
     //   core     singletons without UI          -> core
     //   shared   reusable UI without business   -> shared
     //   layout   the application frame          -> layout, shared, core

@@ -16,4 +16,4 @@ npm start                    # http://localhost:4200, con proxy a la API en http
 | `npm run api:generate` | Regenera `src/app/core/api/schema.ts` desde `../docs/api/openapi.v1.json` |
 | `npm run e2e` | Playwright. Requiere la API en marcha. Con `PW_CHANNEL=chrome` usa el Chrome instalado; si no, `npx playwright install chromium` |
 
-Arquitectura, estructura de carpetas y convenciones: [../docs/architecture/frontend.md](../docs/architecture/frontend.md).
+Arquitectura, estructura de carpetas y convenciones: [../docs/frontend/architecture.md](../docs/frontend/architecture.md).
