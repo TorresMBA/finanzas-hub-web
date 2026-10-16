@@ -19,6 +19,21 @@ export type HoldingFormTarget =
 const TITLES = { open: 'Registrar inversión', contribute: 'Aportar', withdraw: 'Rescatar', value: 'Actualizar valor' } as const;
 const AMOUNT_ERROR = { kind: 'amount', message: 'Un monto mayor que cero, con hasta dos decimales.' };
 
+/** At least `min`. False for NaN, so text that is not a number never passes. */
+function atLeast(value: number, min: number): boolean {
+  return value >= min;
+}
+
+/** Greater than zero. False for NaN, so text that is not a number never passes. */
+function positive(value: number): boolean {
+  return value > 0;
+}
+
+/** A decimal typed with a comma or a point. */
+function decimal(text: string): number {
+  return Number(text.replace(',', '.'));
+}
+
 /**
  * One dialog for everything that changes an investment. Money always moves between an account of the person and
  * the investment as a transfer: buying is not spending. Only the gain of a redemption is an income.
@@ -201,7 +216,7 @@ export class HoldingForm {
     const amount = parseAmount(this.model().amount);
     const rate = Number(this.model().rate);
     const days = Number(this.model().days);
-    if (!amount || !(rate > 0) || !(days > 0) || !this.currency()) {
+    if (!amount || !positive(rate) || !positive(days) || !this.currency()) {
       return null;
     }
 
@@ -241,15 +256,15 @@ export class HoldingForm {
         : undefined;
     });
     validate(path.price, ({ value }) =>
-      this.target().mode === 'value' && this.units() && !((parseAmount(value()) ?? 0) > 0) ? { kind: 'amount', message: 'Un precio mayor que cero.' } : undefined,
+      this.target().mode === 'value' && this.units() && !positive(parseAmount(value()) ?? 0) ? { kind: 'amount', message: 'Un precio mayor que cero.' } : undefined,
     );
     validate(path.quantity, ({ value }) =>
-      this.units() && this.target().mode !== 'value' && this.target().mode !== 'withdraw' && !(Number(value().replace(',', '.')) > 0)
+      this.units() && this.target().mode !== 'value' && this.target().mode !== 'withdraw' && !positive(decimal(value()))
         ? { kind: 'quantity', message: 'Cuántas unidades compraste.' }
         : undefined,
     );
-    validate(path.rate, ({ value }) => (this.deposit() && !(Number(value().replace(',', '.')) > 0) ? { kind: 'rate', message: 'La TEA, por ejemplo 6.5.' } : undefined));
-    validate(path.days, ({ value }) => (this.deposit() && !(Number(value()) >= 1) ? { kind: 'days', message: 'El plazo en días.' } : undefined));
+    validate(path.rate, ({ value }) => (this.deposit() && !positive(decimal(value())) ? { kind: 'rate', message: 'La TEA, por ejemplo 6.5.' } : undefined));
+    validate(path.days, ({ value }) => (this.deposit() && !atLeast(Number(value()), 1) ? { kind: 'days', message: 'El plazo en días.' } : undefined));
     validate(path.date, ({ value }) => (value() ? undefined : { kind: 'required', message: 'Elige una fecha.' }));
     validate(path.accountId, ({ value }) => (this.target().mode !== 'value' && !value() ? { kind: 'required', message: 'Elige una cuenta.' } : undefined));
   });
@@ -278,25 +293,10 @@ export class HoldingForm {
   private async send(): Promise<string> {
     const model = this.model();
     const amount = parseAmount(model.amount) ?? 0;
-    const quantity = model.quantity.trim() ? Number(model.quantity.replace(',', '.')) : null;
+    const quantity = model.quantity.trim() ? decimal(model.quantity) : null;
     const target = this.target();
     if (target.mode === 'open') {
-      await this.api.open(
-        {
-          type: model.type,
-          name: model.name.trim(),
-          ticker: this.units() ? model.ticker.trim() || null : null,
-          institution: model.institution.trim() || null,
-          amount,
-          quantity: this.units() ? quantity : null,
-          openedOn: model.date,
-          fromAccountId: model.accountId,
-          annualRate: this.deposit() ? Number(model.rate.replace(',', '.')) : null,
-          termDays: this.deposit() ? Number(model.days) : null,
-        },
-        this.idempotencyKey,
-      );
-      return `Registraste «${model.name.trim()}» con ${formatMoney(amount, this.currency())}.`;
+      return this.open(amount, quantity);
     }
 
     const { holding } = target;
@@ -309,5 +309,27 @@ export class HoldingForm {
     await this.api.move(holding.id, target.mode === 'withdraw' ? 'withdrawals' : 'contributions', money, this.idempotencyKey);
     const text = formatMoney(amount, holding.currency);
     return target.mode === 'withdraw' ? `Rescataste ${text} de «${holding.name}».` : `Aportaste ${text} a «${holding.name}».`;
+  }
+
+  private async open(amount: number, quantity: number | null): Promise<string> {
+    const model = this.model();
+    const units = this.units();
+    const deposit = this.deposit();
+    await this.api.open(
+      {
+        type: model.type,
+        name: model.name.trim(),
+        ticker: units ? model.ticker.trim() || null : null,
+        institution: model.institution.trim() || null,
+        amount,
+        quantity: units ? quantity : null,
+        openedOn: model.date,
+        fromAccountId: model.accountId,
+        annualRate: deposit ? decimal(model.rate) : null,
+        termDays: deposit ? Number(model.days) : null,
+      },
+      this.idempotencyKey,
+    );
+    return `Registraste «${model.name.trim()}» con ${formatMoney(amount, this.currency())}.`;
   }
 }

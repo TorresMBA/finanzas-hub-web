@@ -116,7 +116,7 @@ export class Notifications {
   });
   protected readonly settingsForm = form(this.model, (path) => {
     for (const row of CHANNEL_ROWS) {
-      disabled(path[row.whatsApp], () => !this.whatsAppReady());
+      disabled(path[row.whatsApp], { when: () => !this.whatsAppReady() });
     }
 
     validate(path.largeMovementThreshold, ({ value, valueOf }) =>

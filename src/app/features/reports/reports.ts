@@ -28,7 +28,11 @@ const PERIODS: readonly { value: ReportPeriodKind; label: string }[] = [
 /** "octubre 2026", "4.º trimestre 2026" or "2026". */
 function periodName(kind: ReportPeriodKind, from: string): string {
   const [year, month] = from.split('-').map(Number);
-  return kind === 'year' ? `${year}` : kind === 'quarter' ? `${Math.floor((month - 1) / 3) + 1}.º trimestre ${year}` : `${MONTHS[month - 1]} ${year}`;
+  if (kind === 'year') {
+    return `${year}`;
+  }
+
+  return kind === 'quarter' ? `${Math.floor((month - 1) / 3) + 1}.º trimestre ${year}` : `${MONTHS[month - 1]} ${year}`;
 }
 
 /** "+4.2 %" or "−3.1 %" of a figure against the period before; null without a figure to compare with. */
@@ -37,7 +41,34 @@ function change(current: number, previous: number): number | null {
 }
 
 function percent(value: number): string {
-  return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toLocaleString('es-PE', { maximumFractionDigits: 1 })} %`;
+  return `${sign(value)}${Math.abs(value).toLocaleString('es-PE', { maximumFractionDigits: 1 })} %`;
+}
+
+function sign(value: number): string {
+  if (value > 0) {
+    return '+';
+  }
+
+  return value < 0 ? '−' : '';
+}
+
+/** How a change reads: good when it goes the way that helps, bad otherwise, neutral without a change to compare. */
+function changeTone(value: number | null, goodWhenUp: boolean): 'good' | 'bad' | '' {
+  if (value === null) {
+    return '';
+  }
+
+  const good = goodWhenUp ? value >= 0 : value <= 0;
+  return good ? 'good' : 'bad';
+}
+
+/** A category's change against the period before; under 5 % either way counts as flat. */
+function trend(value: number | null): { tone: 'good' | 'bad' | ''; icon: string } {
+  if (value === null || Math.abs(value) < 5) {
+    return { tone: '', icon: 'trending_flat' };
+  }
+
+  return value > 0 ? { tone: 'bad', icon: 'trending_up' } : { tone: 'good', icon: 'trending_down' };
 }
 
 /**
@@ -91,8 +122,8 @@ export class Reports {
     const expense = change(Number(current.expense), Number(previous.expense));
     const rate = current.savingsRate === null ? null : Number(current.savingsRate);
     return [
-      { label: 'Ingresos', value: formatMoney(current.income, currency), note: income === null ? 'Sin ingresos antes' : `${percent(income)} vs. anterior`, tone: income === null ? '' : income >= 0 ? 'good' : 'bad' },
-      { label: 'Gastos', value: formatMoney(current.expense, currency), note: expense === null ? 'Sin gastos antes' : `${percent(expense)} vs. anterior`, tone: expense === null ? '' : expense <= 0 ? 'good' : 'bad' },
+      { label: 'Ingresos', value: formatMoney(current.income, currency), note: income === null ? 'Sin ingresos antes' : `${percent(income)} vs. anterior`, tone: changeTone(income, true) },
+      { label: 'Gastos', value: formatMoney(current.expense, currency), note: expense === null ? 'Sin gastos antes' : `${percent(expense)} vs. anterior`, tone: changeTone(expense, false) },
       { label: 'Ahorro', value: formatMoney(current.savings, currency), note: rate === null ? 'Sin ingresos en el periodo' : `${rate.toLocaleString('es-PE')} % de tus ingresos`, tone: Number(current.savings) < 0 ? 'bad' : '' },
       { label: 'Gasto promedio diario', value: formatMoney(current.dailyExpense, currency), note: `En ${current.days} ${Number(current.days) === 1 ? 'día' : 'días'}`, tone: '' },
     ];
@@ -131,8 +162,7 @@ export class Reports {
       return {
         ...category,
         label: value === null ? 'Nuevo' : percent(value),
-        tone: value === null || Math.abs(value) < 5 ? '' : value > 0 ? 'bad' : 'good',
-        icon: value === null || Math.abs(value) < 5 ? 'trending_flat' : value > 0 ? 'trending_up' : 'trending_down',
+        ...trend(value),
       };
     }),
   );

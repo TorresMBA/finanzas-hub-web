@@ -43,8 +43,29 @@ function age(from: string, today: Date): string {
   }
 
   const [years, rest] = [Math.floor(months / 12), months % 12];
-  const parts = [years > 0 ? `${years} ${years === 1 ? 'año' : 'años'}` : '', rest > 0 ? `${rest} ${rest === 1 ? 'mes' : 'meses'}` : ''].filter(Boolean);
+  const parts = [count(years, 'año', 'años'), count(rest, 'mes', 'meses')].filter(Boolean);
   return parts.join(' y ');
+}
+
+/** "1 año", "3 meses", or nothing for zero. */
+function count(value: number, one: string, many: string): string {
+  if (value <= 0) {
+    return '';
+  }
+
+  return `${value} ${value === 1 ? one : many}`;
+}
+
+function gainSign(value: number): string {
+  return value > 0 ? '+' : '';
+}
+
+function tone(value: number): 'good' | 'bad' | '' {
+  if (value > 0) {
+    return 'good';
+  }
+
+  return value < 0 ? 'bad' : '';
 }
 
 /**
@@ -97,8 +118,8 @@ export class Investments {
       {
         label: 'Ganancia no realizada',
         value: formatMoney(gain, currency, { signed: true }),
-        note: percent === null ? 'Sin capital invertido' : `${percent > 0 ? '+' : ''}${percent.toLocaleString('es-PE')} % sobre lo invertido`,
-        tone: gain > 0 ? 'good' : gain < 0 ? 'bad' : '',
+        note: percent === null ? 'Sin capital invertido' : `${gainSign(percent)}${percent.toLocaleString('es-PE')} % sobre lo invertido`,
+        tone: tone(gain),
       },
       { label: 'Invertido', value: formatMoney(data.invested, currency), note: 'Capital que pusiste y sigue dentro', tone: '' },
     ];

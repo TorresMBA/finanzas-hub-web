@@ -42,7 +42,12 @@ export class InvestmentsApi {
   readonly accountsUrl = computed(() => (this.workspaces.current() ? `${this.base()}/accounts` : undefined));
 
   summaryUrl(type: InvestmentType | null): string | undefined {
-    return this.workspaces.current() ? `${this.base()}/investments/summary${type ? `?type=${type}` : ''}` : undefined;
+    if (!this.workspaces.current()) {
+      return undefined;
+    }
+
+    const filter = type ? '?type=' + type : '';
+    return `${this.base()}/investments/summary${filter}`;
   }
 
   detailUrl(holdingId: string | null): string | undefined {

@@ -47,7 +47,18 @@ pipeline {
         stage('SonarQube') {
           steps {
             withSonarQubeEnv('sonarqube') {
-              sh 'mercury-ci sonar "$APP" "-Dsonar.exclusions=node_modules/**,dist/**,.angular/**,e2e/**,test-results/**,src/app/core/api/schema.ts"'
+              // Reglas de HTML ignoradas (ver docs/devops/ci-cd.md):
+              //   InputWithoutLabelCheck: <app-field> envuelve el control en su <label> con <ng-content>, que Sonar no ve.
+              //   S6819: la app usa roles ARIA (status, group, img) en vez de <output>/<fieldset>, que traen estilos propios.
+              sh '''
+                mercury-ci sonar "$APP" \
+                  "-Dsonar.exclusions=node_modules/**,dist/**,.angular/**,e2e/**,test-results/**,src/app/core/api/schema.ts" \
+                  "-Dsonar.issue.ignore.multicriteria=e1,e2" \
+                  "-Dsonar.issue.ignore.multicriteria.e1.ruleKey=Web:InputWithoutLabelCheck" \
+                  "-Dsonar.issue.ignore.multicriteria.e1.resourceKey=src/**/*.html" \
+                  "-Dsonar.issue.ignore.multicriteria.e2.ruleKey=Web:S6819" \
+                  "-Dsonar.issue.ignore.multicriteria.e2.resourceKey=src/**/*.html"
+              '''
             }
           }
         }

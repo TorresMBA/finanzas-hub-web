@@ -24,7 +24,11 @@ export const CURRENCIES: readonly { code: string; label: string; plural: string 
 
 export function accountType(type: AccountType) {
   // The fund of a goal and the account of an investment are opened by their sections, so they are not among the types a person can choose.
-  return type === 'goalFund' ? GOAL_FUND : type === 'investment' ? INVESTMENT : (ACCOUNT_TYPES.find((candidate) => candidate.value === type) ?? ACCOUNT_TYPES[0]);
+  if (type === 'goalFund') {
+    return GOAL_FUND;
+  }
+
+  return type === 'investment' ? INVESTMENT : (ACCOUNT_TYPES.find((candidate) => candidate.value === type) ?? ACCOUNT_TYPES[0]);
 }
 
 export function currencyName(code: string): string {
