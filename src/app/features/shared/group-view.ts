@@ -10,31 +10,42 @@ import { STATUS_LOOK } from './shared-api';
 type Tab = 'balances' | 'activity' | 'members';
 type ActivityFilter = 'all' | 'expenses' | 'payments';
 
+/** What the balance of the person asking means, under its figure. */
+const BALANCE_NOTES: Readonly<Record<Sign, string>> = { pos: 'Te deben', neg: 'Debes', even: 'A mano' };
+
 const ACTIVITY_FILTERS: readonly { value: ActivityFilter; label: string }[] = [
   { value: 'all', label: 'Todo' },
   { value: 'expenses', label: 'Gastos' },
   { value: 'payments', label: 'Pagos' },
 ];
 
+/** What an expense did to the balance of the person asking, as its row says it. */
+function effectOf(expense: SharedExpense, me: string, currency: string): { text: string; sign: Sign } {
+  if (expense.status === 'cancelled' || expense.status === 'settled') {
+    return { text: STATUS_LOOK[expense.status].label, sign: 'even' };
+  }
+
+  const share = Number(expense.myShare);
+  if (expense.paidByUserId === me) {
+    return { text: `Prestaste ${formatMoney(Number(expense.totalAmount) - share, currency)}`, sign: 'pos' };
+  }
+
+  const pending = Number(expense.myPending);
+  if (pending > 0) {
+    return { text: `Debes ${formatMoney(pending, currency)}`, sign: 'neg' };
+  }
+
+  return { text: share > 0 ? 'Pagaste tu parte' : 'No te afecta', sign: 'even' };
+}
+
 /** What an expense meant for the person asking, and who has repaid their part of it. */
 function expenseItem(expense: SharedExpense, me: string, currency: string) {
-  const iPaid = expense.paidByUserId === me;
-  const cancelled = expense.status === 'cancelled';
-  const pending = Number(expense.myPending);
-  const share = Number(expense.myShare);
-  const effect: { text: string; sign: Sign } =
-    cancelled || expense.status === 'settled'
-      ? { text: STATUS_LOOK[expense.status].label, sign: 'even' }
-      : iPaid
-        ? { text: `Prestaste ${formatMoney(Number(expense.totalAmount) - share, currency)}`, sign: 'pos' }
-        : pending > 0
-          ? { text: `Debes ${formatMoney(pending, currency)}`, sign: 'neg' }
-          : { text: share > 0 ? 'Pagaste tu parte' : 'No te afecta', sign: 'even' };
+  const payer = expense.paidByUserId === me ? 'Pagaste tú' : `Pagó ${expense.paidByName}`;
   return {
     expense,
-    cancelled,
-    note: `${iPaid ? 'Pagaste tú' : `Pagó ${expense.paidByName}`} · tu parte ${formatMoney(share, currency)}`,
-    effect,
+    cancelled: expense.status === 'cancelled',
+    note: `${payer} · tu parte ${formatMoney(Number(expense.myShare), currency)}`,
+    effect: effectOf(expense, me, currency),
     shares: expense.shares.map((part) => {
       const isPayer = part.userId === expense.paidByUserId;
       const owes = isPayer ? 0 : Number(part.amount) - Number(part.paidAmount);
@@ -119,7 +130,7 @@ export class GroupView {
         { label: 'Total gastado', value: formatMoney(figures.total, currency), note: figures.count === 1 ? '1 gasto en que participas' : `${figures.count} gastos en que participas`, sign: even },
         { label: 'Tu parte', value: formatMoney(figures.share, currency), note: 'Lo que te toca de esos gastos', sign: even },
         { label: 'Pagaste', value: formatMoney(figures.paid, currency), note: 'De tu bolsillo', sign: even },
-        { label: 'Tu balance', value: signed(figures.balance, currency), note: chip.sign === 'pos' ? 'Te deben' : chip.sign === 'neg' ? 'Debes' : 'A mano', sign: chip.sign },
+        { label: 'Tu balance', value: signed(figures.balance, currency), note: BALANCE_NOTES[chip.sign], sign: chip.sign },
       ],
     };
   });
@@ -158,9 +169,10 @@ export class GroupView {
     return rows.map(({ member, paid, share }) => {
       const sign = signOf(Number(member.balance));
       const amount = formatMoney(Math.abs(Number(member.balance)), currency);
-      const status = member.isMe
-        ? sign === 'pos' ? `Te deben ${amount}` : sign === 'neg' ? `Debes ${amount}` : 'A mano'
-        : sign === 'pos' ? `Te debe ${amount}` : sign === 'neg' ? `Le debes ${amount}` : 'A mano contigo';
+      const statuses: Record<Sign, string> = member.isMe
+        ? { pos: `Te deben ${amount}`, neg: `Debes ${amount}`, even: 'A mano' }
+        : { pos: `Te debe ${amount}`, neg: `Le debes ${amount}`, even: 'A mano contigo' };
+      const status = statuses[sign];
       return {
         member,
         name: member.isMe ? `${member.displayName} (tú)` : member.displayName,

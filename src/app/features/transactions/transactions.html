@@ -39,7 +39,7 @@
             </optgroup>
           }
         </select>
-        <select #categoryFilter class="input account-filter" aria-label="Categoría" (change)="category.set(categoryFilter.value)">
+        <select #categoryFilter class="input account-filter" [attr.aria-label]="categoryFilterLabel()" (change)="category.set(categoryFilter.value)">
           <option value="" [selected]="category() === ''">Todas las categorías</option>
           @for (option of categoryOptions(); track option.id) {
             <option [value]="option.id" [selected]="category() === option.id">{{ option.label }}</option>

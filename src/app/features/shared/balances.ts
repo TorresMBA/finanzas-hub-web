@@ -28,13 +28,17 @@ export function toneOf(userId: string, me: string): Tone {
   }
   let hash = 0;
   for (const char of userId) {
-    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
   }
   return OTHER_TONES[hash % OTHER_TONES.length];
 }
 
 export function signOf(amount: number): Sign {
-  return amount > EVEN ? 'pos' : amount < -EVEN ? 'neg' : 'even';
+  if (amount > EVEN) {
+    return 'pos';
+  }
+
+  return amount < -EVEN ? 'neg' : 'even';
 }
 
 /** "+S/ 30.00", "−S/ 10.00", "S/ 0.00". */
@@ -45,8 +49,8 @@ export function signed(amount: number, currency: string): string {
 /** What a balance of the person asking means, as the chip of a group says it. */
 export function chipOf(amount: number, currency: string): { sign: Sign; text: string } {
   const sign = signOf(amount);
-  const text = sign === 'pos' ? `Te deben ${formatMoney(amount, currency)}` : sign === 'neg' ? `Debes ${formatMoney(-amount, currency)}` : 'A mano';
-  return { sign, text };
+  const texts: Record<Sign, string> = { pos: `Te deben ${formatMoney(amount, currency)}`, neg: `Debes ${formatMoney(-amount, currency)}`, even: 'A mano' };
+  return { sign, text: texts[sign] };
 }
 
 export const live = (expense: SharedExpense) => expense.status !== 'cancelled';

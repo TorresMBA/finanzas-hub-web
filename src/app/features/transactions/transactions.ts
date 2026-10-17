@@ -87,6 +87,12 @@ export class Transactions {
     ]),
   );
 
+  /** The name of the category filter says what it shows, so it matches what can be read on it. */
+  protected readonly categoryFilterLabel = computed(() => {
+    const chosen = this.categoryOptions().find((option) => option.id === this.category());
+    return `Categoría: ${chosen?.label ?? 'Todas las categorías'}`;
+  });
+
   /** What the list covers, for the header and the empty state. */
   protected readonly scopeLabel = computed(() => (this.allDates() ? 'Todas las fechas' : this.periodLabel()));
   protected readonly searchText = linkedSignal(() => this.q() ?? '');

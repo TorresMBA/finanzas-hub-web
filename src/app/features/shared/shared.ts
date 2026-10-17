@@ -24,6 +24,18 @@ import { SharedApi } from './shared-api';
 
 const MONTH = new Intl.DateTimeFormat('es-PE', { month: 'short' });
 
+/** What is between the person asking and someone else, by the sign of what that someone owes them. */
+const PERSON_LABELS: Readonly<Record<Sign, string>> = { pos: 'Te debe', neg: 'Le debes', even: 'A mano' };
+
+/** "Nadie te debe", "1 persona te debe", "3 personas te deben". */
+function peopleNote(count: number, none: string, one: string, many: string): string {
+  if (count === 0) {
+    return none;
+  }
+
+  return count === 1 ? `1 persona ${one}` : `${count} personas ${many}`;
+}
+
 /**
  * The groups the person splits expenses in. The summary says where they stand with each person and each group
  * over all of them; a group then shows what there is to pay or collect, who put how much, the activity and its
@@ -112,7 +124,7 @@ export class Shared {
           tone: 'ac',
           value: formatMoney(total.owedToMe, currency),
           sign: plain,
-          note: creditors.size === 0 ? 'Nadie te debe' : creditors.size === 1 ? '1 persona te debe' : `${creditors.size} personas te deben`,
+          note: peopleNote(creditors.size, 'Nadie te debe', 'te debe', 'te deben'),
         },
         {
           label: `Debes${suffix}`,
@@ -163,7 +175,7 @@ export class Shared {
           initials: initials(person.name),
           tone: toneOf(person.userId, me),
           sign,
-          label: sign === 'pos' ? 'Te debe' : sign === 'neg' ? 'Le debes' : 'A mano',
+          label: PERSON_LABELS[sign],
           amount: formatMoney(Math.abs(amount), person.currency),
           magnitude: Math.abs(amount),
           parts: person.parts.map((part) => `${part.group}: ${part.amount > 0 ? 'te debe' : 'le debes'} ${formatMoney(Math.abs(part.amount), person.currency)}`),
@@ -235,7 +247,7 @@ export class Shared {
   protected newExpense(): void {
     const detail = this.selected();
     const active = this.active();
-    if (detail && detail.group.status === 'active') {
+    if (detail?.group.status === 'active') {
       this.openExpenseForm(detail);
     } else if (active.length === 1) {
       this.openExpenseForm(active[0]);

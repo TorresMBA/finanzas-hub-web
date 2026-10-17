@@ -125,12 +125,11 @@ export class Budgets {
       parts.push({ id: category.id, name: 'Sin subcategoría', amount: direct });
     }
 
-    return parts
-      .sort((a, b) => b.amount - a.amount)
-      .map((part) => {
-        const share = spent > 0 ? Math.max(0, Math.min(100, (part.amount / spent) * 100)) : 0;
-        return { ...part, share, note: spent > 0 ? `${Math.round(share)}% de la categoría` : '' };
-      });
+    parts.sort((a, b) => b.amount - a.amount);
+    return parts.map((part) => {
+      const share = spent > 0 ? Math.max(0, Math.min(100, (part.amount / spent) * 100)) : 0;
+      return { ...part, share, note: spent > 0 ? `${Math.round(share)}% de la categoría` : '' };
+    });
   }
 
   protected toggle(categoryId: string): void {

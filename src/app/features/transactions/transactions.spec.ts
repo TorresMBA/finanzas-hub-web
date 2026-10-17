@@ -490,7 +490,9 @@ describe('Transactions', () => {
     await fixture.whenStable();
 
     const view = scoped.nativeElement as HTMLElement;
-    expect(view.querySelector<HTMLSelectElement>('select[aria-label="Categoría"]')!.value).toBe('c-groceries');
+    const filter = view.querySelector<HTMLSelectElement>('select[aria-label^="Categoría"]')!;
+    expect(filter.value).toBe('c-groceries');
+    expect(filter.getAttribute('aria-label')).toBe('Categoría: Supermercado');
     expect(view.querySelector('app-page-header')!.textContent).toContain('Todas las fechas');
   });
 });
