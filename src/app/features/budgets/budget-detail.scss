@@ -1,0 +1,268 @@
+@use 'look';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+h2 {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+h3 {
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.block {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--bd);
+}
+
+.head {
+  padding-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  .soft {
+    align-self: flex-start;
+  }
+}
+
+.head-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+
+  > div {
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--sf2);
+    min-width: 0;
+  }
+
+  dt {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--mu);
+  }
+
+  dd {
+    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+}
+
+// --- The month day by day.
+
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chart-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  h3 {
+    flex: 1;
+  }
+
+  .segmented {
+    padding: 3px;
+    border-radius: 8px;
+
+    button {
+      height: 24px;
+      padding: 0 9px;
+      border-radius: 6px;
+      font-size: 11.5px;
+    }
+  }
+}
+
+.plot {
+  position: relative;
+  height: 110px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: 1px solid var(--bd);
+}
+
+.plot-bar {
+  flex: 1;
+  min-width: 0;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--ac);
+
+  &.is-over {
+    background: var(--rd);
+  }
+
+  &.is-empty {
+    opacity: 0.4;
+  }
+
+  &.is-future {
+    opacity: 0.25;
+  }
+}
+
+.plot-limit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--rd);
+
+  span {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    padding-bottom: 3px;
+    font-size: 10.5px;
+    font-weight: 800;
+    color: var(--rd);
+  }
+}
+
+.plot-today {
+  position: absolute;
+  top: 0;
+  bottom: -4px;
+  width: 1px;
+  background: var(--tx2);
+  opacity: 0.6;
+}
+
+.plot-axis {
+  position: relative;
+  height: 14px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--mu);
+}
+
+.plot-axis-today {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--tx2);
+}
+
+// --- Latest movements.
+
+.list-head {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px 6px;
+
+  h3 {
+    flex: 1;
+  }
+}
+
+.link--blue {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--bl);
+}
+
+.movements li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--bd);
+  font-size: 13px;
+
+  .names strong {
+    font-weight: 800;
+  }
+}
+
+.movements .empty {
+  border-top: 0;
+  padding: 6px 20px 16px;
+}
+
+.date {
+  width: 34px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+
+  strong {
+    font-size: 15px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  span {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--mu);
+  }
+}
+
+// --- Change or end the budget.
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--bd);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.action {
+  height: 36px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9px;
+  background: var(--sf3);
+  font-size: 12.5px;
+  font-weight: 800;
+
+  &:hover {
+    background: var(--sf2);
+  }
+}
+
+.action--danger {
+  padding: 0 12px;
+  background: none;
+  color: var(--mu);
+  font-weight: 700;
+
+  &:hover {
+    background: var(--rds);
+    color: var(--rd);
+  }
+}

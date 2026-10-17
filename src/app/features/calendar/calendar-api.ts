@@ -14,6 +14,7 @@ export const KIND_LOOK: Readonly<Record<CalendarItem['kind'], { label: string; t
   expense: { label: 'Gasto', tone: 'out' },
   transfer: { label: 'Transferencia', tone: 'move' },
   cardDue: { label: 'Vence tarjeta', tone: 'move' },
+  cardClosing: { label: 'Corte de tarjeta', tone: 'move' },
 };
 
 export const REMINDER_OPTIONS: readonly { value: string; label: string }[] = [

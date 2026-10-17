@@ -62,6 +62,15 @@ function changeTone(value: number | null, goodWhenUp: boolean): 'good' | 'bad' |
   return good ? 'good' : 'bad';
 }
 
+/**
+ * The change of the expenses, and how much of them came out of what was saved for goals: a month with the trip is
+ * not a month out of control.
+ */
+function expenseNote(change: number | null, fromGoals: number, currency: string): string {
+  const base = change === null ? 'Sin gastos antes' : `${percent(change)} vs. anterior`;
+  return fromGoals > 0 ? `${base} · ${formatMoney(fromGoals, currency)} pagados con tus metas` : base;
+}
+
 /** A category's change against the period before; under 5 % either way counts as flat. */
 function trend(value: number | null): { tone: 'good' | 'bad' | ''; icon: string } {
   if (value === null || Math.abs(value) < 5) {
@@ -123,7 +132,7 @@ export class Reports {
     const rate = current.savingsRate === null ? null : Number(current.savingsRate);
     return [
       { label: 'Ingresos', value: formatMoney(current.income, currency), note: income === null ? 'Sin ingresos antes' : `${percent(income)} vs. anterior`, tone: changeTone(income, true) },
-      { label: 'Gastos', value: formatMoney(current.expense, currency), note: expense === null ? 'Sin gastos antes' : `${percent(expense)} vs. anterior`, tone: changeTone(expense, false) },
+      { label: 'Gastos', value: formatMoney(current.expense, currency), note: expenseNote(expense, Number(current.goalFundedExpense), currency), tone: changeTone(expense, false) },
       { label: 'Ahorro', value: formatMoney(current.savings, currency), note: rate === null ? 'Sin ingresos en el periodo' : `${rate.toLocaleString('es-PE')} % de tus ingresos`, tone: Number(current.savings) < 0 ? 'bad' : '' },
       { label: 'Gasto promedio diario', value: formatMoney(current.dailyExpense, currency), note: `En ${current.days} ${Number(current.days) === 1 ? 'día' : 'días'}`, tone: '' },
     ];

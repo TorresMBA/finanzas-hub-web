@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormField, form, submit, validate } from '@angular/forms/signals';
-import { Account, Goal } from '../../core/api/api-types';
+import { Account, Category, Goal } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
 import { Dialog } from '../../shared/ui/dialog';
@@ -9,24 +9,30 @@ import { formatMoney, parseAmount } from '../../shared/ui/money';
 import { GoalsApi } from './goals-api';
 import { isManagedAccount } from '../../core/api/managed-accounts';
 
-/** What the dialog needs: the goal, the direction of the money and the accounts of the person it can move with. */
+/** What the dialog needs: the goal, what to do with the money and the accounts (and, to spend, the categories) of the person. */
 export interface GoalMoneyTarget {
   readonly goal: Goal;
-  readonly kind: 'contribute' | 'withdraw';
+  readonly kind: 'contribute' | 'withdraw' | 'spend';
   readonly accounts: readonly Account[];
+  readonly categories?: readonly Category[];
 }
 
 const QUICK = [100, 250, 500];
+const MAX_DESCRIPTION = 200;
+
+const TITLES: Readonly<Record<GoalMoneyTarget['kind'], string>> = { contribute: 'Aportar a', withdraw: 'Retirar de', spend: 'Usar el dinero de' };
+const ACTIONS: Readonly<Record<GoalMoneyTarget['kind'], string>> = { contribute: 'Aportar', withdraw: 'Retirar', spend: 'Registrar el gasto' };
 
 /**
- * Puts money into a goal or takes it back. Either way it is a transfer between an account of the person and
- * their own fund for the goal: never an expense, and never someone else's money.
+ * Puts money into a goal, takes it back or spends it. Putting in and taking back are transfers between an account of
+ * the person and their own fund for the goal, never an expense. Spending is the moment it becomes one: the money comes
+ * back to the account that pays and the expense is registered there, marked as paid with the goal.
  */
 @Component({
   selector: 'app-goal-money-form',
   imports: [Dialog, Field, FormField],
   template: `
-    <app-dialog [title]="(isContribution() ? 'Aportar a «' : 'Retirar de «') + target().goal.name + '»'" (closed)="closed.emit()">
+    <app-dialog [title]="titles[target().kind] + ' «' + target().goal.name + '»'" (closed)="closed.emit()">
       <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
         @if (failure(); as text) {
           <div class="alert" role="alert">{{ text }}</div>
@@ -37,14 +43,14 @@ const QUICK = [100, 250, 500];
           <app-field [label]="'Monto (' + target().goal.currency + ')'" [hint]="hint()" [state]="moneyForm.amount()">
             <input class="input" type="text" inputmode="decimal" placeholder="0.00" [formField]="moneyForm.amount" />
           </app-field>
-          @if (isContribution()) {
+          @if (target().kind === 'contribute') {
             <div class="quick" role="group" aria-label="Montos rápidos">
               @for (amount of quick; track amount) {
                 <button type="button" class="chip-toggle" (click)="setAmount(amount)">+{{ amount }}</button>
               }
             </div>
           }
-          <app-field [label]="isContribution() ? 'Desde la cuenta' : 'Hacia la cuenta'" [state]="moneyForm.accountId()">
+          <app-field [label]="accountLabel()" [state]="moneyForm.accountId()">
             <select class="input" [formField]="moneyForm.accountId">
               <option value="">Elige una cuenta</option>
               @for (account of accounts(); track account.id) {
@@ -52,18 +58,25 @@ const QUICK = [100, 250, 500];
               }
             </select>
           </app-field>
-          <p class="form-note">
-            @if (isContribution()) {
-              Es una transferencia a tu fondo de esta meta, no un gasto. El dinero sigue siendo tuyo y puedes retirarlo.
-            } @else {
-              Vuelve de tu fondo de la meta a tu cuenta. Solo puedes retirar lo que tú aportaste.
-            }
-          </p>
+          @if (target().kind === 'spend') {
+            <app-field label="Categoría del gasto" [state]="moneyForm.categoryId()">
+              <select class="input" [formField]="moneyForm.categoryId">
+                <option value="">Elige una categoría</option>
+                @for (option of categoryOptions(); track option.id) {
+                  <option [value]="option.id">{{ option.label }}</option>
+                }
+              </select>
+            </app-field>
+            <app-field label="Descripción" [hint]="'Si la dejas vacía: «' + target().goal.name + '».'" [state]="moneyForm.description()">
+              <input class="input" type="text" [placeholder]="target().goal.name" [formField]="moneyForm.description" />
+            </app-field>
+          }
+          <p class="form-note">{{ note() }}</p>
         }
         <div class="form-actions">
           <button class="button" type="button" (click)="closed.emit()">Cancelar</button>
           <button class="button button--primary" type="submit" [disabled]="busy() || accounts().length === 0">
-            {{ busy() ? 'Guardando…' : isContribution() ? 'Aportar' : 'Retirar' }}
+            {{ busy() ? 'Guardando…' : actions[target().kind] }}
           </button>
         </div>
       </form>
@@ -90,7 +103,8 @@ export class GoalMoneyForm {
   readonly closed = output<void>();
 
   protected readonly quick = QUICK;
-  protected readonly isContribution = computed(() => this.target().kind === 'contribute');
+  protected readonly titles = TITLES;
+  protected readonly actions = ACTIONS;
 
   /** The accounts that hold money in the currency of the goal: not a credit card, not the fund of a goal. */
   protected readonly accounts = computed(() =>
@@ -98,11 +112,39 @@ export class GoalMoneyForm {
       (account) => !account.isArchived && account.currency === this.target().goal.currency && account.type !== 'creditCard' && !isManagedAccount(account.type),
     ),
   );
-  protected readonly hint = computed(() =>
-    this.isContribution() ? '' : `Tienes ${formatMoney(this.target().goal.mySaved, this.target().goal.currency)} en esta meta.`,
+
+  /** The expense categories in use, each followed by its subcategories. */
+  protected readonly categoryOptions = computed(() =>
+    (this.target().categories ?? [])
+      .filter((category) => category.kind === 'expense' && !category.isArchived)
+      .flatMap((parent) => [
+        { id: parent.id, label: parent.name },
+        ...parent.subcategories.filter((child) => !child.isArchived).map((child) => ({ id: child.id, label: `${parent.name} › ${child.name}` })),
+      ]),
   );
 
-  protected readonly model = linkedSignal(() => ({ amount: '', accountId: this.accounts().length === 1 ? this.accounts()[0].id : '' }));
+  protected readonly accountLabel = computed(() =>
+    ({ contribute: 'Desde la cuenta', withdraw: 'Hacia la cuenta', spend: 'Pagas con la cuenta' })[this.target().kind],
+  );
+  protected readonly hint = computed(() =>
+    this.target().kind === 'contribute' ? '' : `Tienes ${formatMoney(this.target().goal.mySaved, this.target().goal.currency)} en esta meta.`,
+  );
+  protected readonly note = computed(
+    () =>
+      ({
+        contribute: 'Es una transferencia a tu fondo de esta meta, no un gasto. El dinero sigue siendo tuyo y puedes retirarlo.',
+        withdraw: 'Vuelve de tu fondo de la meta a tu cuenta. Solo puedes retirar lo que tú aportaste.',
+        spend: 'El dinero vuelve a esa cuenta y se registra ahí como un gasto de hoy, marcado como pagado con esta meta. Ahorrar no fue gasto; usarlo sí.',
+      })[this.target().kind],
+  );
+
+  protected readonly model = linkedSignal(() => ({
+    // To spend, all of what is theirs by default: that is what reaching a goal is usually for.
+    amount: this.target().kind === 'spend' ? Number(this.target().goal.mySaved).toFixed(2) : '',
+    accountId: this.accounts().length === 1 ? this.accounts()[0].id : '',
+    categoryId: '',
+    description: '',
+  }));
   protected readonly moneyForm = form(this.model, (path) => {
     validate(path.amount, ({ value }) => {
       const amount = parseAmount(value()) ?? 0;
@@ -110,11 +152,17 @@ export class GoalMoneyForm {
         return { kind: 'amount', message: 'Un monto mayor que cero, con hasta dos decimales.' };
       }
 
-      return !this.isContribution() && amount > Number(this.target().goal.mySaved)
-        ? { kind: 'max', message: 'No puedes retirar más de lo que aportaste.' }
+      return this.target().kind !== 'contribute' && amount > Number(this.target().goal.mySaved)
+        ? { kind: 'max', message: 'No puedes usar más de lo que aportaste.' }
         : undefined;
     });
     validate(path.accountId, ({ value }) => (value() ? undefined : { kind: 'required', message: 'Elige una cuenta.' }));
+    validate(path.categoryId, ({ value }) =>
+      this.target().kind !== 'spend' || value() ? undefined : { kind: 'required', message: 'Elige la categoría del gasto.' },
+    );
+    validate(path.description, ({ value }) =>
+      value().trim().length > MAX_DESCRIPTION ? { kind: 'maxLength', message: `Hasta ${MAX_DESCRIPTION} caracteres.` } : undefined,
+    );
   });
 
   protected readonly failure = signal<string | null>(null);
@@ -129,16 +177,27 @@ export class GoalMoneyForm {
       this.busy.set(true);
       this.failure.set(null);
       try {
-        const { goal } = this.target();
-        const amount = parseAmount(this.model().amount) ?? 0;
-        await this.api.move(goal.id, this.isContribution() ? 'contributions' : 'withdrawals', amount, this.model().accountId, this.idempotencyKey);
-        const money = formatMoney(amount, goal.currency);
-        this.saved.emit(this.isContribution() ? `Aportaste ${money} a «${goal.name}».` : `Retiraste ${money} de «${goal.name}».`);
+        this.saved.emit(await this.send());
       } catch (error) {
         this.failure.set(errorMessage(error));
       } finally {
         this.busy.set(false);
       }
     });
+  }
+
+  private async send(): Promise<string> {
+    const { goal, kind } = this.target();
+    const { accountId, categoryId, description } = this.model();
+    const amount = parseAmount(this.model().amount) ?? 0;
+    const money = formatMoney(amount, goal.currency);
+    if (kind === 'spend') {
+      await this.api.spend(goal.id, { amount, accountId, categoryId, description: description.trim() || null }, this.idempotencyKey);
+      const all = amount >= Number(goal.mySaved);
+      return `Registraste un gasto de ${money} pagado con «${goal.name}».${all && goal.isOwner ? ' Si ya terminaste con ella, puedes archivarla.' : ''}`;
+    }
+
+    await this.api.move(goal.id, kind === 'contribute' ? 'contributions' : 'withdrawals', amount, accountId, this.idempotencyKey);
+    return kind === 'contribute' ? `Aportaste ${money} a «${goal.name}».` : `Retiraste ${money} de «${goal.name}».`;
   }
 }

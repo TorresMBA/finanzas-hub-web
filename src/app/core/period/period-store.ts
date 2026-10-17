@@ -48,6 +48,15 @@ export class PeriodStore {
     this.selected.set(this.currentMonth());
   }
 
+  /** Jumps to any month, as a month picker gives it: "2026-03". Anything else is ignored. */
+  select(isoMonth: string): void {
+    const match = /^(\d{4})-(\d{2})$/.exec(isoMonth);
+    const [year, month] = match ? [Number(match[1]), Number(match[2])] : [0, 0];
+    if (year >= 1900 && month >= 1 && month <= 12) {
+      this.selected.set({ year, month });
+    }
+  }
+
   private currentMonth(): Month {
     const now = this.today();
     return { year: now.getFullYear(), month: now.getMonth() + 1 };

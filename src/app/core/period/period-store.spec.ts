@@ -42,4 +42,15 @@ describe('PeriodStore', () => {
 
     expect(store.isoMonth()).toBe('2026-10');
   });
+
+  it('jumps to the month a picker gives and ignores anything that is not one', () => {
+    const store = storeOn(new Date(2026, 9, 12));
+
+    store.select('2025-03');
+    expect(store.label()).toBe('Marzo 2025');
+
+    store.select('');
+    store.select('2025-13');
+    expect(store.isoMonth()).toBe('2025-03');
+  });
 });

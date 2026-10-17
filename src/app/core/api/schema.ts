@@ -1396,6 +1396,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/goals/{goalId}/spend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SpendFromGoal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/goals/{goalId}/archive": {
         parameters: {
             query?: never;
@@ -1678,6 +1694,7 @@ export interface components {
             /** Format: date */
             occurredOn: string;
             description: string;
+            subcategoryName: null | string;
             accountName: string;
             /** Format: double */
             amount: number | string;
@@ -1738,7 +1755,7 @@ export interface components {
         /** @enum {unknown} */
         BudgetStatus: "onTrack" | "atRisk" | "exceeded" | "fixed" | "paid";
         /** @enum {unknown} */
-        CalendarItemKind: "income" | "expense" | "transfer" | "cardDue";
+        CalendarItemKind: "income" | "expense" | "transfer" | "cardDue" | "cardClosing";
         CalendarItemResponse: {
             id: string;
             /** Format: date */
@@ -2175,6 +2192,17 @@ export interface components {
             participants: components["schemas"]["GoalParticipantResponse"][];
             /** Format: uuid */
             myFundAccountId: null | string;
+        };
+        GoalSpendRequest: {
+            /** Format: double */
+            amount: null | number | string;
+            /** Format: uuid */
+            accountId: null | string;
+            /** Format: uuid */
+            categoryId: null | string;
+            description?: null | string;
+            /** Format: date */
+            occurredOn?: null | string;
         };
         GoalsResponse: {
             goals: components["schemas"]["GoalResponse"][];
@@ -2722,6 +2750,8 @@ export interface components {
             dailyExpense: number | string;
             /** Format: int32 */
             days: number | string;
+            /** Format: double */
+            goalFundedExpense: number | string;
         };
         ResetPasswordRequest: {
             email: string;
@@ -2987,6 +3017,8 @@ export interface components {
             createdAt: string;
             voidReason: null | string;
             transfer: null | components["schemas"]["TransferResponse"];
+            /** @default false */
+            fundedByGoal: boolean;
         };
         /** @enum {unknown} */
         TransactionType: "income" | "expense" | null;
@@ -8658,6 +8690,80 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["GoalMoneyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SpendFromGoal: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoalSpendRequest"];
             };
         };
         responses: {

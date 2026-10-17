@@ -1,6 +1,6 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { Account, Goal, GoalDetail, GoalList } from '../../core/api/api-types';
+import { Account, Category, Goal, GoalDetail, GoalList } from '../../core/api/api-types';
 import { SessionStore } from '../../core/auth/session-store';
 import { errorMessage } from '../../core/errors/error-messages';
 import { NotificationCenter } from '../../core/notifications/notification-center';
@@ -48,6 +48,7 @@ export class Goals {
 
   protected readonly goals = httpResource<GoalList>(() => this.api.goalsUrl());
   private readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
+  private readonly categories = httpResource<Category[]>(() => this.api.categoriesUrl());
 
   protected readonly filter = signal<Filter>('active');
   private readonly chosenId = signal<string | null>(null);
@@ -131,8 +132,8 @@ export class Goals {
     this.formTarget.set({ mode: 'edit', goal });
   }
 
-  protected openMoney(goal: Goal, kind: 'contribute' | 'withdraw'): void {
-    this.moneyTarget.set({ goal, kind, accounts: this.accounts.value() ?? [] });
+  protected openMoney(goal: Goal, kind: GoalMoneyTarget['kind']): void {
+    this.moneyTarget.set({ goal, kind, accounts: this.accounts.value() ?? [], categories: this.categories.value() ?? [] });
   }
 
   protected onSaved(message: string): void {

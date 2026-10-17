@@ -187,6 +187,7 @@ export class TransactionDetail {
       { label: 'Hacia', value: transfer?.toAccountName },
       { label: 'Llega', value: arrives },
       { label: 'Estado', value: STATUS_LABELS[item.status] },
+      { label: 'Pagado con', value: item.fundedByGoal ? 'El ahorro de una meta' : null },
       { label: 'Comercio', value: item.merchant },
       { label: 'Nota', value: item.note },
       { label: 'Motivo de la anulación', value: item.voidReason },

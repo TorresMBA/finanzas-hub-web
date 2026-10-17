@@ -124,8 +124,9 @@
               <span class="names">
                 <strong>{{ item.description }}</strong>
                 <span class="lead">
-                  {{ kindLook[item.kind].label }} · {{ item.accountName }} ·
-                  {{ item.status === 'confirmed' ? 'Registrado' : item.status === 'pending' ? 'Por confirmar' : 'Programado' }}
+                  {{ kindLook[item.kind].label }} · {{ item.accountName }}@if (!isCardDate(item)) {
+                    · {{ item.status === 'confirmed' ? 'Registrado' : item.status === 'pending' ? 'Por confirmar' : 'Programado' }}
+                  }
                 </span>
                 @if (item.status === 'pending' && item.ruleId) {
                   <span class="item-actions">
@@ -134,7 +135,9 @@
                   </span>
                 }
               </span>
-              <strong class="tabular">{{ item.amount | money: item.currency }}</strong>
+              @if (!isCardDate(item) || +item.amount > 0) {
+                <strong class="tabular">{{ item.amount | money: item.currency }}</strong>
+              }
             </li>
           } @empty {
             <li class="none">Nada este día.</li>
@@ -154,7 +157,9 @@
                 <strong>{{ item.description }}</strong>
                 <span class="lead">{{ formatShortDate(item.date) }} · {{ kindLook[item.kind].label }}</span>
               </span>
-              <strong class="tabular">{{ item.amount | money: item.currency }}</strong>
+              @if (!isCardDate(item) || +item.amount > 0) {
+                <strong class="tabular">{{ item.amount | money: item.currency }}</strong>
+              }
             </li>
           } @empty {
             <li class="none">Nada pendiente en lo que queda del mes.</li>

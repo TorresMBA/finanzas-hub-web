@@ -1,0 +1,111 @@
+// What the page and the side panel share: text, the chip of a state, the colour of a figure and the boxed notes.
+@use 'mixins' as m;
+
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+h2,
+h3,
+p,
+dl,
+dd {
+  margin: 0;
+}
+
+.lead {
+  font-size: 12px;
+  color: var(--mu);
+  text-wrap: pretty;
+}
+
+.names {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+
+  strong,
+  h2 {
+    @include m.truncate;
+  }
+}
+
+.chip {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--sf2);
+  color: var(--tx2);
+}
+
+// The soft background of a tone and its strong colour; a figure takes only the colour.
+[data-tone='ok'][data-tone] {
+  --soft: var(--acs);
+  --strong: var(--ac);
+}
+
+[data-tone='warn'][data-tone] {
+  --soft: var(--ams);
+  --strong: var(--am);
+}
+
+[data-tone='over'][data-tone] {
+  --soft: var(--rds);
+  --strong: var(--rd);
+}
+
+[data-tone='info'][data-tone] {
+  --soft: var(--bls);
+  --strong: var(--bl);
+}
+
+.chip[data-tone],
+.note[data-tone] {
+  background: var(--soft);
+}
+
+.chip[data-tone],
+dd[data-tone],
+.note[data-tone] app-icon,
+.message[data-tone] {
+  color: var(--strong);
+}
+
+// A sentence that says how something is going, with the icon of its tone.
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: var(--tx2);
+  text-wrap: pretty;
+
+  app-icon {
+    flex: none;
+  }
+}
+
+// A light action in the colour of the accent.
+.soft {
+  height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9px;
+  background: var(--acs);
+  color: var(--ac);
+  font-size: 12.5px;
+  font-weight: 800;
+
+  &:hover:not(:disabled) {
+    background: var(--sf3);
+  }
+}

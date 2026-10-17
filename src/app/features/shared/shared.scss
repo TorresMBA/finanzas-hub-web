@@ -1,396 +1,338 @@
 @use 'mixins' as m;
+@use 'look';
 
 :host {
-  display: block;
-}
-
-.alert {
-  margin-bottom: 16px;
-}
-
-.loading,
-.list,
-.detail {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-width: 0;
+  gap: 20px;
 }
 
-.detail {
+app-page-header {
+  margin-bottom: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .button {
+    height: 40px;
+    font-size: 13px;
+  }
+
+  .button:not(.button--primary) {
+    background: var(--sf);
+
+    &:hover:not(:disabled) {
+      background: var(--sf2);
+    }
+  }
+
+  .button--primary {
+    font-weight: 800;
+  }
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
-// Side by side on a wide screen. Below that the list and the detail take turns, like two pages.
-.layout {
+// --- Where the person stands, over everything.
+
+.kpis {
   display: grid;
-  gap: 20px;
-  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 
-  @include m.desktop {
-    grid-template-columns: 340px minmax(0, 1fr);
+  // Two by two on a phone, so the groups are not four cards away.
+  @include m.mobile {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  gap: 12px;
 }
 
-.detail,
-:host(.is-detail) .list {
-  display: none;
-}
+.kpi {
+  padding: 16px 18px;
 
-:host(.is-detail) .detail {
+  @include m.mobile {
+    padding: 14px;
+  }
+
+  border-radius: 14px;
   display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-@include m.desktop {
-  .list,
-  .detail,
-  :host(.is-detail) .list {
-    display: flex;
-  }
-
-  .back {
-    display: none !important;
-  }
-}
-
-ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-h2 {
-  font-size: 16px;
-  font-weight: 800;
-}
-
-h3 {
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.lead,
-.none {
+.kpi-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 12.5px;
+  font-weight: 700;
   color: var(--mu);
 }
 
-.none {
-  padding: 12px 0;
-}
+.kpi-value {
+  font-size: 24px;
 
-.is-negative {
-  color: var(--rd);
-}
-
-.is-positive {
-  color: var(--ac);
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.filters {
-  flex-wrap: wrap;
-  align-self: flex-start;
-}
-
-// The global badge covers neutral, accent, info and warn by class; here the state picks the tone.
-.badge {
-  flex: none;
-
-  &[data-tone='ok'] {
-    background: var(--acs);
-    color: var(--ac);
+  @include m.mobile {
+    font-size: 19px;
   }
 
-  &[data-tone='warn'] {
-    background: var(--ams);
-    color: var(--am);
-  }
-
-  &[data-tone='over'] {
-    background: var(--rds);
-    color: var(--rd);
-  }
-
-  &[data-tone='info'] {
-    background: var(--bls);
-    color: var(--bl);
-  }
-}
-
-.avatar {
-  flex: none;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--vis);
-  color: var(--vi);
-  font-size: 11.5px;
   font-weight: 800;
-}
+  letter-spacing: -0.015em;
 
-.avatar--more {
-  background: var(--sf3);
-  color: var(--tx2);
-}
-
-.avatar--small,
-.avatars .avatar {
-  width: 26px;
-  height: 26px;
-  font-size: 10px;
-}
-
-.avatars {
-  display: flex;
-
-  .avatar {
-    box-shadow: 0 0 0 2px var(--sf);
-
-    & + .avatar {
-      margin-left: -6px;
-    }
+  &[data-sign='even'] {
+    color: var(--tx);
   }
 }
 
-// --- The list of groups.
-
-.groups {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.kpi-note {
+  font-size: 12px;
+  color: var(--mu);
+  text-wrap: pretty;
 }
 
-.group {
-  width: 100%;
-  padding: 14px 16px;
+// --- Side list and main column, side by side while they fit and one under the other when not.
+
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.side {
+  flex: 1 1 260px;
+  max-width: 340px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+
+  @include m.mobile {
+    max-width: none;
+  }
+}
+
+.main {
+  flex: 999 1 520px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section {
+  padding: 10px 4px 2px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--mu);
+}
+
+.pick {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--sf);
+  border: 1px solid var(--bd);
   text-align: left;
 
   &:hover {
     background: var(--sf2);
   }
 
-  @include m.desktop {
-    &[aria-pressed='true'] {
-      background: var(--sf2);
-      border-color: var(--ac);
-    }
+  &[aria-pressed='true'] {
+    background: var(--sf2);
+    border-color: var(--ac);
   }
 }
 
-.group-top,
-.group-foot {
+.pick-head,
+.pick-foot {
+  width: 100%;
   display: flex;
-  justify-content: space-between;
+  gap: 12px;
+}
+
+.pick-head {
   align-items: center;
-  gap: 10px;
 
   strong {
-    font-size: 15px;
     @include m.truncate;
   }
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-// --- The detail of a group.
-
-.detail-head {
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.back {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.detail-title {
-  display: flex;
-  flex-wrap: wrap;
+.pick-foot {
+  align-items: flex-end;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  gap: 8px;
 
-  h2 {
-    font-size: 20px;
+  .names strong {
+    font-size: 15px;
   }
 }
 
-.balance {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-  padding-top: 14px;
-  border-top: 1px solid var(--bd);
 
-  dt {
-    font-size: 12.5px;
-    color: var(--mu);
-  }
-
-  dd {
-    margin: 2px 0 0;
-    font-size: 20px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.panel {
-  padding: 18px 20px;
+.archived {
   display: flex;
   flex-direction: column;
   gap: 8px;
 
-  > header {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-  }
-}
-
-.rows li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  padding: 10px 0;
-  font-size: 13.5px;
-
-  & + li {
-    border-top: 1px solid var(--bd);
-  }
-}
-
-.is-cancelled > .names,
-.is-cancelled > summary .names {
-  opacity: 0.55;
-  text-decoration: line-through;
-}
-
-.names {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.side {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px 10px;
-}
-
-// An expense opens to show who has repaid their part.
-.expenses > li + li {
-  border-top: 1px solid var(--bd);
-}
-
-.expense {
-  padding: 4px 0;
-
-  summary {
+  > summary {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 0;
-    font-size: 13.5px;
+    gap: 4px;
+    margin-bottom: 8px;
   }
 
-  > .link {
-    margin: 4px 0 8px;
+  .pick + .pick {
+    margin-top: 8px;
   }
 }
 
-.chevron {
-  flex: none;
-  color: var(--mu);
+// --- Summary: by person and by group.
+
+.person {
+  flex-wrap: wrap;
+  gap: 12px 16px;
 }
 
-.expense-side,
-.share-side {
-  flex: none;
+.person-names {
+  flex: 1 1 200px;
+}
+
+.parts {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
 }
 
-.shares {
-  margin: 2px 0 8px;
-  padding: 4px 12px;
-  border-radius: 12px;
+.part {
+  padding: 3px 8px;
+  border-radius: 7px;
   background: var(--sf2);
+  font-size: 11.5px;
+  color: var(--tx2);
+}
 
-  li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 0;
-    font-size: 13px;
+.person-side {
+  margin-left: auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  color: var(--mu);
 
-    & + li {
-      border-top: 1px solid var(--bd);
+  strong {
+    font-size: 18px;
+    font-weight: 800;
+  }
+}
+
+.person-label {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.by-group {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+
+  th,
+  td {
+    padding: 13px 12px;
+    text-align: right;
+    font-weight: 400;
+    color: var(--tx2);
+
+    &:first-child {
+      padding-left: 20px;
+      text-align: left;
+      width: 28%;
+    }
+
+    &:last-child {
+      padding-right: 20px;
     }
   }
 
-  .names {
-    gap: 5px;
+  thead th {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    background: var(--sf2);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--mu);
   }
 
-  .meter {
-    max-width: 180px;
+  tbody tr {
+    border-bottom: 1px solid var(--bd);
+
+    &:hover {
+      background: var(--sf2);
+    }
+  }
+
+  tbody th,
+  .strong,
+  tfoot th,
+  tfoot td {
+    font-weight: 800;
+    color: var(--tx);
+  }
+
+  tbody td.strong:nth-child(2) {
+    font-weight: 700;
+  }
+
+  [data-sign='pos'] {
+    color: var(--ac);
+  }
+
+  [data-sign='neg'] {
+    color: var(--rd);
+  }
+
+  [data-sign='even'] {
+    color: var(--mu);
   }
 }
 
-// Payments and members fold away: they are looked at now and then, not every time.
-.fold > summary {
-  display: flex;
-  justify-content: space-between;
+.row-link {
+  display: inline-flex;
   align-items: center;
-}
+  gap: 8px;
+  font-weight: 800;
 
-summary {
-  cursor: pointer;
-  list-style: none;
+  app-icon {
+    color: var(--mu);
+  }
 
-  &::-webkit-details-marker {
-    display: none;
+  &:hover {
+    color: var(--ac);
   }
 }
 
-details[open] > summary .chevron {
-  transform: rotate(180deg);
-}
+// --- Choosing the group of a new expense.
 
-.fold-actions {
+.choose {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
+  flex-direction: column;
+  gap: 8px;
 }

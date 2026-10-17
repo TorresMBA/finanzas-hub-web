@@ -42,12 +42,24 @@ test('a budget of 450 with 498 spent is exceeded, and adjusting the limit puts i
 
   await page.goto('/budgets');
   await expect(row).toContainText('Excedido');
-  await expect(row).toContainText('S/ 498.00 de S/ 450.00');
+  await expect(row).toContainText('S/ 498.00 / S/ 450.00');
+  await expect(row).toContainText('S/ 48.00 sobre el límite');
+  await expect(page.getByRole('region', { name: 'Resumen del mes' })).toContainText('−S/ 48.00');
   const detail = page.getByRole('complementary', { name: 'Detalle del presupuesto' });
-  await expect(detail).toContainText('Excediste el límite por S/ 48.00');
+  await expect(detail).toContainText('Superaste el límite el');
   await expect(detail).toContainText('Wong');
 
-  await detail.getByRole('button', { name: 'Ajustar límite' }).click();
+  // The panel offers a limit that covers what was spent.
+  await detail.getByRole('button', { name: 'Subir límite a S/ 500.00' }).click();
+  await expect(page.getByRole('status')).toHaveText('«Supermercado» ahora tiene un límite de S/ 500.00 al mes.');
+  await expect(row).not.toContainText('Excedido');
+
+  // Nothing is wider than a phone.
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  await detail.getByRole('button', { name: 'Editar presupuesto' }).click();
   const adjust = page.getByRole('dialog', { name: 'Ajustar «Supermercado»' });
   await adjust.getByLabel(/^Límite mensual/).fill('1200');
   await adjust.getByRole('button', { name: 'Guardar' }).click();

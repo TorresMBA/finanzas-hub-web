@@ -17,8 +17,8 @@ const category = (name: string, amount: number, previousAmount: number, change: 
 
 const REPORT: ReportSummary = {
   period: 'month', label: '2026-10', from: '2026-10-01', to: '2026-10-31', previousFrom: '2026-09-01', previousTo: '2026-09-30', baseCurrency: 'PEN',
-  current: { income: 2000, expense: 700, savings: 1300, savingsRate: 65, dailyExpense: 46.67, days: 15 },
-  previous: { income: 2000, expense: 1000, savings: 1000, savingsRate: 50, dailyExpense: 33.33, days: 30 },
+  current: { income: 2000, expense: 700, savings: 1300, savingsRate: 65, dailyExpense: 46.67, days: 15, goalFundedExpense: 0 },
+  previous: { income: 2000, expense: 1000, savings: 1000, savingsRate: 50, dailyExpense: 33.33, days: 30, goalFundedExpense: 0 },
   categories: [
     category('Supermercado', 300, 200, 50),
     category('Transporte', 150, 150, 0),

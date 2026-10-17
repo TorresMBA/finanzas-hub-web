@@ -1,156 +1,282 @@
 @use 'mixins' as m;
+@use 'look';
 
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.alert {
-  margin-bottom: 16px;
+app-page-header {
+  margin-bottom: 0;
+
+  .button {
+    height: 40px;
+    font-size: 13px;
+    font-weight: 800;
+  }
 }
 
 .loading,
 .main {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
 }
 
-.layout {
-  display: grid;
-  gap: 20px;
-  align-items: start;
+// --- The month: what is left, the bar and the figures.
 
-  @include m.desktop {
-    grid-template-columns: minmax(0, 1fr) 360px;
-  }
-}
-
-ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-h2 {
-  font-size: 15px;
-  font-weight: 800;
-}
-
-h3 {
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--tx2);
-}
-
-.lead,
-.none {
-  font-size: 12.5px;
-  color: var(--mu);
-}
-
-.none {
-  padding: 14px 0;
-}
-
-.headline {
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.is-negative {
-  color: var(--rd);
-}
-
-// The global badge covers neutral, accent, info and warn; a budget also needs "over".
-.badge {
-  flex: none;
-
-  &[data-tone='ok'] {
-    background: var(--acs);
-    color: var(--ac);
-  }
-
-  &[data-tone='warn'] {
-    background: var(--ams);
-    color: var(--am);
-  }
-
-  &[data-tone='over'] {
-    background: var(--rds);
-    color: var(--rd);
-  }
-
-  &[data-tone='info'] {
-    background: var(--bls);
-    color: var(--bl);
-  }
-}
-
-.summary {
+.month {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
-.summary-head,
-.summary-foot {
+.month-head {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: 12px;
+  gap: 12px 20px;
 }
 
-.summary-head .lead {
-  display: block;
+.month-left {
+  flex: 1 1 280px;
+  min-width: 0;
 }
 
-.summary-foot {
+.label {
   font-size: 12.5px;
+  font-weight: 700;
   color: var(--mu);
 }
 
-// The bar of what was spent with a mark where an even pace would be today.
-.pace {
-  position: relative;
-  padding: 4px 0;
+.month-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--mu);
 
-  .meter {
-    height: 10px;
+  strong {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--tx);
+
+    @include m.mobile {
+      font-size: 28px;
+    }
   }
 }
 
-.pace-mark {
-  position: absolute;
-  top: 0;
-  bottom: 0;
+.when {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 99px;
+  background: var(--sf2);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--tx2);
+
+  app-icon {
+    color: var(--mu);
+  }
+}
+
+.month-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+// A bar of spending: what was spent, what went over the limit, the fixed payments still to come and the marks on it.
+.track {
+  position: relative;
+  display: block;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--sf3);
+
+  > span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+  }
+}
+
+.track--big {
+  height: 12px;
+}
+
+.track-spent {
+  left: 0;
+  border-radius: 99px;
+  background: var(--ac);
+}
+
+.track-over {
+  border-radius: 0 99px 99px 0;
+  background: var(--rd);
+}
+
+.track-pending,
+.swatch.swatch--pending {
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--am) 55%, transparent) 0 4px,
+    color-mix(in srgb, var(--am) 18%, transparent) 4px 8px
+  );
+}
+
+.track-pending {
+  border-radius: 0 99px 99px 0;
+}
+
+.track > .track-pace {
+  top: -3px;
+  bottom: -3px;
   width: 2px;
   border-radius: 2px;
   background: var(--tx);
 }
 
+.track--big > .track-pace {
+  top: -4px;
+  bottom: -4px;
+}
+
+.track > .track-limit {
+  top: -6px;
+  bottom: -6px;
+  width: 2px;
+  background: var(--rd);
+}
+
+.track-spent,
+.swatch {
+  &[data-level='warn'] {
+    background: var(--am);
+  }
+
+  &[data-level='over'] {
+    background: var(--rd);
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mu);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--ac);
+}
+
+.tick {
+  width: 2px;
+  height: 12px;
+  background: var(--tx);
+}
+
+.tick--limit {
+  background: var(--rd);
+}
+
+.month .note {
+  padding: 12px 14px;
+  border-radius: 12px;
+
+  > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  strong {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--tx);
+  }
+}
+
 .figures {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--bd);
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+
+  @include m.mobile {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  > div {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--sf2);
+    min-width: 0;
+  }
 
   dt {
-    font-size: 12.5px;
+    font-size: 11.5px;
+    font-weight: 700;
     color: var(--mu);
   }
 
   dd {
-    margin: 2px 0 0;
+    margin-top: 2px;
     font-size: 18px;
     font-weight: 800;
-    font-variant-numeric: tabular-nums;
+  }
+}
+
+.figures .figure-note {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--mu);
+  text-wrap: pretty;
+}
+
+// --- The list on one side and the panel on the other while they fit, one under the other when not.
+
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.main {
+  flex: 999 1 520px;
+}
+
+.detail {
+  flex: 1 1 380px;
+  max-width: 440px;
+  min-width: 0;
+  position: sticky;
+  top: 16px;
+
+  @include m.mobile {
+    position: static;
+    max-width: none;
   }
 }
 
@@ -158,28 +284,74 @@ h3 {
   flex-wrap: wrap;
   align-self: flex-start;
   max-width: 100%;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  background: var(--sf);
+
+  button {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    &:disabled {
+      opacity: 0.45;
+    }
+  }
+
+  button[aria-pressed='true'] {
+    background: var(--sf3);
+    box-shadow: none;
+  }
+}
+
+.count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 99px;
+  background: var(--sf2);
+  font-size: 11px;
+  color: var(--mu);
+
+  &[data-tone] {
+    background: var(--soft);
+    color: var(--strong);
+  }
 }
 
 .rows {
-  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
-  .none {
-    padding: 24px 14px;
-    text-align: center;
+.budget {
+  border: 1px solid var(--bd);
+  border-radius: 14px;
+  background: var(--sf);
+  overflow: hidden;
+
+  &.is-selected {
+    border-color: var(--ac);
+    background: var(--sf2);
   }
 }
 
 .row {
   width: 100%;
-  padding: 12px;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  border-radius: 12px;
+  gap: 14px;
+  padding: 16px 18px;
   text-align: left;
 
-  &:hover,
-  &[aria-pressed='true'] {
+  &:hover {
     background: var(--sf2);
   }
 }
@@ -189,107 +361,124 @@ h3 {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-
-  .meter {
-    display: block;
-  }
+  gap: 10px;
 }
 
 .row-line {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
+}
 
-  strong {
-    @include m.truncate;
+.row-name {
+  font-size: 14.5px;
+  font-weight: 800;
+}
+
+.row-amount {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 800;
+
+  span {
+    color: var(--mu);
+    font-weight: 600;
   }
 }
 
 .row-note {
-  font-size: 12.5px;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 12px;
   color: var(--mu);
-  font-variant-numeric: tabular-nums;
-
-  // The margin per day stays whole; on a phone it is the sentence before it that wraps.
-  span:last-child {
-    flex: none;
-    white-space: nowrap;
-  }
 }
 
-.detail {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-
-  @include m.desktop {
-    position: sticky;
-    top: 16px;
-  }
-}
-
-.detail-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.names {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-
-  strong,
-  h2 {
-    @include m.truncate;
-  }
-}
-
-.left-line {
-  font-size: 13px;
-  font-weight: 600;
+.message {
+  font-weight: 700;
   color: var(--tx2);
 }
 
-.daily {
-  height: 72px;
+// The subcategories of a budget, folded under its row. Their bars are each one's share of what the budget spent.
+.parts-toggle {
+  width: 100%;
   display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  border-bottom: 1px solid var(--bd);
-}
-
-.day {
-  flex: 1;
-  min-height: 2px;
-  border-radius: 3px 3px 0 0;
-  background: var(--sf3);
-}
-
-.day--spent {
-  background: var(--ac);
-}
-
-.movements {
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px 9px 72px;
   border-top: 1px solid var(--bd);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mu);
 
-  li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 0;
-    border-bottom: 1px solid var(--bd);
-    font-size: 13px;
+  &:hover {
+    background: var(--sf2);
+    color: var(--tx);
   }
 }
 
-.detail-actions {
+.parts {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 18px 14px 72px;
+
+  @include m.mobile {
+    padding-left: 18px;
+  }
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+.part-line {
+  display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 12.5px;
+
+  strong {
+    min-width: 80px;
+    text-align: right;
+    font-weight: 800;
+  }
+}
+
+.part-name {
+  flex: 1;
+  font-weight: 700;
+}
+
+.is-empty .part-name,
+.is-empty strong {
+  color: var(--mu);
+}
+
+.part-bar {
+  height: 4px;
+  border-radius: 99px;
+  background: var(--sf3);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--ac);
+  }
+
+  &.is-over span {
+    background: var(--rd);
+  }
+}
+
+.none {
+  padding: 28px;
+  border: 1px dashed var(--bd);
+  border-radius: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--mu);
 }

@@ -81,6 +81,10 @@
             <button type="button" class="button button--small button--primary" (click)="openMoney(goal, 'contribute')">Aportar</button>
           }
           @if (+goal.mySaved > 0) {
+            <!-- Once the goal is reached, spending what was saved is the natural next step. -->
+            <button type="button" class="button button--small" [class.button--primary]="goal.health === 'completed'" (click)="openMoney(goal, 'spend')">
+              Usar el dinero
+            </button>
             <button type="button" class="button button--small" (click)="openMoney(goal, 'withdraw')">Retirar</button>
           }
           @if (goal.isOwner && goal.status === 'active') {

@@ -2,7 +2,6 @@
   <app-brand-mark />
   <span class="brand-text">
     <span class="name">FinanzasHub</span>
-    <span class="period">{{ period.label() }}</span>
   </span>
 </a>
 
@@ -23,13 +22,21 @@
 <app-search />
 
 <div class="month" role="group" aria-label="Mes seleccionado">
-  <button type="button" aria-label="Mes anterior" (click)="period.previous()">
+  <button type="button" class="step" aria-label="Mes anterior" (click)="period.previous()">
     <app-icon name="chevron_left" [size]="18" />
   </button>
-  <span aria-live="polite">{{ period.label() }}</span>
-  <button type="button" aria-label="Mes siguiente" (click)="period.next()">
+  <span class="picker">
+    <button type="button" class="picker-label" aria-live="polite" [attr.aria-label]="period.label() + '. Elegir otro mes'" (click)="openPicker(monthInput)">
+      {{ period.label() }}
+    </button>
+    <input #monthInput type="month" tabindex="-1" aria-hidden="true" [value]="period.isoMonth()" (change)="period.select(monthInput.value)" />
+  </span>
+  <button type="button" class="step" aria-label="Mes siguiente" (click)="period.next()">
     <app-icon name="chevron_right" [size]="18" />
   </button>
+  @if (!period.isCurrent()) {
+    <button type="button" class="today" aria-label="Volver al mes actual" (click)="period.goToCurrent()">Hoy</button>
+  }
 </div>
 
 <button

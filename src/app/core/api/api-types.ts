@@ -48,6 +48,7 @@ export type GoalDetail = Schemas['GoalDetailResponse'];
 export type GoalMember = Schemas['GoalMemberResponse'];
 export type CreateGoalRequest = Schemas['CreateGoalRequest'];
 export type UpdateGoalRequest = Schemas['UpdateGoalRequest'];
+export type GoalSpendRequest = Schemas['GoalSpendRequest'];
 export type SharedGroups = Schemas['SharedGroupsResponse'];
 export type SharedGroupSummary = Schemas['SharedGroupSummaryResponse'];
 export type SharedGroupDetail = Schemas['SharedGroupDetailResponse'];

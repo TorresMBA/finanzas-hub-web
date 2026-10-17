@@ -45,19 +45,17 @@
   font-size: 15px;
 }
 
-.period {
-  font-size: 11px;
-  color: var(--mu);
-}
-
 .spacer {
   flex: 1;
 }
 
+// On a phone there is no room for the arrows: the month itself opens the picker of the phone.
 .month {
-  display: none;
+  display: flex;
   align-items: center;
+  gap: 2px;
   height: 38px;
+  padding: 0 4px;
   border-radius: 10px;
   background: var(--sf);
   border: 1px solid var(--bd);
@@ -65,18 +63,54 @@
   font-weight: 600;
   white-space: nowrap;
 
-  @include m.tablet-up {
-    display: flex;
-  }
-
-  button {
-    width: 32px;
+  .step {
+    display: none;
+    width: 28px;
     height: 100%;
-    display: grid;
     place-items: center;
     color: var(--mu);
     border-radius: 10px;
+
+    @include m.tablet-up {
+      display: grid;
+    }
   }
+}
+
+.picker {
+  position: relative;
+  display: flex;
+}
+
+.picker-label {
+  padding: 0 6px;
+  height: 30px;
+  border-radius: 8px;
+  font: inherit;
+  color: inherit;
+
+  &:hover {
+    background: var(--sf2);
+  }
+}
+
+// Present for the picker to anchor to, never seen nor reached by Tab.
+.picker input {
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.today {
+  padding: 0 8px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--acs);
+  color: var(--ac);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .icon-button {

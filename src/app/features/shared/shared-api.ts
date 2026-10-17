@@ -1,7 +1,7 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, computed, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { CreateSharedExpenseRequest, SharedExpense, SharedGroupDetail, SplitType } from '../../core/api/api-types';
+import { CreateSharedExpenseRequest, SharedExpense, SharedGroupDetail, SharedGroups, SplitType } from '../../core/api/api-types';
 import { IDEMPOTENCY_KEY } from '../../core/http/api-interceptors';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 
@@ -11,6 +11,12 @@ export const STATUS_LOOK: Readonly<Record<SharedExpense['status'], { label: stri
   settled: { label: 'Liquidado', tone: 'ok' },
   cancelled: { label: 'Cancelado', tone: 'none' },
 };
+
+/** The list of groups with the detail of each one, by group id. */
+export interface SharedBoard {
+  readonly list: SharedGroups;
+  readonly details: ReadonlyMap<string, SharedGroupDetail>;
+}
 
 export const SPLIT_TYPES: readonly { value: SplitType; label: string; unit: string }[] = [
   { value: 'equal', label: 'Partes iguales', unit: '' },
@@ -63,8 +69,14 @@ export class SharedApi {
   readonly accountsUrl = computed(() => (this.workspaces.current() ? `${this.base()}/accounts` : undefined));
   readonly categoriesUrl = computed(() => (this.workspaces.current() ? `${this.base()}/categories?kind=expense` : undefined));
 
-  detailUrl(groupId: string | null): string | undefined {
-    return this.workspaces.current() && groupId ? `${this.base()}/shared-groups/${groupId}` : undefined;
+  /**
+   * The list and, behind it, every group as the person sees it: the summary adds up what is owed per person and
+   * per group over all of them. The groups of a person are a handful, so asking for each one is cheap.
+   */
+  async board(groupsUrl: string): Promise<SharedBoard> {
+    const list = await firstValueFrom(this.http.get<SharedGroups>(groupsUrl));
+    const details = await Promise.all(list.groups.map((group) => firstValueFrom(this.http.get<SharedGroupDetail>(`${groupsUrl}/${group.id}`))));
+    return { list, details: new Map(details.map((detail) => [detail.group.id, detail])) };
   }
 
   createGroup(name: string, memberUserIds: readonly string[]): Promise<SharedGroupDetail> {

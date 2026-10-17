@@ -48,6 +48,7 @@ const movement = (id: string, description: string, signedAmount: number, occurre
   createdAt: '2026-10-12T10:00:00Z',
   voidReason: null,
   transfer: null,
+  fundedByGoal: false,
   ...extra,
 });
 const WONG = movement('t-wong', 'Wong', -54, '2026-10-12', { tags: ['mercado'], merchant: 'Wong Benavides' });

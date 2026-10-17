@@ -84,6 +84,7 @@ const OPENING: Transaction = {
   createdAt: '2026-10-01T10:00:00Z',
   voidReason: null,
   transfer: null,
+  fundedByGoal: false,
 };
 const PAYMENT: Transaction = {
   ...OPENING,

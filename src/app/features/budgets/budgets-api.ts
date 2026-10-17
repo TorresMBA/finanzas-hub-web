@@ -31,6 +31,14 @@ export class BudgetsApi {
     return this.workspaces.current() ? `${this.base()}/budgets?month=${month}` : undefined;
   }
 
+  /**
+   * What each category spent in a month, in the base currency, with every subcategory apart from its parent. It is
+   * the same query the budgets add up, so the subtotals of a budget always make its total.
+   */
+  totalsUrl(range: { from: string; to: string }): string | undefined {
+    return this.workspaces.current() ? `${this.base()}/transactions/category-totals?from=${range.from}&to=${range.to}` : undefined;
+  }
+
   detailUrl(budgetId: string | null, month: string): string | undefined {
     return this.workspaces.current() && budgetId ? `${this.base()}/budgets/${budgetId}?month=${month}` : undefined;
   }

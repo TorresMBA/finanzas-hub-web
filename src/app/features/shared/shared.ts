@@ -1,193 +1,212 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { Account, Category, SharedDebt, SharedExpense, SharedGroupDetail, SharedGroupSummary, SharedGroups, SharedSettlement } from '../../core/api/api-types';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
+import { Account, Category, SharedDebt, SharedExpense, SharedGroupDetail, SharedSettlement } from '../../core/api/api-types';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 import { SessionStore } from '../../core/auth/session-store';
 import { errorMessage } from '../../core/errors/error-messages';
 import { NotificationCenter } from '../../core/notifications/notification-center';
-import { formatShortDate } from '../../shared/ui/dates';
+import { TODAY } from '../../core/period/period-store';
+import { toIsoDate } from '../../shared/ui/dates';
+import { Dialog } from '../../shared/ui/dialog';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Icon } from '../../shared/ui/icon';
-import { MoneyPipe, formatMoney } from '../../shared/ui/money';
+import { formatMoney, sumAmounts } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
-import { StatCard } from '../../shared/ui/stat-card';
+import { Sign, chipOf, figuresOf, initials, live, signOf, signed, toneOf } from './balances';
 import { ExpenseForm, ExpenseFormTarget } from './expense-form';
 import { GroupForm, GroupFormTarget } from './group-form';
+import { GroupView } from './group-view';
 import { SettlementForm, SettlementFormTarget } from './settlement-form';
-import { STATUS_LOOK, SharedApi } from './shared-api';
-import { isManagedAccount } from '../../core/api/managed-accounts';
+import { SharedApi } from './shared-api';
 
-type GroupFilter = 'all' | 'owed' | 'owe' | 'even' | 'archived';
-type ExpenseFilter = 'all' | 'open' | 'settled';
-
-const GROUP_FILTERS: readonly { value: GroupFilter; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'owed', label: 'Me deben' },
-  { value: 'owe', label: 'Debo' },
-  { value: 'even', label: 'A mano' },
-  { value: 'archived', label: 'Archivados' },
-];
-
-const EXPENSE_FILTERS: readonly { value: ExpenseFilter; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'open', label: 'Por saldar' },
-  { value: 'settled', label: 'Liquidados' },
-];
-
-/** From this many groups on, a box to find one by name is worth its place. */
-const SEARCH_FROM = 6;
-const AVATARS = 4;
-
-/** "Brian Torres" → "BT". */
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0].toUpperCase())
-    .join('');
-}
-
-function matchesGroup(group: SharedGroupSummary, filter: GroupFilter): boolean {
-  const archived = group.status === 'archived';
-  switch (filter) {
-    case 'archived':
-      return archived;
-    case 'owed':
-      return !archived && Number(group.owedToMe) > 0;
-    case 'owe':
-      return !archived && Number(group.iOwe) > 0;
-    case 'even':
-      return !archived && Number(group.owedToMe) === 0 && Number(group.iOwe) === 0;
-    default:
-      return !archived;
-  }
-}
+const MONTH = new Intl.DateTimeFormat('es-PE', { month: 'short' });
 
 /**
- * The groups the person splits expenses in. The list says, group by group, whether they owe or are owed; the
- * detail starts from what there is to do with each person and then shows each expense with who has repaid
- * their part. A group is seen only by its members, and each member only the expenses and payments they take
- * part in. Nobody sees from which account anyone else paid.
+ * The groups the person splits expenses in. The summary says where they stand with each person and each group
+ * over all of them; a group then shows what there is to pay or collect, who put how much, the activity and its
+ * members. A group is seen only by its members, and each member only the expenses and payments they take part
+ * in: what two others owe each other is theirs alone. Nobody sees from which account anyone else paid.
  */
 @Component({
   selector: 'app-shared',
-  imports: [EmptyState, ErrorState, ExpenseForm, GroupForm, Icon, MoneyPipe, PageHeader, SettlementForm, Skeleton, StatCard],
+  imports: [Dialog, EmptyState, ErrorState, ExpenseForm, GroupForm, GroupView, Icon, NgTemplateOutlet, PageHeader, SettlementForm, Skeleton],
   templateUrl: './shared.html',
   styleUrl: './shared.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class.is-detail]': 'detailOpen()' },
 })
 export class Shared {
   private readonly api = inject(SharedApi);
   private readonly center = inject(NotificationCenter);
   private readonly session = inject(SessionStore);
+  private readonly today = inject(TODAY);
 
-  protected readonly groupFilters = GROUP_FILTERS;
-  protected readonly expenseFilters = EXPENSE_FILTERS;
-  protected readonly formatShortDate = formatShortDate;
-  protected readonly initials = initials;
-  protected readonly abs = (amount: number | string) => Math.abs(Number(amount));
-
-  protected readonly groups = httpResource<SharedGroups>(() => this.api.groupsUrl());
+  /** The list and every group behind it, in one go: a reload keeps what is on screen until the new data arrives. */
+  protected readonly board = resource({
+    params: () => this.api.groupsUrl(),
+    loader: ({ params }) => this.api.board(params),
+  });
   private readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
   private readonly categories = httpResource<Category[]>(() => this.api.categoriesUrl());
 
-  protected readonly groupFilter = signal<GroupFilter>('all');
-  protected readonly expenseFilter = signal<ExpenseFilter>('all');
-  protected readonly query = signal('');
+  /** The group on screen; null is the summary of all of them. */
   private readonly chosenId = signal<string | null>(null);
-
-  /** On a phone the list and the detail take turns: this says which one is on screen. */
-  protected readonly detailOpen = signal(false);
 
   protected readonly groupForm = signal<GroupFormTarget | null>(null);
   protected readonly expenseForm = signal<ExpenseFormTarget | null>(null);
   protected readonly settlementForm = signal<SettlementFormTarget | null>(null);
-  protected readonly inviting = signal(false);
+  protected readonly choosingGroup = signal(false);
 
   protected readonly failure = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly busy = signal(false);
 
-  protected readonly all = computed(() => this.groups.value()?.groups ?? []);
-  protected readonly showSearch = computed(() => this.all().length >= SEARCH_FROM);
-  protected readonly filterCounts = computed(() => new Map(GROUP_FILTERS.map(({ value }) => [value, this.all().filter((group) => matchesGroup(group, value)).length])));
+  protected readonly me = computed(() => this.session.user()?.id ?? '');
+  protected readonly list = computed(() => (this.board.hasValue() ? this.board.value().list : null));
+  private readonly details = computed(() => (this.board.hasValue() ? [...this.board.value().details.values()] : []));
+  protected readonly all = computed(() => this.list()?.groups ?? []);
+  protected readonly active = computed(() => this.details().filter((detail) => detail.group.status === 'active'));
+  private readonly archived = computed(() => this.details().filter((detail) => detail.group.status !== 'active'));
 
-  /** The groups of the filter: the ones with more to settle on top. */
-  protected readonly groupRows = computed(() => {
-    const text = this.query().trim().toLowerCase();
-    return this.all()
-      .filter((group) => matchesGroup(group, this.groupFilter()))
-      .filter((group) => text === '' || group.name.toLowerCase().includes(text))
-      .map((group) => ({
-        group,
-        owed: Number(group.owedToMe),
-        owe: Number(group.iOwe),
-        avatars: group.memberNames.slice(0, AVATARS).map((name) => ({ name, initials: initials(name) })),
-        more: Math.max(0, group.memberNames.length - AVATARS),
-      }))
-      .sort((a, b) => b.owed + b.owe - (a.owed + a.owe) || a.group.name.localeCompare(b.group.name));
+  /** The group chosen while it is still there: after leaving it, the page goes back to the summary. */
+  protected readonly selected = computed(() => {
+    const id = this.chosenId();
+    return id === null || !this.board.hasValue() ? null : (this.board.value().details.get(id) ?? null);
   });
 
-  /** The group on screen: the one the person chose while it exists, otherwise the first of the list. */
-  protected readonly selectedId = computed(() => (this.all().find((group) => group.id === this.chosenId()) ?? this.groupRows()[0]?.group)?.id ?? null);
-  protected readonly detail = httpResource<SharedGroupDetail>(() => this.api.detailUrl(this.selectedId()));
+  /** A group was just created or chosen and is still on its way: nothing else should take its place meanwhile. */
+  protected readonly waiting = computed(() => this.chosenId() !== null && this.selected() === null && this.board.isLoading());
 
-  protected readonly me = computed(() => this.session.user()?.id ?? '');
+  /** Where the person stands, per currency: soles are not added to dollars. */
+  protected readonly kpis = computed(() => {
+    const totals = this.list()?.totals ?? [];
+    const me = this.me();
+    const now = this.today();
+    const month = toIsoDate(now).slice(0, 7);
+    const monthName = MONTH.format(now).replace('.', '').toLowerCase();
+    const plain: Sign = 'even';
+    return totals.flatMap((total) => {
+      const currency = total.currency;
+      const suffix = totals.length > 1 ? ` (${currency})` : '';
+      const groups = this.details().filter((detail) => detail.group.currency === currency);
+      const debts = groups.flatMap((detail) => detail.debts);
+      const creditors = new Set(debts.filter((debt) => debt.toUserId === me).map((debt) => debt.fromUserId));
+      const owedTo = [...new Map(debts.filter((debt) => debt.fromUserId === me).map((debt) => [debt.toUserId, debt.toName])).values()];
+      const ofMonth = groups.map((detail) => detail.expenses.filter((expense) => live(expense) && expense.occurredOn.startsWith(month)));
+      const net = sumAmounts([total.owedToMe]) - sumAmounts([total.iOwe]);
+      const groupCount = ofMonth.filter((expenses) => expenses.length > 0).length;
+      return [
+        {
+          label: `Balance neto${suffix}`,
+          icon: 'account_balance_wallet',
+          tone: 'neutral',
+          value: signed(net, currency),
+          sign: signOf(net),
+          note: signOf(net) === 'neg' ? 'Si todos saldan hoy, pagarías esto en total.' : 'Si todos saldan hoy, recibirías esto en total.',
+        },
+        {
+          label: `Te deben${suffix}`,
+          icon: 'south_west',
+          tone: 'ac',
+          value: formatMoney(total.owedToMe, currency),
+          sign: plain,
+          note: creditors.size === 0 ? 'Nadie te debe' : creditors.size === 1 ? '1 persona te debe' : `${creditors.size} personas te deben`,
+        },
+        {
+          label: `Debes${suffix}`,
+          icon: 'north_east',
+          tone: 'rd',
+          value: formatMoney(total.iOwe, currency),
+          sign: plain,
+          note: owedTo.length === 0 ? 'No le debes a nadie' : `A ${owedTo.join(', ')}`,
+        },
+        {
+          label: `Tu parte del gasto · ${monthName}${suffix}`,
+          icon: 'pie_chart',
+          tone: 'vi',
+          value: formatMoney(sumAmounts(ofMonth.flat().map((expense) => expense.myShare)), currency),
+          sign: plain,
+          note: `De ${formatMoney(sumAmounts(ofMonth.flat().map((expense) => expense.totalAmount)), currency)} gastados en ${groupCount} ${groupCount === 1 ? 'grupo' : 'grupos'}`,
+        },
+      ];
+    });
+  });
 
-  /** What the person is owed and owes over all their groups, per currency: soles are not added to dollars. */
-  protected readonly stats = computed(() =>
-    (this.groups.value()?.totals ?? []).flatMap((total) => [
-      { label: `Te deben (${total.currency})`, value: formatMoney(total.owedToMe, total.currency), icon: 'south_west', color: 'green' as const },
-      { label: `Debes (${total.currency})`, value: formatMoney(total.iOwe, total.currency), icon: 'north_east', color: 'red' as const },
-    ]),
-  );
+  /** The cards of the side list: the active groups, with more to settle on top. */
+  protected readonly groupCards = computed(() => this.cardsOf(this.active()));
+  protected readonly archivedCards = computed(() => this.cardsOf(this.archived()));
 
-  /** One row per debt of the person: who it is with, which way it goes and what can be done about it. */
-  protected readonly people = computed(() =>
-    (this.detail.value()?.debts ?? []).map((debt) => {
-      const iPay = debt.fromUserId === this.me();
-      const name = iPay ? debt.toName : debt.fromName;
-      return { debt, iPay, name, initials: initials(name) };
+  /** Each person the person asking owes or is owed by, adding up every group of one currency. */
+  protected readonly people = computed(() => {
+    const me = this.me();
+    const byPerson = new Map<string, { userId: string; name: string; currency: string; parts: { group: string; amount: number }[] }>();
+    for (const detail of this.details()) {
+      const currency = detail.group.currency;
+      for (const debt of detail.debts) {
+        const iPay = debt.fromUserId === me;
+        const userId = iPay ? debt.toUserId : debt.fromUserId;
+        const key = `${userId}|${currency}`;
+        const person = byPerson.get(key) ?? { userId, name: iPay ? debt.toName : debt.fromName, currency, parts: [] };
+        person.parts.push({ group: detail.group.name, amount: iPay ? -Number(debt.amount) : Number(debt.amount) });
+        byPerson.set(key, person);
+      }
+    }
+    return [...byPerson.entries()]
+      .map(([key, person]) => {
+        const amount = sumAmounts(person.parts.map((part) => part.amount));
+        const sign = signOf(amount);
+        return {
+          key,
+          name: person.name,
+          initials: initials(person.name),
+          tone: toneOf(person.userId, me),
+          sign,
+          label: sign === 'pos' ? 'Te debe' : sign === 'neg' ? 'Le debes' : 'A mano',
+          amount: formatMoney(Math.abs(amount), person.currency),
+          magnitude: Math.abs(amount),
+          parts: person.parts.map((part) => `${part.group}: ${part.amount > 0 ? 'te debe' : 'le debes'} ${formatMoney(Math.abs(part.amount), person.currency)}`),
+        };
+      })
+      .sort((a, b) => b.magnitude - a.magnitude || a.name.localeCompare(b.name));
+  });
+
+  /** One row per active group, and one total per currency. */
+  protected readonly groupRows = computed(() =>
+    this.active().map((detail) => {
+      const figures = figuresOf(detail, this.me());
+      const currency = detail.group.currency;
+      return {
+        id: detail.group.id,
+        name: detail.group.name,
+        currency,
+        figures,
+        total: formatMoney(figures.total, currency),
+        share: formatMoney(figures.share, currency),
+        paid: formatMoney(figures.paid, currency),
+        balance: signed(figures.balance, currency),
+        sign: signOf(figures.balance),
+      };
     }),
   );
 
-  /** The expenses of the filter, each with what it means for the person and who has repaid their part. */
-  protected readonly expenseRows = computed(() => {
-    const filter = this.expenseFilter();
-    const me = this.me();
-    return (this.detail.value()?.expenses ?? [])
-      .filter((expense) => filter === 'all' || (filter === 'settled' ? expense.status === 'settled' : expense.status === 'pending' || expense.status === 'partiallyPaid'))
-      .map((expense) => {
-        const iPaid = expense.paidByUserId === me;
-        const others = expense.shares.filter((share) => share.userId !== expense.paidByUserId);
-        return {
-          expense,
-          look: STATUS_LOOK[expense.status],
-          iPaid,
-          owedToMe: iPaid ? others.reduce((sum, share) => sum + Number(share.amount) - Number(share.paidAmount), 0) : 0,
-          shares: expense.shares.map((share) => {
-            const isPayer = share.userId === expense.paidByUserId;
-            const pending = isPayer ? 0 : Number(share.amount) - Number(share.paidAmount);
-            return {
-              ...share,
-              initials: initials(share.displayName),
-              isPayer,
-              isMe: share.userId === me,
-              pending,
-              meter: isPayer || Number(share.amount) === 0 ? 100 : (Number(share.paidAmount) / Number(share.amount)) * 100,
-            };
-          }),
-        };
-      });
-  });
-
-  /** The members of the workspace who are not in the group on screen yet. */
-  protected readonly candidates = computed(() => {
-    const inGroup = new Set((this.detail.value()?.members ?? []).map((member) => member.userId));
-    return (this.groups.value()?.members ?? []).filter((member) => !inGroup.has(member.userId));
+  protected readonly groupTotals = computed(() => {
+    const rows = this.groupRows();
+    const currencies = [...new Set(rows.map((row) => row.currency))];
+    return currencies.map((currency) => {
+      const ofCurrency = rows.filter((row) => row.currency === currency);
+      const add = (pick: (row: (typeof rows)[number]) => number) => sumAmounts(ofCurrency.map(pick));
+      const balance = add((row) => row.figures.balance);
+      return {
+        label: currencies.length > 1 ? `Total (${currency})` : 'Total',
+        total: formatMoney(add((row) => row.figures.total), currency),
+        share: formatMoney(add((row) => row.figures.share), currency),
+        paid: formatMoney(add((row) => row.figures.paid), currency),
+        balance: signed(balance, currency),
+        sign: signOf(balance),
+      };
+    });
   });
 
   constructor() {
@@ -199,19 +218,34 @@ export class Shared {
     });
   }
 
+  protected showSummary(): void {
+    this.chosenId.set(null);
+  }
+
   protected select(groupId: string): void {
     this.chosenId.set(groupId);
-    this.detailOpen.set(true);
-    this.inviting.set(false);
-    this.expenseFilter.set('all');
   }
 
   protected openGroupForm(): void {
-    const data = this.groups.value();
+    const data = this.list();
     this.groupForm.set({ others: (data?.members ?? []).filter((member) => member.userId !== this.me()), currency: data?.baseCurrency ?? 'PEN' });
   }
 
+  /** In the group on screen; from the summary, in the only active group, or in the one the person picks. */
+  protected newExpense(): void {
+    const detail = this.selected();
+    const active = this.active();
+    if (detail && detail.group.status === 'active') {
+      this.openExpenseForm(detail);
+    } else if (active.length === 1) {
+      this.openExpenseForm(active[0]);
+    } else {
+      this.choosingGroup.set(true);
+    }
+  }
+
   protected openExpenseForm(detail: SharedGroupDetail): void {
+    this.choosingGroup.set(false);
     this.expenseForm.set({ detail, accounts: this.usableAccounts(detail.group.currency), categories: this.categories.value() ?? [] });
   }
 
@@ -250,9 +284,7 @@ export class Shared {
   }
 
   protected onGroupSaved(saved: { groupId: string; message: string }): void {
-    this.chosenId.set(saved.groupId);
-    this.detailOpen.set(true);
-    this.groupFilter.set('all');
+    this.select(saved.groupId);
     this.onSaved(saved.message);
   }
 
@@ -280,7 +312,6 @@ export class Shared {
   }
 
   protected addMember(detail: SharedGroupDetail, userId: string, name: string): Promise<void> {
-    this.inviting.set(false);
     return this.run(`${name} ya está en «${detail.group.name}».`, () => this.api.addMember(detail.group.id, userId));
   }
 
@@ -295,9 +326,26 @@ export class Shared {
   }
 
   protected reload(): void {
-    this.groups.reload();
-    this.detail.reload();
+    this.board.reload();
     this.accounts.reload();
+  }
+
+  private cardsOf(details: readonly SharedGroupDetail[]) {
+    const me = this.me();
+    return details
+      .map((detail) => {
+        const figures = figuresOf(detail, me);
+        const members = Number(detail.group.memberCount);
+        return {
+          id: detail.group.id,
+          name: detail.group.name,
+          meta: `${members} ${members === 1 ? 'miembro' : 'miembros'} · ${figures.count} ${figures.count === 1 ? 'gasto' : 'gastos'}`,
+          total: formatMoney(figures.total, detail.group.currency),
+          chip: chipOf(figures.balance, detail.group.currency),
+          weight: Number(detail.group.owedToMe) + Number(detail.group.iOwe),
+        };
+      })
+      .sort((a, b) => b.weight - a.weight || a.name.localeCompare(b.name));
   }
 
   /** The accounts an expense of the group can be registered in: in its currency, and not the fund of a goal. */

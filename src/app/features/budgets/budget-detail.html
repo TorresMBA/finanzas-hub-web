@@ -1,0 +1,105 @@
+@let item = budget();
+@let v = view();
+
+<header class="block head">
+  <div class="head-title">
+    <app-icon-tile [icon]="item.categoryIcon" [color]="tile(item.categoryColor)" [size]="42" />
+    <div class="names">
+      <h2>{{ item.categoryName }}</h2>
+      <span class="lead">{{ item.movementCount }} {{ +item.movementCount === 1 ? 'movimiento' : 'movimientos' }} · {{ period.label().toLowerCase() }}</span>
+    </div>
+    <span class="chip" [attr.data-tone]="look().tone">{{ look().label }}</span>
+  </div>
+  <dl class="figures">
+    @for (figure of v.figures; track figure.label) {
+      <div>
+        <dt>{{ figure.label }}</dt>
+        <dd class="tabular" [attr.data-tone]="figure.tone">{{ figure.value }}</dd>
+      </div>
+    }
+  </dl>
+  <p class="note" [attr.data-tone]="v.note.tone">
+    <app-icon [name]="v.note.icon" [size]="18" />
+    <span>{{ v.note.text }}</span>
+  </p>
+  @if (v.raiseTo !== null && canChange() && item.isInForce) {
+    <button type="button" class="soft" [disabled]="busy()" (click)="raise.emit(v.raiseTo)">
+      <app-icon name="tune" [size]="17" />Subir límite a {{ v.raiseTo | money: item.currency }}
+    </button>
+  }
+</header>
+
+@if (!detail.hasValue() && detail.isLoading()) {
+  <div class="block"><app-skeleton height="150px" /></div>
+} @else if (detail.error()) {
+  <p class="block lead">No se pudieron cargar los movimientos. <button type="button" class="link" (click)="detail.reload()">Reintentar</button></p>
+} @else if (detail.value(); as data) {
+  @if (data.movements.length > 0 && chart(); as c) {
+    <section class="block chart" aria-labelledby="chart-title">
+      <div class="chart-head">
+        <h3 id="chart-title">{{ chartMode() === 'cumulative' ? 'Gasto acumulado vs. límite' : 'Gasto por día' }}</h3>
+        <div class="segmented" role="group" aria-label="Cómo ver el gasto">
+          @for (mode of chartModes; track mode.value) {
+            <button type="button" [attr.aria-pressed]="chartMode() === mode.value" (click)="chartMode.set(mode.value)">{{ mode.label }}</button>
+          }
+        </div>
+      </div>
+      <div class="plot" role="img" [attr.aria-label]="(chartMode() === 'cumulative' ? 'Gasto acumulado de cada día de ' : 'Gasto de cada día de ') + period.label().toLowerCase()">
+        @for (bar of c.bars; track bar.day) {
+          <span class="plot-bar" [class.is-over]="bar.isOver" [class.is-empty]="bar.isEmpty" [class.is-future]="bar.future" [style.height.%]="bar.height" [title]="formatShortDate(bar.day)"></span>
+        }
+        @if (c.limitAt !== null) {
+          <span class="plot-limit" [style.bottom.%]="c.limitAt"><span>Límite {{ item.limit | money: item.currency }}</span></span>
+        }
+        @if (c.todayAt !== null) {
+          <span class="plot-today" [style.left.%]="c.todayAt"></span>
+        }
+      </div>
+      <div class="plot-axis" aria-hidden="true">
+        <span>{{ c.first }}</span>
+        @if (c.todayAt !== null) {
+          <span class="plot-axis-today" [style.left.%]="c.todayAt">Hoy</span>
+        }
+        <span>{{ c.last }}</span>
+      </div>
+    </section>
+  }
+
+  <section aria-labelledby="movements-title">
+    <div class="list-head">
+      <h3 id="movements-title">Últimos movimientos</h3>
+      @if (data.movements.length > 0) {
+        <a class="link link--blue" routerLink="/transactions" [queryParams]="{ categoryId: item.categoryId }">Ver todos ({{ data.movements.length }})</a>
+      }
+    </div>
+    <ul class="movements">
+      @for (movement of latest(); track movement.id) {
+        @let date = dayOf(movement.occurredOn);
+        <li>
+          <span class="date" aria-hidden="true"><strong>{{ date.day }}</strong><span>{{ date.month }}</span></span>
+          <span class="names">
+            <strong>{{ movement.description }}</strong>
+            <span class="lead">{{ whereOf(movement) }}</span>
+          </span>
+          <strong class="tabular">−{{ movement.amount | money: movement.currency }}</strong>
+        </li>
+      } @empty {
+        <li class="lead empty">Aún no hay movimientos este mes.</li>
+      }
+    </ul>
+  </section>
+}
+
+@if (confirmingEnd() || item.isInForce) {
+<footer class="actions">
+  @if (confirmingEnd()) {
+    <span class="lead">¿Eliminar el presupuesto desde este mes? Los meses anteriores lo conservan.</span>
+    <button type="button" class="button button--small button--danger" [disabled]="busy()" (click)="end.emit()">Sí, eliminar</button>
+    <button type="button" class="button button--small" (click)="confirmingEnd.set(false)">Cancelar</button>
+  } @else {
+    <button type="button" class="action" (click)="edit.emit()"><app-icon name="edit" [size]="17" />Editar presupuesto</button>
+    <span class="spacer"></span>
+    <button type="button" class="action action--danger" (click)="confirmingEnd.set(true)"><app-icon name="delete" [size]="17" />Eliminar</button>
+  }
+</footer>
+}

@@ -16,7 +16,7 @@ const GROUP = {
   id: 'g-depa', name: 'Depa', currency: 'PEN', status: 'active' as const, memberCount: 3, myBalance: -70, owedToMe: 30, iOwe: 100, pendingExpenses: 1,
   memberNames: ['Brian', 'Pedro', 'Juan'], lastActivityOn: '2026-10-12',
 };
-const LIST: SharedGroups = { groups: [GROUP], totals: [{ currency: 'PEN', owedToMe: 0, iOwe: 100 }], members: [], baseCurrency: 'PEN' };
+const LIST: SharedGroups = { groups: [GROUP], totals: [{ currency: 'PEN', owedToMe: 30, iOwe: 100 }], members: [], baseCurrency: 'PEN' };
 const DETAIL: SharedGroupDetail = {
   group: GROUP,
   isAdmin: false,
@@ -78,7 +78,7 @@ describe('Shared', () => {
 
   afterEach(() => http.verify());
 
-  it('says in the list what there is to settle in each group and, in the group, with whom and who has repaid', async () => {
+  it('sums up where the person stands with each person and, in a group, what to pay or collect and who has repaid', async () => {
     http.expectOne(`${BASE}/shared-groups`).flush(LIST);
     http.expectOne(`${BASE}/accounts`).flush([]);
     http.expectOne(`${BASE}/categories?kind=expense`).flush([]);
@@ -88,35 +88,52 @@ describe('Shared', () => {
     await fixture.whenStable();
 
     const text = (node: Element | null | undefined) => node?.textContent?.replace(/\s+/g, ' ').trim();
+    const texts = (selector: string) => Array.from(element.querySelectorAll(selector)).map(text);
+    // What a button says, without the name of its icon.
+    const buttons = (node: Element) =>
+      Array.from(node.querySelectorAll('button')).map((button) =>
+        Array.from(button.childNodes)
+          .filter((child) => child.nodeName !== 'APP-ICON')
+          .map((child) => child.textContent)
+          .join('')
+          .trim(),
+      );
+    const show = async (button: Element | undefined) => {
+      (button as HTMLButtonElement).click();
+      await fixture.whenStable();
+    };
+    const tab = (name: string) => Array.from(element.querySelectorAll('[role="tab"]')).find((node) => text(node) === name);
 
-    // The list alone tells whether there is something to do in the group.
-    const card = text(element.querySelector('[aria-label="Grupos"] button'));
-    expect(card).toContain('Depa');
-    expect(card).toContain('Te deben S/ 30.00');
-    expect(card).toContain('Debes S/ 100.00');
-    expect(card).toContain('1 por saldar');
+    // Over everything: the net balance, and with each person what is between the two, group by group.
+    expect(text(element.querySelector('.kpi .kpi-value'))).toBe('−S/ 70.00');
+    expect(texts('.person-names strong')).toEqual(['Brian', 'Pedro']);
+    expect(texts('.part')).toEqual(['Depa: le debes S/ 100.00', 'Depa: te debe S/ 30.00']);
+    expect(texts('.person-side strong')).toEqual(['S/ 100.00', 'S/ 30.00']);
+    expect(texts('.person-label')).toEqual(['Le debes', 'Te debe']);
 
-    const debts = Array.from(element.querySelectorAll('[aria-label="Deudas"] li'));
-    const buttons = (row: Element) => Array.from(row.querySelectorAll('button')).map((button) => button.textContent?.trim());
+    // The card alone tells where the person stands in the group.
+    const card = Array.from(element.querySelectorAll('nav[aria-label="Grupos"] .pick')).find((button) => text(button)?.includes('Depa'));
+    expect(text(card)).toContain('3 miembros · 1 gasto');
+    expect(text(card)).toContain('Debes S/ 70.00');
+    await show(card);
 
     // Juan owes Brian: he can pay. Pedro owes Juan: he can register it or remind him.
-    expect(debts.map((row) => text(row.querySelector('.names')))).toEqual(['Brian Le debes S/ 100.00', 'Pedro Te debe S/ 30.00']);
-    expect(buttons(debts[0])).toEqual(['Pagar']);
-    expect(buttons(debts[1])).toEqual(['Registrar cobro', 'Recordar']);
-    expect(text(element.querySelector('[aria-label="Gastos del grupo"] summary'))).toContain('Debes S/ 100.00');
+    const debts = Array.from(element.querySelectorAll('[aria-label="Deudas"] li'));
+    expect(debts.map((row) => text(row.querySelector('.names strong')))).toEqual(['Tú le pagas a Brian', 'Pedro te paga']);
+    expect(buttons(debts[0])).toEqual(['Registrar pago']);
+    expect(buttons(debts[1])).toEqual(['Marcar recibido', 'Recordar']);
 
-    // Inside the expense, who paid it and who still owes their part.
-    expect(Array.from(element.querySelectorAll('.shares .share-side .lead')).map(text)).toEqual(['Pagó el gasto', 'Debe S/ 100.00', 'Debe S/ 100.00']);
+    // In the activity, what the dinner means for him and, inside it, who still owes their part.
+    await show(tab('Actividad'));
+    expect(text(element.querySelector('.expense .effect'))).toBe('Debes S/ 100.00');
+    expect(texts('.shares .share-side .lead')).toEqual(['Pagó el gasto', 'Debe S/ 100.00', 'Debe S/ 100.00']);
+    expect(buttons(element)).not.toContain('Cancelar este gasto');
 
-    // He did not register the dinner nor pay it, and he does not run the group.
-    const all = Array.from(element.querySelectorAll('button')).map((button) => button.textContent?.trim());
-    expect(all).not.toContain('Cancelar este gasto');
-    expect(all).not.toContain('Archivar grupo');
-    expect(all).toContain('Salir');
-
-    // With each of the others, only what is between the two.
-    const members = text(element.querySelector('[aria-label="Miembros del grupo"]'));
-    expect(members).toContain('Brian Le debes S/ 100.00');
-    expect(members).toContain('Pedro Te debe S/ 30.00');
+    // With each of the others, only what is between the two; he does not run the group, but can leave it.
+    await show(tab('Miembros'));
+    expect(texts('[aria-label="Miembros"] .names')).toEqual(['BrianCreó el grupo', 'Juan (tú)Miembro', 'PedroMiembro']);
+    expect(texts('[aria-label="Miembros"] .member-side strong')).toEqual(['Le debes S/ 100.00', 'Debes S/ 100.00', 'Te debe S/ 30.00']);
+    expect(buttons(element)).toContain('Salir');
+    expect(buttons(element)).not.toContain('Archivar grupo');
   });
 });

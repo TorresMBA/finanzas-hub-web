@@ -68,6 +68,7 @@ describe('Goals', () => {
   it('shows a shared goal to a participant with what each one put in, and only what a participant may do', async () => {
     http.expectOne(`${BASE}/goals`).flush(LIST);
     http.expectOne(`${BASE}/accounts`).flush([]);
+    http.expectOne(`${BASE}/categories`).flush([]);
     await settle();
     http.expectOne(`${BASE}/goals/g-trip`).flush(DETAIL);
     await fixture.whenStable();
@@ -80,6 +81,7 @@ describe('Goals', () => {
     // Juan takes part but does not own the goal and has put nothing in yet.
     expect(button('Aportar')).toBeDefined();
     expect(button('Retirar')).toBeUndefined();
+    expect(button('Usar el dinero')).toBeUndefined();
     expect(button('Editar')).toBeUndefined();
     expect(button('Cancelar meta')).toBeUndefined();
     expect(button('Salir de la meta')).toBeDefined();

@@ -46,6 +46,15 @@ export class Topbar {
     await this.router.navigateByUrl(this.workspaces.needsOnboarding() ? '/onboarding' : '/');
   }
 
+  /** Opens the month picker of the browser; where there is none, the arrows and «Hoy» still work. */
+  protected openPicker(input: HTMLInputElement): void {
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+    }
+  }
+
   protected async signOut(): Promise<void> {
     await this.session.logout();
     this.workspaces.clear();

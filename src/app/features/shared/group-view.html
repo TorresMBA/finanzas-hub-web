@@ -1,0 +1,244 @@
+@let data = detail();
+@let cur = currency();
+@let h = head();
+
+<header class="card group-head">
+  <div class="group-title">
+    <span class="square square--big"><app-icon name="groups" [size]="22" /></span>
+    <div class="names">
+      <h2>{{ data.group.name }}</h2>
+      <span class="lead">{{ h.memberNames }}{{ open() ? '' : ' · Archivado' }}</span>
+    </div>
+    <span class="chip chip--big tabular" [attr.data-sign]="h.chip.sign">{{ h.chip.text }}</span>
+  </div>
+  <dl class="metrics">
+    @for (metric of h.metrics; track metric.label) {
+      <div>
+        <dt>{{ metric.label }}</dt>
+        <dd class="tabular" [attr.data-sign]="metric.sign">{{ metric.value }}</dd>
+        <dd class="caption">{{ metric.note }}</dd>
+      </div>
+    }
+  </dl>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Qué ver del grupo">
+  <button type="button" role="tab" [attr.aria-selected]="tab() === 'balances'" (click)="tab.set('balances')">
+    Saldos
+    @if (debts().length > 0) {
+      <span class="count">{{ debts().length }}</span>
+    }
+  </button>
+  <button type="button" role="tab" [attr.aria-selected]="tab() === 'activity'" (click)="tab.set('activity')">Actividad</button>
+  <button type="button" role="tab" [attr.aria-selected]="tab() === 'members'" (click)="tab.set('members')">Miembros</button>
+</div>
+
+@switch (tab()) {
+  @case ('balances') {
+    <section class="card panel" aria-labelledby="debts-title">
+      <header class="panel-head">
+        <h3 id="debts-title">Pagos para quedar a mano</h3>
+        <p class="lead">Lo que te toca pagar o cobrar en este grupo, con cada persona.</p>
+      </header>
+      <ul aria-label="Deudas">
+        @for (row of debts(); track row.debt.fromUserId + row.debt.toUserId) {
+          <li class="row debt">
+            <span class="debt-who">
+              <span class="avatar" [attr.data-tone]="row.from.tone" aria-hidden="true">{{ row.from.initials }}</span>
+              <app-icon class="arrow" name="arrow_forward" [size]="18" />
+              <span class="avatar" [attr.data-tone]="row.to.tone" aria-hidden="true">{{ row.to.initials }}</span>
+              <span class="names">
+                <strong>{{ row.text }}</strong>
+                <span class="lead">{{ row.note }}</span>
+              </span>
+            </span>
+            <strong class="debt-amount tabular" [attr.data-sign]="row.iPay ? 'neg' : 'pos'">{{ row.debt.amount | money: cur }}</strong>
+            <span class="debt-actions">
+              <button type="button" class="soft" (click)="settle.emit(row.debt)"><app-icon name="check" [size]="17" />{{ row.iPay ? 'Registrar pago' : 'Marcar recibido' }}</button>
+              @if (!row.iPay) {
+                <button type="button" class="link" [disabled]="busy()" (click)="remind.emit(row.debt)">Recordar</button>
+              }
+            </span>
+          </li>
+        } @empty {
+          <li class="even">
+            <app-icon name="verified" [size]="28" />
+            <strong>Estás a mano con todos</strong>
+            <span class="lead">No le debes nada a nadie ni te deben nada en este grupo.</span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    @if (hasExpenses()) {
+      <section class="card panel panel--padded" aria-labelledby="contrib-title">
+        <header>
+          <h3 id="contrib-title">Quién puso cuánto</h3>
+          <p class="lead">En los gastos en que participas. La línea marca la parte que le tocaba a cada uno.</p>
+        </header>
+        <ul class="contrib" aria-label="Quién puso cuánto">
+          @for (row of members(); track row.member.userId) {
+            <li>
+              <span class="contrib-line">
+                <span class="avatar avatar--small" [attr.data-tone]="row.tone" aria-hidden="true">{{ row.initials }}</span>
+                <strong class="contrib-name">{{ row.name }}</strong>
+                <span class="lead tabular">Pagó {{ row.paid }}</span>
+                <strong class="contrib-status tabular" [attr.data-sign]="row.sign">{{ row.status }}</strong>
+              </span>
+              <span class="bar" aria-hidden="true">
+                <span class="bar-fill" [attr.data-fill]="row.tone" [style.width.%]="row.width"></span>
+                <span class="bar-mark" [style.left.%]="row.mark"></span>
+              </span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+
+  @case ('activity') {
+    <section class="card panel" aria-labelledby="activity-title">
+      <header class="panel-head panel-head--row">
+        <h3 id="activity-title">Actividad</h3>
+        <div class="segmented" role="group" aria-label="Qué actividad ver">
+          @for (option of activityFilters; track option.value) {
+            <button type="button" [attr.aria-pressed]="activityFilter() === option.value" (click)="activityFilter.set(option.value)">{{ option.label }}</button>
+          }
+        </div>
+      </header>
+      @for (day of days(); track day.day) {
+        <h4 class="day">{{ day.label }}</h4>
+        <ul [attr.aria-label]="day.label">
+          @for (item of day.items; track item.key) {
+            @if (item.expense; as row) {
+              <li>
+                <!-- Closed it says what the expense meant for the person; open, who has repaid their part. -->
+                <details class="expense" [class.is-cancelled]="row.cancelled">
+                  <summary class="row item">
+                    <span class="square"><app-icon name="receipt_long" [size]="19" /></span>
+                    <span class="names">
+                      <strong class="item-title">{{ row.expense.description }}</strong>
+                      <span class="lead">{{ row.note }}</span>
+                    </span>
+                    <span class="item-side">
+                      <strong class="tabular">{{ row.expense.totalAmount | money: cur }}</strong>
+                      <span class="effect tabular" [attr.data-sign]="row.effect.sign">{{ row.effect.text }}</span>
+                    </span>
+                  </summary>
+                  <ul class="shares" [attr.aria-label]="'Quién pagó su parte de ' + row.expense.description">
+                    @for (share of row.shares; track share.userId) {
+                      <li>
+                        <span class="avatar avatar--small" [attr.data-tone]="share.tone" aria-hidden="true">{{ share.initials }}</span>
+                        <span class="names">
+                          <span>{{ share.displayName }}{{ share.isMe ? ' (tú)' : '' }}</span>
+                          <span class="meter" [style.--meter]="share.meter" [attr.data-level]="share.owes > 0 ? 'warn' : null"></span>
+                        </span>
+                        <span class="share-side">
+                          <span class="tabular">{{ share.amount | money: cur }}</span>
+                          <span class="lead" [attr.data-sign]="share.owes > 0 ? 'neg' : null">
+                            @if (share.isPayer) {
+                              Pagó el gasto
+                            } @else if (share.owes === 0) {
+                              Ya pagó
+                            } @else if (+share.paidAmount > 0) {
+                              Debe {{ share.owes | money: cur }} · pagó {{ share.paidAmount | money: cur }}
+                            } @else {
+                              Debe {{ share.owes | money: cur }}
+                            }
+                          </span>
+                        </span>
+                      </li>
+                    }
+                  </ul>
+                  @if (row.expense.canCancel && row.expense.status === 'pending') {
+                    <button type="button" class="link danger cancel" [disabled]="busy()" (click)="cancelExpense.emit(row.expense)">Cancelar este gasto</button>
+                  }
+                </details>
+              </li>
+            } @else if (item.payment; as row) {
+              <li class="row item" [class.is-cancelled]="row.settlement.isVoided">
+                <span class="square" data-tone="bl"><app-icon name="swap_horiz" [size]="19" /></span>
+                <span class="names">
+                  <strong class="item-title">{{ row.title }}</strong>
+                  <span class="lead">
+                    {{ row.note }}
+                    @if (row.settlement.canLinkAccount) {
+                      · <button type="button" class="link" (click)="linkAccount.emit(row.settlement)">Registrar en mi cuenta</button>
+                    }
+                    @if (row.settlement.canVoid) {
+                      · <button type="button" class="link danger" [disabled]="busy()" (click)="voidSettlement.emit(row.settlement)">Anular</button>
+                    }
+                  </span>
+                </span>
+                <span class="item-side">
+                  <strong class="tabular">{{ row.settlement.amount | money: cur }}</strong>
+                  <span class="effect tabular" [attr.data-sign]="row.effect.sign">{{ row.effect.text }}</span>
+                </span>
+              </li>
+            }
+          }
+        </ul>
+      } @empty {
+        <p class="lead none">
+          {{ activityFilter() === 'payments' ? 'Todavía no pagaste ni te pagaron.' : activityFilter() === 'expenses' ? 'Todavía no hay gastos tuyos en este grupo.' : 'Todavía no hay gastos ni pagos tuyos en este grupo.' }}
+        </p>
+      }
+      <p class="footnote">
+        <app-icon name="info" [size]="15" />
+        <span>
+          @if (voidedCount() > 0 && !showVoided()) {
+            {{ voidedCount() === 1 ? '1 pago anulado oculto.' : voidedCount() + ' pagos anulados ocultos.' }}
+          }
+          Puedes anular un pago hasta 1 día después de registrarlo (máx. 3 al día); hoy te
+          {{ +data.voidsLeftToday === 1 ? 'queda 1' : 'quedan ' + data.voidsLeftToday }}. Al anularlo se anula también su movimiento en tu cuenta.
+          @if (voidedCount() > 0) {
+            <button type="button" class="link" (click)="showVoided.set(!showVoided())">{{ showVoided() ? 'Ocultar anulados' : 'Ver anulados' }}</button>
+          }
+        </span>
+      </p>
+    </section>
+  }
+
+  @case ('members') {
+    <section class="card panel" aria-label="Miembros del grupo">
+      <ul aria-label="Miembros">
+        @for (row of members(); track row.member.userId) {
+          <li class="row">
+            <span class="avatar" [attr.data-tone]="row.tone" aria-hidden="true">{{ row.initials }}</span>
+            <span class="names">
+              <strong>{{ row.name }}</strong>
+              <span class="lead">{{ row.member.role === 'admin' ? 'Creó el grupo' : 'Miembro' }}</span>
+            </span>
+            <span class="member-side">
+              <strong class="tabular" [attr.data-sign]="row.sign">{{ row.status }}</strong>
+              @if (row.member.role !== 'admin' && (data.isAdmin || row.member.isMe)) {
+                <button type="button" class="link danger" [disabled]="busy()" (click)="removeMember.emit({ userId: row.member.userId, name: row.member.displayName })">
+                  {{ row.member.isMe ? 'Salir' : 'Quitar' }}
+                </button>
+              }
+            </span>
+          </li>
+        }
+      </ul>
+      @if (data.isAdmin && open()) {
+        @if (inviting()) {
+          <ul aria-label="Miembros que puedes sumar">
+            @for (candidate of candidates(); track candidate.userId) {
+              <li class="row">
+                <span class="avatar" aria-hidden="true">{{ initials(candidate.displayName) }}</span>
+                <span class="names"><strong>{{ candidate.displayName }}</strong></span>
+                <button type="button" class="link" [disabled]="busy()" (click)="add(candidate.userId, candidate.displayName)">Sumar</button>
+              </li>
+            }
+          </ul>
+        }
+        <div class="panel-actions">
+          @if (!inviting() && candidates().length > 0) {
+            <button type="button" class="link" (click)="inviting.set(true)">Invitar miembro</button>
+          }
+          <button type="button" class="link muted" [disabled]="busy()" (click)="archive.emit()">Archivar grupo</button>
+        </div>
+      }
+    </section>
+  }
+}

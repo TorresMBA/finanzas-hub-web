@@ -1,6 +1,10 @@
 import { Page, expect, test } from '@playwright/test';
 import { signUp } from './support';
 
+async function openGroup(page: Page, name: string): Promise<void> {
+  await page.getByRole('navigation', { name: 'Grupos' }).getByRole('button', { name: new RegExp(name) }).click();
+}
+
 async function openAccount(page: Page, name: string, balance: string): Promise<void> {
   await page.goto('/accounts');
   await page.getByRole('button', { name: 'Nueva cuenta' }).click();
@@ -42,55 +46,63 @@ test('a dinner of 300 split between two: Juan pays his half from his account and
   await expect(expense.getByRole('list', { name: 'Quiénes participan' })).toContainText('S/ 150.00');
   await expense.getByRole('button', { name: 'Registrar gasto' }).click();
   await expect(page.getByRole('status')).toHaveText('«Cena» de S/ 300.00 registrado y dividido.');
-  // The list of groups already says it, the group says with whom, and the expense who has not repaid yet.
-  await expect(page.getByRole('list', { name: 'Grupos' })).toContainText('Te deben S/ 150.00');
-  await expect(page.getByRole('list', { name: 'Deudas' })).toContainText('Te debe S/ 150.00');
-  await page.getByRole('list', { name: 'Gastos del grupo' }).getByText('Cena').click();
+  // The card of the group already says it, the group says with whom, and the expense who has not repaid yet.
+  await expect(page.getByRole('navigation', { name: 'Grupos' })).toContainText('Te deben S/ 150.00');
+  await expect(page.getByRole('list', { name: 'Deudas' })).toContainText('Juan te paga');
+  await expect(page.getByRole('list', { name: 'Deudas' })).toContainText('S/ 150.00');
+  await page.getByRole('tab', { name: 'Actividad' }).click();
+  await page.getByRole('region', { name: 'Actividad' }).getByText('Cena').click();
   await expect(page.getByRole('list', { name: 'Quién pagó su parte de Cena' })).toContainText('Debe S/ 150.00');
 
-  // Juan sees what he owes and pays it from the account he already had.
+  // Juan sees in the summary what he owes to whom, and in the group pays it from the account he already had.
   await juan.goto('/shared');
-  await expect(juan.getByRole('list', { name: 'Gastos del grupo' })).toContainText('Debes S/ 150.00');
+  await expect(juan.getByRole('list', { name: 'Por persona' })).toContainText('Depa: le debes S/ 150.00');
+  await openGroup(juan, 'Depa');
+  const activity = juan.getByRole('region', { name: 'Actividad' });
   const pay = async (): Promise<void> => {
-    await juan.getByRole('button', { name: 'Pagar', exact: true }).click();
+    await juan.getByRole('tab', { name: /Saldos/ }).click();
+    await juan.getByRole('button', { name: 'Registrar pago' }).click();
     const payment = juan.getByRole('dialog', { name: 'Pagar a Brian' });
     await payment.getByRole('checkbox').check();
     await payment.getByLabel(/^Cuenta/).selectOption({ label: 'Interbank' });
     await payment.getByLabel(/^Categoría/).selectOption({ label: 'Supermercado' });
     await payment.getByRole('button', { name: 'Registrar', exact: true }).click();
     await expect(juan.getByRole('status')).toHaveText('Pagaste S/ 150.00 a Brian.');
+    await juan.getByRole('tab', { name: 'Actividad' }).click();
   };
   await pay();
-  await expect(juan.getByRole('list', { name: 'Gastos del grupo' })).toContainText('Liquidado');
+  await expect(activity).toContainText('Liquidado');
 
   // He voids it: the debt is back and the movement left his account too, so paying again does not leave two.
-  await juan.getByRole('button', { name: 'Anular' }).click();
+  await activity.getByRole('button', { name: 'Anular' }).click();
   await expect(juan.getByRole('status')).toContainText('Pago anulado');
-  await expect(juan.getByRole('list', { name: 'Gastos del grupo' })).toContainText('Debes S/ 150.00');
+  await expect(activity).toContainText('Debes S/ 150.00');
   await juan.goto('/accounts');
   await expect(juan.getByText('S/ 1,000.00').first()).toBeVisible();
   await juan.goto('/shared');
+  await openGroup(juan, 'Depa');
   await pay();
-  await expect(juan.getByRole('list', { name: 'Gastos del grupo' })).toContainText('Liquidado');
+  await expect(activity).toContainText('Liquidado');
+  await juan.getByRole('tab', { name: /Saldos/ }).click();
   await expect(juan.getByRole('list', { name: 'Deudas' })).toContainText('Estás a mano con todos');
 
   // His account went down by what he paid.
   await juan.goto('/accounts');
   await expect(juan.getByText('S/ 850.00').first()).toBeVisible();
 
-  // Brian finds the dinner settled and the payment with who, how much and when.
+  // Brian is even with everyone, and finds the dinner settled and the payment with who and how much.
   await page.goto('/shared');
-  await expect(page.getByRole('list', { name: 'Gastos del grupo' })).toContainText('Liquidado');
-  await expect(page.getByRole('list', { name: 'Pagos del grupo' })).toContainText('Juan pagó a Brian');
-  await expect(page.getByRole('list', { name: 'Pagos del grupo' })).toContainText('S/ 150.00');
+  await expect(page.getByRole('list', { name: 'Por persona' })).toContainText('Estás a mano con todos');
+  await openGroup(page, 'Depa');
+  await page.getByRole('tab', { name: 'Actividad' }).click();
+  await expect(page.getByRole('region', { name: 'Actividad' })).toContainText('Liquidado');
+  await expect(page.getByRole('region', { name: 'Actividad' })).toContainText('Juan → ti');
+  await expect(page.getByRole('region', { name: 'Actividad' })).toContainText('Recibiste S/ 150.00');
 
-  // On a phone the list and the group take turns.
+  // On a phone the list of groups goes above the group, and nothing is wider than the screen.
   await page.setViewportSize({ width: 390, height: 800 });
-  await expect(page.getByRole('list', { name: 'Grupos' })).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Deudas' })).toBeHidden();
-  await page.getByRole('list', { name: 'Grupos' }).getByRole('button').click();
-  await expect(page.getByRole('list', { name: 'Deudas' })).toBeVisible();
-  await page.getByRole('button', { name: 'Grupos', exact: true }).click();
-  await expect(page.getByRole('list', { name: 'Grupos' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Grupos' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Actividad' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await juansBrowser.close();
 });

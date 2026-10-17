@@ -1,7 +1,7 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, computed, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { CreateGoalRequest, Goal, UpdateGoalRequest } from '../../core/api/api-types';
+import { CreateGoalRequest, Goal, GoalSpendRequest, UpdateGoalRequest } from '../../core/api/api-types';
 import { IDEMPOTENCY_KEY } from '../../core/http/api-interceptors';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 
@@ -24,6 +24,7 @@ export class GoalsApi {
   /** Undefined until a workspace is selected, which is how a resource knows to wait. */
   readonly goalsUrl = computed(() => (this.workspaces.current() ? `${this.base()}/goals` : undefined));
   readonly accountsUrl = computed(() => (this.workspaces.current() ? `${this.base()}/accounts` : undefined));
+  readonly categoriesUrl = computed(() => (this.workspaces.current() ? `${this.base()}/categories` : undefined));
 
   detailUrl(goalId: string | null): string | undefined {
     return this.workspaces.current() && goalId ? `${this.base()}/goals/${goalId}` : undefined;
@@ -41,6 +42,13 @@ export class GoalsApi {
   move(goalId: string, what: 'contributions' | 'withdrawals', amount: number, accountId: string, key: string): Promise<Goal> {
     return firstValueFrom(
       this.http.post<Goal>(`${this.base()}/goals/${goalId}/${what}`, { amount, accountId }, { context: new HttpContext().set(IDEMPOTENCY_KEY, key) }),
+    );
+  }
+
+  /** Spends what the person saved: back to `accountId` and registered there as an expense, marked as paid with the goal. */
+  spend(goalId: string, request: GoalSpendRequest, key: string): Promise<Goal> {
+    return firstValueFrom(
+      this.http.post<Goal>(`${this.base()}/goals/${goalId}/spend`, request, { context: new HttpContext().set(IDEMPOTENCY_KEY, key) }),
     );
   }
 

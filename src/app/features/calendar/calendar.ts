@@ -15,19 +15,24 @@ import { CalendarApi, FREQUENCY_LABELS, KIND_LOOK, RULE_STATUS_LABELS } from './
 import { ScheduleForm, ScheduleFormTarget } from './schedule-form';
 import { isManagedAccount } from '../../core/api/managed-accounts';
 
-type Filter = 'all' | 'income' | 'expense' | 'recurring';
+type Filter = 'all' | 'income' | 'expense' | 'recurring' | 'cards';
 
 const FILTERS: readonly { value: Filter; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'income', label: 'Ingresos' },
   { value: 'expense', label: 'Gastos' },
   { value: 'recurring', label: 'Recurrentes' },
+  { value: 'cards', label: 'Tarjetas' },
 ];
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const PILLS_PER_DAY = 2;
 
 function matches(item: CalendarItem, filter: Filter): boolean {
+  if (filter === 'cards') {
+    return item.kind === 'cardDue' || item.kind === 'cardClosing';
+  }
+
   return filter === 'all' || (filter === 'recurring' ? item.isRecurring : item.kind === filter);
 }
 
@@ -155,6 +160,9 @@ export class Calendar {
 
   /** The rules that still mean something: the ended ones are history. */
   protected readonly liveRules = computed(() => (this.rules.value() ?? []).filter((rule) => rule.status !== 'ended'));
+
+  /** A day of the cycle of a card: a date to keep in mind, neither registered nor to be confirmed. */
+  protected readonly isCardDate = (item: CalendarItem) => item.kind === 'cardDue' || item.kind === 'cardClosing';
 
   protected selectDay(date: string): void {
     this.chosenDay.set(date);
