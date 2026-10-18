@@ -6,6 +6,9 @@
 //   sf2 raised surface         mu   muted text          rd  expense, danger
 //   sf3 track, inset           bd   border              *s  soft tint of the colour
 //   onac text on accent        sh   shadow              ov  overlay behind dialogs
+//
+// The h* tokens paint the greeting banner of Inicio (Mocks_finanzas-hub-angular/Inicio.dc.html): its
+// background, border, texts and chips, the stars and the moon or sun that rises in it.
 
 :root,
 [data-theme='dark'] {
@@ -31,6 +34,18 @@
   --vis: rgba(160, 147, 247, 0.16);
   --sh: 0 1px 2px rgba(0, 0, 0, 0.35);
   --ov: rgba(3, 7, 15, 0.6);
+  --hbg:
+    radial-gradient(420px 220px at 86% 0%, rgba(250, 214, 120, 0.16), transparent 70%),
+    radial-gradient(700px 260px at 100% 100%, rgba(28, 194, 140, 0.3), transparent 70%),
+    linear-gradient(115deg, #0c1528 0%, #14214a 55%, #10314a 100%);
+  --hbd: rgba(148, 163, 184, 0.16);
+  --htx: #eef2f8;
+  --htx2: #c2cbd9;
+  --hmu: #9fb1cc;
+  --hchip: rgba(10, 17, 30, 0.45);
+  --hchipbd: rgba(148, 163, 184, 0.2);
+  --hstar: #ffffff;
+  --horb: radial-gradient(circle at 40% 40%, #fff6d6, #f5d27a 60%, rgba(245, 210, 122, 0) 72%);
 }
 
 [data-theme='light'] {
@@ -56,4 +71,16 @@
   --vis: rgba(95, 75, 216, 0.1);
   --sh: 0 1px 2px rgba(15, 23, 42, 0.06);
   --ov: rgba(15, 23, 42, 0.35);
+  --hbg:
+    radial-gradient(380px 200px at 86% 0%, rgba(250, 204, 21, 0.22), transparent 70%),
+    radial-gradient(640px 240px at 100% 100%, rgba(45, 212, 191, 0.22), transparent 70%),
+    linear-gradient(115deg, #e4e7fd 0%, #eef0fb 50%, #ecf9f3 100%);
+  --hbd: rgba(15, 23, 42, 0.07);
+  --htx: #0e1626;
+  --htx2: #475569;
+  --hmu: #5b62a8;
+  --hchip: rgba(255, 255, 255, 0.85);
+  --hchipbd: rgba(15, 23, 42, 0.06);
+  --hstar: #64748b;
+  --horb: radial-gradient(circle, rgba(253, 224, 71, 0.9), rgba(250, 204, 21, 0.35) 45%, rgba(250, 204, 21, 0) 70%);
 }

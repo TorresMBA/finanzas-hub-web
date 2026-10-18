@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { PASSWORD, newEmail, signUp } from './support';
+import { GREETING, PASSWORD, newEmail, signUp } from './support';
 
 test.describe('accounts', () => {
   test('a visitor is asked to sign in, registers, sets up the workspace and reaches the home page', async ({ page }) => {
     await page.goto('/accounts');
     await expect(page).toHaveURL(/\/login\?returnUrl=%2Faccounts$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Inicia sesión' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Hola de nuevo' })).toBeVisible();
 
-    await page.getByRole('link', { name: 'Crea una' }).click();
+    await page.getByRole('link', { name: 'Regístrate gratis' }).click();
     await page.getByLabel('Tu nombre').fill('Brian Quispe');
     await page.getByLabel('Correo').fill(newEmail('brian'));
     await page.getByLabel('Contraseña').fill(PASSWORD);
@@ -20,7 +20,7 @@ test.describe('accounts', () => {
     await page.getByRole('button', { name: 'Empezar' }).click();
 
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: GREETING })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Tu perfil: Brian Quispe' })).toHaveText('BQ');
 
     await page.goto('/settings/workspace');
@@ -51,12 +51,12 @@ test.describe('accounts', () => {
     await expect(page).toHaveURL(/\/login\?returnUrl=%2Fgoals$/);
 
     await page.getByLabel('Correo').fill(email);
-    await page.getByLabel('Contraseña').fill('Otra-Clave-Larga-1');
-    await page.getByRole('button', { name: 'Entrar' }).click();
+    await page.getByLabel('Contraseña', { exact: true }).fill('Otra-Clave-Larga-1');
+    await page.getByRole('button', { name: 'Ingresar' }).click();
     await expect(page.getByRole('alert')).toHaveText('El correo o la contraseña no son correctos.');
 
-    await page.getByLabel('Contraseña').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Entrar' }).click();
+    await page.getByLabel('Contraseña', { exact: true }).fill(PASSWORD);
+    await page.getByRole('button', { name: 'Ingresar' }).click();
     await expect(page).toHaveURL(/\/goals$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Metas' })).toBeVisible();
   });
@@ -87,7 +87,7 @@ test.describe('accounts', () => {
     await juan.getByRole('button', { name: 'Crear cuenta' }).click();
 
     // He opens on Brian's workspace, already set up, so there is no onboarding for him.
-    await expect(juan.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
+    await expect(juan.getByRole('heading', { level: 1, name: GREETING })).toBeVisible();
     await juan.goto('/settings/workspace');
     await expect(juan.getByText('Juan (tú)')).toBeVisible();
     await expect(juan.getByText('Brian', { exact: true })).toBeVisible();
@@ -124,7 +124,7 @@ test.describe('accounts', () => {
     // Juan already has an account and is signed in: the link offers to join, it does not send him to his home page.
     await juan.goto(link);
     await juan.getByRole('button', { name: 'Unirme a Personal' }).click();
-    await expect(juan.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
+    await expect(juan.getByRole('heading', { level: 1, name: GREETING })).toBeVisible();
 
     // He now has two workspaces called "Personal"; the one he joined says whose it is, and it is the one open.
     await juan.goto('/settings/workspace');

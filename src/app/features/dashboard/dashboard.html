@@ -1,12 +1,42 @@
-<app-page-header [eyebrow]="periodLabel()" title="Inicio" [subtitle]="greeting()">
-  <a class="button button--primary" routerLink="/transactions">Ir a transacciones</a>
-</app-page-header>
+<section class="hero" aria-labelledby="hero-title">
+  <div class="sky" aria-hidden="true">
+    @for (star of stars; track $index) {
+      <span
+        [style.left.%]="star.left"
+        [style.top.%]="star.top"
+        [style.width.px]="star.size"
+        [style.height.px]="star.size"
+        [style.animation-delay.s]="star.delay"
+        [style.animation-duration.s]="star.duration"
+      ></span>
+    }
+  </div>
+  <div class="orb" aria-hidden="true"></div>
+  <div class="hero-body">
+    <div class="hello">
+      <span class="eyebrow"><app-icon [name]="daytime() ? 'wb_sunny' : 'bedtime'" [size]="16" />{{ eyebrow() }}</span>
+      <h1 id="hero-title">{{ greeting() }}</h1>
+      <p>Este es el resumen de tu dinero del mes. Solo tú lo ves.</p>
+      @if (insights().length > 0) {
+        <ul class="insights" aria-label="Lectura del mes">
+          @for (insight of insights(); track insight.text) {
+            <li [attr.data-tone]="insight.tone"><i aria-hidden="true"></i>{{ insight.text }}</li>
+          }
+        </ul>
+      }
+    </div>
+    <p class="quote">
+      <span class="quote-mark" aria-hidden="true"><app-icon name="format_quote" [size]="18" /></span>
+      <span>{{ quote() }}</span>
+    </p>
+  </div>
+</section>
 
 @if (!dashboard.hasValue() && dashboard.isLoading()) {
   <div class="loading" aria-busy="true" aria-label="Cargando el resumen">
-    <app-skeleton height="96px" />
-    <app-skeleton height="220px" />
-    <app-skeleton height="220px" />
+    <app-skeleton height="132px" />
+    <app-skeleton height="280px" />
+    <app-skeleton height="280px" />
   </div>
 } @else if (dashboard.error()) {
   <app-error-state title="No se pudo cargar tu resumen" (retry)="dashboard.reload()" />
@@ -24,150 +54,199 @@
       </div>
     }
 
-    <ul class="kpis" aria-label="Cifras del mes">
-      @for (kpi of kpis(); track kpi.label) {
-        <li class="card kpi">
-          <span class="kpi-label">{{ kpi.label }}</span>
-          <strong>{{ kpi.value }}</strong>
-          <span class="kpi-note" [attr.data-tone]="kpi.tone">{{ kpi.note }}</span>
-        </li>
-      }
-    </ul>
-
-    <div class="grid">
-      <section class="card panel" aria-labelledby="cashflow-title">
-        <header>
-          <h2 id="cashflow-title">Flujo de los últimos 6 meses</h2>
-          <span class="legend"><i class="dot dot--in"></i>Ingresos <i class="dot dot--out"></i>Gastos</span>
-        </header>
-        @if (hasCashflow()) {
-          <ul class="chart">
-            @for (month of cashflow(); track month.month) {
-              <li [attr.aria-label]="month.summary" [title]="month.summary">
-                <span class="bars" aria-hidden="true">
-                  <span class="bar bar--in" [style.height.%]="month.income"></span>
-                  <span class="bar bar--out" [style.height.%]="month.expense"></span>
+    <section class="summary" aria-labelledby="summary-title">
+      <header>
+        <h2 id="summary-title">Resumen del mes</h2>
+        <button type="button" class="button button--small customize" [class.button--primary]="editing()" [attr.aria-pressed]="editing()" (click)="editing.set(!editing())">
+          <app-icon [name]="editing() ? 'check' : 'tune'" [size]="17" />
+          {{ editing() ? 'Listo' : 'Personalizar' }}
+        </button>
+      </header>
+      <ul class="kpis" [class.is-editing]="editing()">
+        @for (kpi of kpis(); track kpi.id; let first = $first, last = $last) {
+          <li class="card kpi">
+            <span class="kpi-head">
+              <app-icon-tile [icon]="kpi.icon" [color]="kpi.color" [size]="28" />
+              <span class="kpi-label">{{ kpi.label }}</span>
+              @if (editing()) {
+                <span class="kpi-tools">
+                  <button type="button" [attr.aria-label]="'Mover ' + kpi.label + ' antes'" [disabled]="first" (click)="move(kpi.id, -1)"><app-icon name="chevron_left" [size]="16" /></button>
+                  <button type="button" [attr.aria-label]="'Mover ' + kpi.label + ' después'" [disabled]="last" (click)="move(kpi.id, 1)"><app-icon name="chevron_right" [size]="16" /></button>
+                  <button type="button" class="drop" [attr.aria-label]="'Quitar ' + kpi.label" (click)="remove(kpi.id)"><app-icon name="close" [size]="16" /></button>
                 </span>
-                <span class="month" aria-hidden="true">{{ month.label }}</span>
-              </li>
-            }
-          </ul>
-        } @else {
-          <p class="none">Todavía no hay ingresos ni gastos en estos meses.</p>
-        }
-      </section>
-
-      <section class="card panel" aria-labelledby="categories-title">
-        <header>
-          <h2 id="categories-title">En qué se fue</h2>
-          <a class="link" routerLink="/categories">Categorías</a>
-        </header>
-        <ul class="rows">
-          @for (category of data.topCategories; track category.categoryId) {
-            <li>
-              <app-icon-tile [icon]="category.icon" [color]="tile(category.color)" [size]="34" />
-              <span class="names">
-                <strong>{{ category.name }}</strong>
-                <span class="meter" [style.--meter]="category.share"></span>
-              </span>
-              <span class="figure">
-                <strong>{{ category.amount | money: currency }}</strong>
-                <span>{{ category.share }}%</span>
-              </span>
-            </li>
-          } @empty {
-            <li class="none">Sin gastos este mes.</li>
-          }
-        </ul>
-      </section>
-
-      <section class="card panel" aria-labelledby="recent-title">
-        <header>
-          <h2 id="recent-title">Últimos movimientos</h2>
-          <a class="link" routerLink="/transactions">Ver todos</a>
-        </header>
-        <ul class="rows">
-          @for (movement of data.recentMovements; track movement.id) {
-            @let look = lookOf(movement);
-            <li>
-              <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="34" />
-              <span class="names">
-                <strong>{{ movement.description }}</strong>
-                <span>{{ placeOf(movement) }}</span>
-              </span>
-              @if (movement.kind === 'transfer') {
-                <strong class="figure">{{ magnitude(movement.signedAmount) | money: movement.currency }}</strong>
-              } @else {
-                <strong class="figure" [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</strong>
               }
-            </li>
-          } @empty {
-            <li class="none">Sin movimientos este mes.</li>
-          }
-        </ul>
-      </section>
+            </span>
+            <strong [attr.data-tone]="kpi.valueTone">{{ kpi.value }}</strong>
+            <span class="kpi-foot">
+              @if (kpi.bar !== undefined) {
+                <span class="kpi-bar" aria-hidden="true"><span [style.width.%]="kpi.bar"></span></span>
+              }
+              <span class="kpi-note" [attr.data-tone]="kpi.noteTone">{{ kpi.note }}</span>
+            </span>
+          </li>
+        }
+        @if (editing() && hiddenKpis().length > 0) {
+          <li class="kpi-add">
+            <span class="kpi-add-title"><app-icon name="add_circle" [size]="18" />Agregar indicador</span>
+            <span class="kpi-add-options">
+              @for (option of hiddenKpis(); track option.id) {
+                <button type="button" (click)="add(option.id)"><app-icon [name]="option.icon" [size]="15" />{{ option.label }}</button>
+              }
+            </span>
+          </li>
+        }
+      </ul>
+      @if (kpis().length === 0 && !editing()) {
+        <p class="none">Elegiste no ver ninguna cifra. Usa «Personalizar» para volver a mostrarlas.</p>
+      }
+    </section>
 
-      @if (data.goals.length > 0) {
-        <section class="card panel" aria-labelledby="goals-title">
+    <div class="columns">
+      <div class="column">
+        <section class="card panel" aria-labelledby="cashflow-title">
           <header>
-            <h2 id="goals-title">Tus metas</h2>
-            <a class="link" routerLink="/goals">Ver todas</a>
+            <h2 id="cashflow-title">Flujo de los últimos 6 meses</h2>
+            <span class="legend"><i class="dot dot--in"></i>Ingresos <i class="dot dot--out"></i>Gastos</span>
+          </header>
+          @if (hasCashflow()) {
+            <ul class="chart">
+              @for (month of cashflow(); track month.month) {
+                <li [attr.aria-label]="month.summary" [title]="month.summary" [class.is-selected]="month.isSelected">
+                  <span class="bars" aria-hidden="true">
+                    <span class="bar bar--in" [style.height.%]="month.income"></span>
+                    <span class="bar bar--out" [style.height.%]="month.expense"></span>
+                  </span>
+                  <span class="month" aria-hidden="true">{{ month.label }}</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="none">Todavía no hay ingresos ni gastos en estos meses.</p>
+          }
+          @if (balanceNote(); as note) {
+            <p class="balance" [attr.data-tone]="note.tone"><app-icon [name]="note.icon" [size]="19" />{{ note.text }}</p>
+          }
+        </section>
+
+        <section class="card panel" aria-labelledby="recent-title">
+          <header>
+            <h2 id="recent-title">Últimos movimientos</h2>
+            <a class="link" routerLink="/transactions">Ver todos</a>
           </header>
           <ul class="rows">
-            @for (goal of data.goals; track goal.id) {
+            @for (movement of data.recentMovements; track movement.id) {
+              @let look = lookOf(movement);
               <li>
-                <app-icon-tile icon="flag" color="violet" [size]="34" />
+                <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="38" />
                 <span class="names">
-                  <strong>{{ goal.name }}</strong>
-                  <span>{{ goal.percent }}% de {{ goal.targetAmount | money: goal.currency }}{{ goal.isShared ? ' · compartida' : '' }}</span>
+                  <strong>{{ movement.description }}</strong>
+                  <span>{{ placeOf(movement) }}</span>
                 </span>
-                <strong class="figure">{{ goal.saved | money: goal.currency }}</strong>
+                @if (movement.kind === 'transfer') {
+                  <strong class="figure">{{ magnitude(movement.signedAmount) | money: movement.currency }}</strong>
+                } @else {
+                  <strong class="figure" [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</strong>
+                }
+              </li>
+            } @empty {
+              <li class="none">Sin movimientos este mes.</li>
+            }
+          </ul>
+        </section>
+      </div>
+
+      <div class="column">
+        <section class="card panel" aria-labelledby="categories-title">
+          <header>
+            <h2 id="categories-title">En qué se fue</h2>
+            <a class="link" routerLink="/categories">Categorías</a>
+          </header>
+          <ul class="rows">
+            @for (category of data.topCategories; track category.categoryId) {
+              <li>
+                <app-icon-tile [icon]="category.icon" [color]="tile(category.color)" [size]="38" />
+                <span class="share">
+                  <span class="share-line">
+                    <strong class="share-name">{{ category.name }}</strong>
+                    <strong class="figure">{{ category.amount | money: currency }}</strong>
+                  </span>
+                  <span class="share-line">
+                    <span class="meter" [attr.data-color]="category.color" [style.--meter]="category.share"></span>
+                    <span class="percent">{{ category.share }}%</span>
+                  </span>
+                </span>
+              </li>
+            } @empty {
+              <li class="none">Sin gastos este mes.</li>
+            }
+          </ul>
+        </section>
+
+        @if (data.goals.length > 0) {
+          <section class="card panel" aria-labelledby="goals-title">
+            <header>
+              <h2 id="goals-title">Tus metas</h2>
+              <a class="link" routerLink="/goals">Ver todas</a>
+            </header>
+            <ul class="rows">
+              @for (goal of data.goals; track goal.id) {
+                <li>
+                  <app-icon-tile icon="flag" color="violet" [size]="38" />
+                  <span class="share">
+                    <span class="share-line">
+                      <strong class="share-name">{{ goal.name }}</strong>
+                      <strong class="figure">{{ goal.saved | money: goal.currency }}</strong>
+                    </span>
+                    <span class="meter" data-color="violet" [style.--meter]="goal.percent"></span>
+                    <span class="percent">{{ goal.percent }}% de {{ goal.targetAmount | money: goal.currency }}{{ goal.isShared ? ' · compartida' : '' }}</span>
+                  </span>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (data.upcoming.length > 0) {
+          <section class="card panel" aria-labelledby="upcoming-title">
+            <header>
+              <h2 id="upcoming-title">Próximos pagos</h2>
+              <a class="link" routerLink="/calendar">Ver calendario</a>
+            </header>
+            <ul class="rows">
+              @for (payment of data.upcoming; track $index) {
+                <li>
+                  <app-icon-tile [icon]="payment.isCardPayment ? 'credit_card' : 'event'" [color]="payment.isCardPayment ? 'blue' : 'amber'" [size]="38" />
+                  <span class="names">
+                    <strong>{{ payment.description }}</strong>
+                    <span>{{ shortDate(payment.date) }}</span>
+                  </span>
+                  <strong class="figure">{{ payment.amount | money: payment.currency }}</strong>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        <section class="card panel" aria-labelledby="accounts-title">
+          <header>
+            <h2 id="accounts-title">Tus cuentas</h2>
+            <a class="link" routerLink="/accounts">Ver todas</a>
+          </header>
+          <ul class="rows">
+            @for (account of data.accounts; track account.id) {
+              @let look = accountLook(account);
+              <li>
+                <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="38" />
+                <span class="names">
+                  <strong>{{ account.name }}</strong>
+                  <span>{{ account.currency }}{{ account.isFavorite ? ' · Principal' : '' }}</span>
+                </span>
+                <strong class="figure" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</strong>
               </li>
             }
           </ul>
         </section>
-      }
-
-      @if (data.upcoming.length > 0) {
-        <section class="card panel" aria-labelledby="upcoming-title">
-          <header>
-            <h2 id="upcoming-title">Próximos pagos</h2>
-            <a class="link" routerLink="/calendar">Ver calendario</a>
-          </header>
-          <ul class="rows">
-            @for (payment of data.upcoming; track $index) {
-              <li>
-                <app-icon-tile [icon]="payment.isCardPayment ? 'credit_card' : 'event'" [color]="payment.isCardPayment ? 'blue' : 'amber'" [size]="34" />
-                <span class="names">
-                  <strong>{{ payment.description }}</strong>
-                  <span>{{ shortDate(payment.date) }}</span>
-                </span>
-                <strong class="figure">{{ payment.amount | money: payment.currency }}</strong>
-              </li>
-            }
-          </ul>
-        </section>
-      }
-
-      <section class="card panel" aria-labelledby="accounts-title">
-        <header>
-          <h2 id="accounts-title">Tus cuentas</h2>
-          <a class="link" routerLink="/accounts">Ver todas</a>
-        </header>
-        <ul class="rows">
-          @for (account of data.accounts; track account.id) {
-            @let look = accountLook(account);
-            <li>
-              <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="34" />
-              <span class="names">
-                <strong>{{ account.name }}</strong>
-                <span>{{ account.currency }}{{ account.isFavorite ? ' · Principal' : '' }}</span>
-              </span>
-              <strong class="figure" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</strong>
-            </li>
-          }
-        </ul>
-      </section>
+      </div>
     </div>
   }
 }

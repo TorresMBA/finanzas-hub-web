@@ -1,5 +1,5 @@
 import { Locator, Page, expect, test } from '@playwright/test';
-import { signUp } from './support';
+import { GREETING, signUp } from './support';
 
 async function openAccount(page: Page, name: string, balance: string, currency?: string): Promise<void> {
   await page.getByRole('button', { name: 'Nueva cuenta' }).click();
@@ -184,7 +184,7 @@ test.describe('transfers, cards and net worth', () => {
     await expect(page.getByLabel('Resumen en PEN, todas las monedas')).toContainText('S/ 1,275.00');
 
     await page.getByRole('link', { name: 'Inicio' }).first().click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: GREETING })).toBeVisible();
     await expect(page.getByText('Hola, Brian.')).toBeVisible();
     const figures = page.getByRole('list', { name: 'Cifras del mes' }).getByRole('listitem');
     await expect(figures).toContainText(['S/ 3,800.00', 'S/ 4,000.00', 'S/ 1,275.00', '68.1%']);

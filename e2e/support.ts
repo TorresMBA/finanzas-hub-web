@@ -5,6 +5,9 @@ import { join } from 'node:path';
 
 export const PASSWORD = 'Correcta-Bateria-9';
 
+/** The heading of Inicio: a greeting that depends on the time of day. */
+export const GREETING = /^Buen(os días|as tardes|as noches)/;
+
 export function newEmail(name: string): string {
   return `${name.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
 }

@@ -1,5 +1,5 @@
 import { Page, expect, test } from '@playwright/test';
-import { signUp } from './support';
+import { GREETING, signUp } from './support';
 
 async function openGroup(page: Page, name: string): Promise<void> {
   await page.getByRole('navigation', { name: 'Grupos' }).getByRole('button', { name: new RegExp(name) }).click();
@@ -28,7 +28,7 @@ test('a dinner of 300 split between two: Juan pays his half from his account and
   await page.getByRole('button', { name: 'Enviar invitación' }).click();
   await juan.goto(await page.getByLabel('Enlace para aceptar la invitación').inputValue());
   await juan.getByRole('button', { name: 'Unirme a Personal' }).click();
-  await expect(juan.getByRole('heading', { level: 1, name: 'Inicio' })).toBeVisible();
+  await expect(juan.getByRole('heading', { level: 1, name: GREETING })).toBeVisible();
 
   // Brian makes a group with Juan and registers the dinner he paid, split in equal parts.
   await page.goto('/shared');

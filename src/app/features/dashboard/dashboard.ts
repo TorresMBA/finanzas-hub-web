@@ -1,16 +1,17 @@
+import { DOCUMENT } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Dashboard as DashboardData, DashboardAccount, DashboardMovement } from '../../core/api/api-types';
 import { SessionStore } from '../../core/auth/session-store';
-import { PeriodStore } from '../../core/period/period-store';
+import { PeriodStore, TODAY } from '../../core/period/period-store';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { formatShortDate } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
+import { Icon } from '../../shared/ui/icon';
 import { IconTile, TileColor } from '../../shared/ui/icon-tile';
 import { MoneyPipe, formatMoney } from '../../shared/ui/money';
-import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 
 const MONTH = new Intl.DateTimeFormat('es-PE', { month: 'short' });
@@ -23,6 +24,49 @@ const ACCOUNT_LOOK: Readonly<Record<DashboardAccount['type'], { icon: string; co
   goalFund: { icon: 'flag', color: 'violet' },
   investment: { icon: 'trending_up', color: 'green' },
 };
+
+const QUOTES = ['“Pequeñas decisiones, grandes resultados.”', '“Cada sol cuenta.”', '“Hoy ahorras, mañana eliges.”', '“Lo que se mide, mejora.”'];
+
+/** The stars of the banner: always the same sky, so it does not jump between visits. */
+const STARS = (() => {
+  let seed = 7;
+  const next = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  return Array.from({ length: 46 }, () => ({
+    left: next() * 100,
+    top: next() * 100,
+    size: next() < 0.15 ? 2.5 : 1.5,
+    delay: (next() * 4).toFixed(2),
+    duration: (2.5 + next() * 3).toFixed(2),
+  }));
+})();
+
+type KpiId = 'netWorth' | 'income' | 'expense' | 'savings' | 'budget' | 'daily';
+type Tone = 'good' | 'bad' | 'warn' | 'neutral';
+
+interface Kpi {
+  id: KpiId;
+  label: string;
+  icon: string;
+  color: TileColor;
+  value: string;
+  valueTone: Tone;
+  note: string;
+  noteTone: Tone;
+  /** Share of the budget used, for the bar under the figure. */
+  bar?: number;
+}
+
+const KPI_IDS: readonly KpiId[] = ['netWorth', 'income', 'expense', 'savings', 'budget', 'daily'];
+const DEFAULT_KPIS: readonly KpiId[] = ['netWorth', 'income', 'expense', 'savings', 'budget'];
+const KPI_NAMES: Readonly<Record<KpiId, { label: string; icon: string }>> = {
+  netWorth: { label: 'Patrimonio', icon: 'account_balance' },
+  income: { label: 'Ingresos', icon: 'south_west' },
+  expense: { label: 'Gastos', icon: 'north_east' },
+  savings: { label: 'Tasa de ahorro', icon: 'savings' },
+  budget: { label: 'Presupuesto', icon: 'donut_large' },
+  daily: { label: 'Gasto diario', icon: 'today' },
+};
+const KPI_STORAGE_KEY = 'ph.home.kpis';
 
 /** "may" from "2026-05". */
 function monthLabel(iso: string): string {
@@ -39,10 +83,12 @@ function against(current: number, previous: number, currency: string): string {
 /**
  * The home page: the month selected in the top bar, in the base currency of the workspace. It adds nothing
  * up: every figure comes from the API, and it is only about the signed-in person's own money.
+ *
+ * Which figures show, and in what order, is a choice of the person on this device.
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [EmptyState, ErrorState, IconTile, MoneyPipe, PageHeader, RouterLink, Skeleton],
+  imports: [EmptyState, ErrorState, Icon, IconTile, MoneyPipe, RouterLink, Skeleton],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,8 +97,10 @@ export class Dashboard {
   private readonly workspaces = inject(WorkspaceStore);
   private readonly session = inject(SessionStore);
   private readonly period = inject(PeriodStore);
+  private readonly today = inject(TODAY);
+  private readonly storage = inject(DOCUMENT).defaultView?.localStorage;
 
-  protected readonly periodLabel = this.period.label;
+  protected readonly stars = STARS;
   protected readonly shortDate = formatShortDate;
   protected readonly accountLook = (account: DashboardAccount) => ACCOUNT_LOOK[account.type];
 
@@ -63,53 +111,146 @@ export class Dashboard {
   });
   protected readonly dashboard = httpResource<DashboardData>(() => this.url());
 
-  protected readonly greeting = computed(() => {
-    const name = this.session.user()?.displayName.trim().split(/\s+/)[0];
-    return `${name ? `Hola, ${name}. ` : ''}Este es el resumen de tu dinero del mes. Solo tú lo ves.`;
+  /** The month as loaded. Reading the value of a resource that failed throws, and the banner shows in every state. */
+  private readonly data = computed(() => (this.dashboard.hasValue() ? this.dashboard.value() : undefined));
+
+  /** Days of the selected month, and how many of them have gone by. A month to come has none behind it. */
+  private readonly days = computed(() => {
+    const { year, month } = this.period.month();
+    const total = new Date(year, month, 0).getDate();
+    const today = this.today();
+    const selected = year * 12 + month;
+    const current = today.getFullYear() * 12 + today.getMonth() + 1;
+    const elapsed = selected < current ? total : selected === current ? today.getDate() : 0;
+    return { total, elapsed, isCurrent: selected === current };
   });
 
-  /** The four figures of the month. Empty while the workspace has no base currency to state them in. */
-  protected readonly kpis = computed(() => {
-    const data = this.dashboard.value();
+  protected readonly eyebrow = computed(() => {
+    const { total, elapsed, isCurrent } = this.days();
+    return isCurrent ? `${this.period.label()} · Día ${elapsed} de ${total}` : this.period.label();
+  });
+
+  protected readonly greeting = computed(() => {
+    const hour = this.today().getHours();
+    const hello = hour >= 5 && hour < 12 ? 'Buenos días' : hour >= 5 && hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+    const name = this.session.user()?.displayName.trim().split(/\s+/)[0];
+    return name ? `${hello}, ${name}` : hello;
+  });
+
+  protected readonly daytime = computed(() => {
+    const hour = this.today().getHours();
+    return hour >= 6 && hour < 19;
+  });
+
+  protected readonly quote = computed(() => QUOTES[this.today().getDate() % QUOTES.length]);
+
+  /** Short readings of the month for the banner. */
+  protected readonly insights = computed(() => {
+    const data = this.data();
+    if (!data?.baseCurrency || data.accounts.length === 0) {
+      return [];
+    }
+
+    const insights: { text: string; tone: Tone }[] = [];
+    const rate = data.savingsRate === null ? null : Number(data.savingsRate);
+    if (rate !== null) {
+      insights.push(rate < 0 ? { text: 'Gastaste más de lo que ingresaste', tone: 'bad' } : { text: `Ahorraste el ${rate.toFixed(0)}% de tus ingresos`, tone: 'good' });
+    } else if (Number(data.expense) > 0) {
+      insights.push({ text: 'Gastos sin ingresos este mes', tone: 'bad' });
+    }
+    if (data.budget) {
+      const used = Math.round(Number(data.budget.usedPercent));
+      insights.push({ text: `Presupuesto al ${used}%`, tone: Number(data.budget.spent) > Number(data.budget.limit) ? 'bad' : used >= 80 ? 'warn' : 'good' });
+    }
+    const { total, elapsed, isCurrent } = this.days();
+    if (isCurrent) {
+      const left = total - elapsed;
+      insights.push({ text: left === 0 ? 'Hoy cierra el mes' : `${left} ${left === 1 ? 'día' : 'días'} para cerrar el mes`, tone: 'warn' });
+    }
+    return insights;
+  });
+
+  protected readonly editing = signal(false);
+  private readonly order = signal<readonly KpiId[]>(this.readOrder());
+
+  /** Every figure the month can give. The budget only exists for someone who has set one. */
+  private readonly allKpis = computed((): Partial<Record<KpiId, Kpi>> => {
+    const data = this.data();
     const currency = data?.baseCurrency;
     if (!data || !currency) {
-      return [];
+      return {};
     }
 
     const target = this.session.user()?.preferences.savingsRateTarget;
     const rate = data.savingsRate === null ? null : Number(data.savingsRate);
-    return [
-      {
-        label: 'Patrimonio',
+    const netChange = Number(data.netWorth.change);
+    const { elapsed } = this.days();
+    const kpis: Partial<Record<KpiId, Kpi>> = {
+      netWorth: {
+        ...this.named('netWorth', 'blue'),
         value: formatMoney(data.netWorth.amount, currency),
+        valueTone: Number(data.netWorth.amount) < 0 ? 'bad' : 'neutral',
         note: against(Number(data.netWorth.amount), Number(data.netWorth.previousAmount), currency),
-        tone: Number(data.netWorth.change) < 0 ? 'bad' : 'good',
+        noteTone: netChange < 0 ? 'bad' : netChange > 0 ? 'good' : 'neutral',
       },
-      { label: 'Ingresos', value: formatMoney(data.income, currency), note: against(Number(data.income), Number(data.previousIncome), currency), tone: 'good' },
-      { label: 'Gastos', value: formatMoney(data.expense, currency), note: against(Number(data.expense), Number(data.previousExpense), currency), tone: 'neutral' },
-      {
-        label: 'Tasa de ahorro',
+      income: {
+        ...this.named('income', 'green'),
+        value: formatMoney(data.income, currency),
+        valueTone: 'neutral',
+        note: against(Number(data.income), Number(data.previousIncome), currency),
+        noteTone: 'good',
+      },
+      expense: {
+        ...this.named('expense', 'red'),
+        value: formatMoney(data.expense, currency),
+        valueTone: 'neutral',
+        note: against(Number(data.expense), Number(data.previousExpense), currency),
+        noteTone: 'neutral',
+      },
+      savings: {
+        ...this.named('savings', rate !== null && rate < 0 ? 'red' : 'green'),
         value: rate === null ? '—' : `${rate.toFixed(1)}%`,
+        valueTone: rate !== null && rate < 0 ? 'bad' : 'neutral',
         note: rate === null ? 'Sin ingresos este mes' : target ? `Meta: ${target}%` : 'De lo que ingresó, lo que quedó',
-        tone: rate !== null && rate < 0 ? 'bad' : 'neutral',
+        noteTone: rate !== null && rate < 0 ? 'bad' : 'neutral',
       },
-      // Only for someone who has set budgets: without them there is nothing to measure against.
-      ...(data.budget
-        ? [
-            {
-              label: 'Presupuesto',
-              value: `${Math.round(Number(data.budget.usedPercent))}% usado`,
-              note: `${formatMoney(data.budget.spent, currency)} de ${formatMoney(data.budget.limit, currency)}`,
-              tone: Number(data.budget.spent) > Number(data.budget.limit) ? 'bad' : 'neutral',
-            },
-          ]
-        : []),
-    ];
+      daily: {
+        ...this.named('daily', 'violet'),
+        value: elapsed === 0 ? '—' : formatMoney(Number(data.expense) / elapsed, currency),
+        valueTone: 'neutral',
+        note: elapsed === 0 ? 'El mes aún no empieza' : `Promedio en ${elapsed} ${elapsed === 1 ? 'día' : 'días'}`,
+        noteTone: 'neutral',
+      },
+    };
+    if (data.budget) {
+      const over = Number(data.budget.spent) > Number(data.budget.limit);
+      kpis.budget = {
+        ...this.named('budget', 'amber'),
+        value: `${Math.round(Number(data.budget.usedPercent))}% usado`,
+        valueTone: over ? 'bad' : 'neutral',
+        note: `${formatMoney(data.budget.spent, currency)} de ${formatMoney(data.budget.limit, currency)}`,
+        noteTone: over ? 'bad' : 'neutral',
+        bar: Math.min(100, Number(data.budget.usedPercent)),
+      };
+    }
+    return kpis;
+  });
+
+  /** The figures the person chose, in their order. Empty while the workspace has no base currency. */
+  protected readonly kpis = computed(() => {
+    const all = this.allKpis();
+    return this.order().flatMap((id) => all[id] ?? []);
+  });
+
+  /** The figures the person can still add. */
+  protected readonly hiddenKpis = computed(() => {
+    const all = this.allKpis();
+    return KPI_IDS.filter((id) => all[id] && !this.order().includes(id)).map((id) => ({ id, ...KPI_NAMES[id] }));
   });
 
   /** Six months of income and expenses as bars, each as a share of the tallest one. */
   protected readonly cashflow = computed(() => {
-    const data = this.dashboard.value();
+    const data = this.data();
     const currency = data?.baseCurrency;
     if (!data || !currency) {
       return [];
@@ -119,6 +260,7 @@ export class Dashboard {
     return data.cashflow.map((month) => ({
       month: month.month,
       label: monthLabel(month.month),
+      isSelected: month.month === data.month,
       income: (Number(month.income) / tallest) * 100,
       expense: (Number(month.expense) / tallest) * 100,
       summary: `${monthLabel(month.month)}: ingresos ${formatMoney(month.income, currency)}, gastos ${formatMoney(month.expense, currency)}`,
@@ -126,6 +268,41 @@ export class Dashboard {
   });
 
   protected readonly hasCashflow = computed(() => this.cashflow().some((month) => month.income > 0 || month.expense > 0));
+
+  /** One line under the chart: what was left of the month, or how much more went out than came in. */
+  protected readonly balanceNote = computed(() => {
+    const data = this.data();
+    const currency = data?.baseCurrency;
+    if (!data || !currency) {
+      return null;
+    }
+
+    const left = Number(data.income) - Number(data.expense);
+    const when = this.days().isCurrent ? 'Este mes' : `En ${this.period.label().split(' ')[0].toLowerCase()}`;
+    if (left < 0) {
+      return { tone: 'bad', icon: 'trending_down', text: `${when} gastaste ${formatMoney(-left, currency)} más de lo que ingresaste.` };
+    }
+    return left > 0 ? { tone: 'good', icon: 'trending_up', text: `${when} te quedaron ${formatMoney(left, currency)} de lo que ingresaste.` } : null;
+  });
+
+  protected move(id: KpiId, step: -1 | 1): void {
+    const order = [...this.order()];
+    const from = order.indexOf(id);
+    const to = from + step;
+    if (from < 0 || to < 0 || to >= order.length) {
+      return;
+    }
+    [order[from], order[to]] = [order[to], order[from]];
+    this.saveOrder(order);
+  }
+
+  protected remove(id: KpiId): void {
+    this.saveOrder(this.order().filter((each) => each !== id));
+  }
+
+  protected add(id: KpiId): void {
+    this.saveOrder([...this.order(), id]);
+  }
 
   /** What to show under the description of a movement: where it happened, and for a transfer, where it went. */
   protected placeOf(movement: DashboardMovement): string {
@@ -147,5 +324,27 @@ export class Dashboard {
     return movement.kind === 'transfer'
       ? { icon: 'swap_horiz', color: 'blue' }
       : { icon: movement.categoryIcon ?? 'receipt_long', color: this.tile(movement.categoryColor) };
+  }
+
+  private named(id: KpiId, color: TileColor): Pick<Kpi, 'id' | 'label' | 'icon' | 'color'> {
+    return { id, color, ...KPI_NAMES[id] };
+  }
+
+  private readOrder(): readonly KpiId[] {
+    try {
+      const stored: unknown = JSON.parse(this.storage?.getItem(KPI_STORAGE_KEY) ?? 'null');
+      return Array.isArray(stored) ? stored.filter((id): id is KpiId => KPI_IDS.includes(id)) : DEFAULT_KPIS;
+    } catch {
+      return DEFAULT_KPIS;
+    }
+  }
+
+  private saveOrder(order: readonly KpiId[]): void {
+    this.order.set(order);
+    try {
+      this.storage?.setItem(KPI_STORAGE_KEY, JSON.stringify(order));
+    } catch {
+      // Without storage the choice lasts until the page is closed.
+    }
   }
 }

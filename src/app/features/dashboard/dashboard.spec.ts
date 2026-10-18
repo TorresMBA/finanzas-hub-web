@@ -77,13 +77,14 @@ describe('Dashboard', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         provideHttpClient(withInterceptors([apiErrorInterceptor])),
         provideHttpClientTesting(),
         provideSession(),
-        { provide: TODAY, useValue: () => new Date(2026, 9, 13) },
+        { provide: TODAY, useValue: () => new Date(2026, 9, 13, 9) },
       ],
     });
     await TestBed.inject(WorkspaceStore).ensureLoaded();
@@ -108,6 +109,19 @@ describe('Dashboard', () => {
   }
 
   const texts = (selector: string) => Array.from(element.querySelectorAll(selector)).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
+
+  /** Each figure as label, value and note; the icons are left out. */
+  const kpis = () =>
+    Array.from(element.querySelectorAll('.kpi')).map((kpi) =>
+      ['.kpi-label', 'strong', '.kpi-note'].map((part) => kpi.querySelector(part)?.textContent?.trim()).join(' | '),
+    );
+
+  const click = async (selector: string, label: string) => {
+    Array.from(element.querySelectorAll<HTMLButtonElement>(selector))
+      .find((button) => button.textContent?.includes(label) || button.getAttribute('aria-label') === label)!
+      .click();
+    await fixture.whenStable();
+  };
 
   it('shows placeholders while the month loads, and says so and retries when it cannot be loaded', async () => {
     expect(element.querySelectorAll('app-skeleton')).toHaveLength(3);
@@ -134,16 +148,39 @@ describe('Dashboard', () => {
   it('greets the person and shows the figures of the month as the API computed them', async () => {
     await load();
 
-    expect(element.querySelector('app-page-header h1')?.textContent).toBe('Inicio');
-    expect(element.querySelector('app-page-header p')?.textContent).toBe('Hola, Brian. Este es el resumen de tu dinero del mes. Solo tú lo ves.');
-    expect(element.querySelector('app-page-header .eyebrow')?.textContent).toBe('Octubre 2026');
-    expect(texts('.kpi')).toEqual([
-      'PatrimonioS/ 6,000.00+S/ 2,000.00 vs. mes anterior',
-      'IngresosS/ 4,000.00−S/ 1,000.00 vs. mes anterior',
-      'GastosS/ 2,000.00+S/ 1,000.00 vs. mes anterior',
-      'Tasa de ahorro50.0%De lo que ingresó, lo que quedó',
+    expect(element.querySelector('h1')?.textContent).toBe('Buenos días, Brian');
+    expect(element.querySelector('.hello p')?.textContent).toBe('Este es el resumen de tu dinero del mes. Solo tú lo ves.');
+    expect(element.querySelector('.eyebrow')?.textContent).toBe('wb_sunnyOctubre 2026 · Día 13 de 31');
+    expect(texts('.insights li')).toEqual(['Ahorraste el 50% de tus ingresos', '18 días para cerrar el mes']);
+    expect(kpis()).toEqual([
+      'Patrimonio | S/ 6,000.00 | +S/ 2,000.00 vs. mes anterior',
+      'Ingresos | S/ 4,000.00 | −S/ 1,000.00 vs. mes anterior',
+      'Gastos | S/ 2,000.00 | +S/ 1,000.00 vs. mes anterior',
+      'Tasa de ahorro | 50.0% | De lo que ingresó, lo que quedó',
     ]);
+    expect(element.querySelector('.balance')?.textContent).toContain('Este mes te quedaron S/ 2,000.00 de lo que ingresaste.');
     expect(element.querySelector('.alert')).toBeNull();
+  });
+
+  it('lets the person choose and order the figures, and remembers it on this device', async () => {
+    await load({ ...OCTOBER, budget: { limit: 1000, spent: 250, usedPercent: 25 } });
+    expect(kpis().map((kpi) => kpi.split(' | ')[0])).toEqual(['Patrimonio', 'Ingresos', 'Gastos', 'Tasa de ahorro', 'Presupuesto']);
+
+    await click('.customize', 'Personalizar');
+    await click('.kpi-tools button', 'Quitar Patrimonio');
+    await click('.kpi-tools button', 'Mover Presupuesto antes');
+    await click('.kpi-add-options button', 'Gasto diario');
+    await click('.customize', 'Listo');
+
+    // Thirteen days of October gone, S/ 2,000.00 spent.
+    expect(kpis()).toEqual([
+      'Ingresos | S/ 4,000.00 | −S/ 1,000.00 vs. mes anterior',
+      'Gastos | S/ 2,000.00 | +S/ 1,000.00 vs. mes anterior',
+      'Presupuesto | 25% usado | S/ 250.00 de S/ 1,000.00',
+      'Tasa de ahorro | 50.0% | De lo que ingresó, lo que quedó',
+      'Gasto diario | S/ 153.85 | Promedio en 13 días',
+    ]);
+    expect(JSON.parse(localStorage.getItem('ph.home.kpis')!)).toEqual(['income', 'expense', 'budget', 'savings', 'daily']);
   });
 
   it('draws six months of income and expenses as bars against the tallest one', async () => {
@@ -164,8 +201,9 @@ describe('Dashboard', () => {
     await load();
 
     const within = (section: string, part: string) => texts(`[aria-labelledby="${section}-title"] ${part}`);
-    expect(within('categories', '.names strong')).toEqual(['Vivienda', 'Supermercado']);
-    expect(within('categories', '.figure')).toEqual(['S/ 1,500.0075%', 'S/ 500.0025%']);
+    expect(within('categories', '.share-name')).toEqual(['Vivienda', 'Supermercado']);
+    expect(within('categories', '.figure')).toEqual(['S/ 1,500.00', 'S/ 500.00']);
+    expect(within('categories', '.percent')).toEqual(['75%', '25%']);
     expect(within('recent', '.names')).toEqual(['Transferencia6 oct · BCP → Dólares', 'Wong5 oct · Supermercado · Visa', 'Sueldo1 oct · Sueldo · BCP']);
     // A transfer has no sign: seen from no account in particular, the money neither came nor went.
     expect(within('recent', '.figure')).toEqual(['S/ 400.00', '−S/ 400.00', '+S/ 4,000.00']);
@@ -177,10 +215,11 @@ describe('Dashboard', () => {
   it('says so in a month with nothing in it instead of showing empty charts', async () => {
     await load({ ...NOTHING, accounts: OCTOBER.accounts, netWorth: OCTOBER.netWorth });
 
-    expect(texts('.kpi')[3]).toBe('Tasa de ahorro—Sin ingresos este mes');
-    expect(texts('.kpi')[1]).toBe('IngresosS/ 0.00Igual que el mes anterior');
+    expect(kpis()[3]).toBe('Tasa de ahorro | — | Sin ingresos este mes');
+    expect(kpis()[1]).toBe('Ingresos | S/ 0.00 | Igual que el mes anterior');
     expect(element.querySelector('.chart')).toBeNull();
-    expect(texts('.none')).toEqual(['Todavía no hay ingresos ni gastos en estos meses.', 'Sin gastos este mes.', 'Sin movimientos este mes.']);
+    expect(element.querySelector('.balance')).toBeNull();
+    expect(texts('.none')).toEqual(['Todavía no hay ingresos ni gastos en estos meses.', 'Sin movimientos este mes.', 'Sin gastos este mes.']);
   });
 
   it('warns when a currency could not be converted', async () => {
@@ -198,7 +237,9 @@ describe('Dashboard', () => {
 
     http.expectOne(url('2026-09')).flush({ ...OCTOBER, month: '2026-09', income: 5000 });
     await fixture.whenStable();
-    expect(element.querySelector('app-page-header .eyebrow')?.textContent).toBe('Septiembre 2026');
-    expect(texts('.kpi')[1]).toContain('S/ 5,000.00');
+    // A closed month has no days left to count.
+    expect(element.querySelector('.eyebrow')?.textContent).toBe('wb_sunnySeptiembre 2026');
+    expect(texts('.insights li')).toEqual(['Ahorraste el 50% de tus ingresos']);
+    expect(kpis()[1]).toContain('S/ 5,000.00');
   });
 });
