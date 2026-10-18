@@ -59,6 +59,9 @@ export class Transactions {
   /** From the URL: `all` to look at every date instead of the month of the top bar, as the global search does. */
   readonly range = input<string>();
 
+  /** From the URL: the movement to open on arrival, as a result of the global search does. */
+  readonly open = input<string>();
+
   protected readonly tabs = TABS;
   protected readonly statusLabels = STATUS_LABELS;
   protected readonly lookOf = lookOf;
@@ -108,7 +111,7 @@ export class Transactions {
   private requests = 0;
 
   protected readonly formTarget = signal<TransactionFormTarget | null>(null);
-  private readonly selectedId = signal<string | null>(null);
+  private readonly selectedId = linkedSignal<string | null>(() => this.open() ?? null);
   protected readonly isDesktop = signal(this.media?.matches ?? true);
 
   protected readonly failure = signal<string | null>(null);

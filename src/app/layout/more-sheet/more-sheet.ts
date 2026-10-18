@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, output, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, inject, output, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { NotificationCenter } from '../../core/notifications/notification-center';
 import { Icon } from '../../shared/ui/icon';
 import { MOBILE_MORE } from '../navigation';
 
@@ -14,8 +15,18 @@ import { MOBILE_MORE } from '../navigation';
       <h2 id="more-sheet-title">Todas las secciones</h2>
       <nav aria-label="Todas las secciones">
         @for (item of items; track item.id) {
-          <a [routerLink]="item.path" routerLinkActive="is-active" ariaCurrentWhenActive="page" (click)="closed.emit()">
+          @let unreadHere = item.id === 'notifications' ? unread() : 0;
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="is-active"
+            ariaCurrentWhenActive="page"
+            [attr.aria-label]="unreadHere > 0 ? item.label + ': ' + unreadHere + ' sin leer' : null"
+            (click)="closed.emit()"
+          >
             <app-icon [name]="item.icon" [size]="24" />
+            @if (unreadHere > 0) {
+              <b class="count" aria-hidden="true">{{ unreadHere > 99 ? '99+' : unreadHere }}</b>
+            }
             <span>{{ item.label }}</span>
           </a>
         }
@@ -63,6 +74,7 @@ import { MOBILE_MORE } from '../navigation';
       gap: 8px;
     }
     a {
+      position: relative;
       min-height: 76px;
       display: flex;
       flex-direction: column;
@@ -82,6 +94,21 @@ import { MOBILE_MORE } from '../navigation';
         color: var(--mu);
       }
     }
+    .count {
+      position: absolute;
+      top: 8px;
+      left: calc(50% + 6px);
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--rd);
+      color: var(--bg);
+      font-size: 10.5px;
+      font-weight: 800;
+    }
     a.is-active {
       background: var(--acs);
       color: var(--tx);
@@ -100,6 +127,7 @@ export class MoreSheet {
   readonly closed = output<void>();
 
   protected readonly items = MOBILE_MORE;
+  protected readonly unread = inject(NotificationCenter).unread;
 
   constructor() {
     // Move focus into the dialog so keyboard and screen reader users land on it.

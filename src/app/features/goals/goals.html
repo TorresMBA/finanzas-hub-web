@@ -144,11 +144,23 @@
             <h3 id="contributions-title">Movimientos de la meta</h3>
             <ul class="people">
               @for (contribution of data.contributions; track contribution.id) {
-                <li>
+                <li [class.is-voided]="contribution.isVoided">
                   <span class="names">
                     <strong>{{ contribution.displayName }}{{ contribution.isMine ? ' (tú)' : '' }}</strong>
-                    <span class="lead">{{ contribution.type === 'withdrawal' ? 'Retiró' : 'Aportó' }} · {{ formatShortDate(contribution.occurredOn) }}</span>
+                    <span class="lead">
+                      {{ contribution.type === 'withdrawal' ? 'Retiró' : 'Aportó' }} · {{ formatShortDate(contribution.occurredOn) }}{{ contribution.isVoided ? ' · Anulado' : '' }}
+                    </span>
                   </span>
+                  @if (contribution.isMine && contribution.type === 'contribution' && !contribution.isVoided) {
+                    @if (voiding() === contribution.id) {
+                      <button type="button" class="link danger" [disabled]="busy()" (click)="voidContribution(goal, contribution)">Sí, anular</button>
+                      <button type="button" class="link" (click)="voiding.set(null)">No</button>
+                    } @else {
+                      <button type="button" class="link" [attr.aria-label]="'Anular el aporte del ' + formatShortDate(contribution.occurredOn)" (click)="voiding.set(contribution.id)">
+                        Anular
+                      </button>
+                    }
+                  }
                   <strong class="tabular" [class.is-negative]="contribution.type === 'withdrawal'">
                     {{ contribution.type === 'withdrawal' ? '−' : '+' }}{{ contribution.amount | money: goal.currency }}
                   </strong>

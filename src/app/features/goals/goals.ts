@@ -1,6 +1,6 @@
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { Account, Category, Goal, GoalDetail, GoalList } from '../../core/api/api-types';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, linkedSignal, signal } from '@angular/core';
+import { Account, Category, Goal, GoalContribution, GoalDetail, GoalList } from '../../core/api/api-types';
 import { SessionStore } from '../../core/auth/session-store';
 import { errorMessage } from '../../core/errors/error-messages';
 import { NotificationCenter } from '../../core/notifications/notification-center';
@@ -51,10 +51,15 @@ export class Goals {
   private readonly categories = httpResource<Category[]>(() => this.api.categoriesUrl());
 
   protected readonly filter = signal<Filter>('active');
-  private readonly chosenId = signal<string | null>(null);
+  /** From the URL: the goal to open on arrival, as a result of the global search does. */
+  readonly open = input<string>();
+
+  private readonly chosenId = linkedSignal<string | null>(() => this.open() ?? null);
   protected readonly formTarget = signal<GoalFormTarget | null>(null);
   protected readonly moneyTarget = signal<GoalMoneyTarget | null>(null);
   protected readonly confirming = signal<'archive' | 'cancel' | 'leave' | null>(null);
+  /** The contribution whose voiding waits for a second click. */
+  protected readonly voiding = signal<string | null>(null);
   protected readonly inviting = signal(false);
 
   protected readonly failure = signal<string | null>(null);
@@ -151,6 +156,13 @@ export class Goals {
 
   protected removeParticipant(goal: Goal, userId: string, name: string): Promise<void> {
     return this.run(`${name} ya no participa en «${goal.name}».`, () => this.api.removeParticipant(goal.id, userId));
+  }
+
+  protected voidContribution(goal: Goal, contribution: GoalContribution): Promise<void> {
+    this.voiding.set(null);
+    return this.run(`Aporte anulado: ${formatMoney(contribution.amount, goal.currency)} volvieron a la cuenta de donde salieron.`, () =>
+      this.api.voidContribution(goal.id, contribution.id),
+    );
   }
 
   protected confirm(goal: Goal): Promise<void> {

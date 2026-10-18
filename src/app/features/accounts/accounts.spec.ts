@@ -25,6 +25,7 @@ const account = (id: string, name: string, balance: number, extra: Partial<Accou
   creditCard: null,
   isArchived: false,
   createdAt: '2026-10-01T10:00:00Z',
+  isFavorite: false,
   ...extra,
 });
 const BCP = account('a-bcp', 'BCP Sueldo', 946.1, { institution: 'BCP' });
@@ -246,7 +247,7 @@ describe('Accounts', () => {
     expect(element.querySelector('.detail .detail-balance')?.textContent).toBe('S/ 3,600.00');
     expect(texts('.facts div')).toEqual(['DisponibleS/ 1,400.00', 'LíneaS/ 5,000.00', 'Próximo pago5 nov']);
     expect(texts('.movements li')).toEqual(['Pago de tarjeta8 oct · desde BCP Sueldo−S/ 500.00']);
-    expect(texts('.detail-actions button')).toEqual(['Pagar tarjeta', 'Editar', 'Ajustar deuda', 'Archivar']);
+    expect(texts('.detail-actions button')).toEqual(['Pagar tarjeta', 'Editar', 'Mostrar en Inicio', 'Ajustar deuda', 'Archivar']);
 
     await click('Tarjetas');
     expect(texts('.account strong')).toEqual(['Visa']);

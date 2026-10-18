@@ -5,7 +5,7 @@ import { formatShortDate, toIsoDate } from '../../shared/ui/dates';
 import { Icon } from '../../shared/ui/icon';
 import { MoneyPipe, formatMoney, sumAmounts } from '../../shared/ui/money';
 import { Sign, chipOf, figuresOf, initials, live, signOf, signed, toneOf } from './balances';
-import { STATUS_LOOK } from './shared-api';
+import { GROUP_ICONS, STATUS_LOOK } from './shared-api';
 
 type Tab = 'balances' | 'activity' | 'members';
 type ActivityFilter = 'all' | 'expenses' | 'payments';
@@ -103,8 +103,11 @@ export class GroupView {
   readonly addMember = output<{ userId: string; name: string }>();
   readonly removeMember = output<{ userId: string; name: string }>();
   readonly archive = output<void>();
+  /** The glyph chosen for the group. Only who created it sees the choice. */
+  readonly changeIcon = output<string>();
 
   protected readonly activityFilters = ACTIVITY_FILTERS;
+  protected readonly groupIcons = GROUP_ICONS;
   protected readonly initials = initials;
 
   private readonly groupId = computed(() => this.detail().group.id);

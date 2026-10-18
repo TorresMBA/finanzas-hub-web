@@ -13,7 +13,7 @@ import { previewSplit } from './shared-api';
 const BASE = `/api/v1/workspaces/${TEST_WORKSPACE.id}`;
 
 const GROUP = {
-  id: 'g-depa', name: 'Depa', currency: 'PEN', status: 'active' as const, memberCount: 3, myBalance: -70, owedToMe: 30, iOwe: 100, pendingExpenses: 1,
+  id: 'g-depa', name: 'Depa', icon: 'group', currency: 'PEN', status: 'active' as const, memberCount: 3, myBalance: -70, owedToMe: 30, iOwe: 100, pendingExpenses: 1,
   memberNames: ['Brian', 'Pedro', 'Juan'], lastActivityOn: '2026-10-12',
 };
 const LIST: SharedGroups = { groups: [GROUP], totals: [{ currency: 'PEN', owedToMe: 30, iOwe: 100 }], members: [], baseCurrency: 'PEN' };

@@ -72,7 +72,7 @@
     <ng-template #groupCard let-card>
       <button type="button" class="pick" [attr.aria-pressed]="selected()?.group?.id === card.id" (click)="select(card.id)">
         <span class="pick-head">
-          <span class="square"><app-icon name="groups" [size]="20" /></span>
+          <span class="square"><app-icon [name]="card.icon" [size]="20" /></span>
           <span class="names">
             <strong>{{ card.name }}</strong>
             <span class="lead">{{ card.meta }}</span>
@@ -105,6 +105,7 @@
           (addMember)="addMember(data, $event.userId, $event.name)"
           (removeMember)="removeMember(data, $event.userId, $event.name)"
           (archive)="archive(data)"
+          (changeIcon)="changeIcon(data, $event)"
         />
       } @else {
         <section class="card panel" aria-labelledby="people-title">
@@ -160,7 +161,7 @@
                   @for (row of groupRows(); track row.id) {
                     <tr>
                       <th scope="row">
-                        <button type="button" class="row-link" (click)="select(row.id)"><app-icon name="groups" [size]="18" />{{ row.name }}</button>
+                        <button type="button" class="row-link" (click)="select(row.id)"><app-icon [name]="row.icon" [size]="18" />{{ row.name }}</button>
                       </th>
                       <td class="strong">{{ row.total }}</td>
                       <td>{{ row.share }}</td>
@@ -196,7 +197,7 @@
         <li>
           <button type="button" class="pick" (click)="openExpenseForm(detail)">
             <span class="pick-head">
-              <span class="square"><app-icon name="groups" [size]="20" /></span>
+              <span class="square"><app-icon [name]="detail.group.icon" [size]="20" /></span>
               <span class="names">
                 <strong>{{ detail.group.name }}</strong>
                 <span class="lead">{{ detail.group.memberNames.join(', ') }}</span>

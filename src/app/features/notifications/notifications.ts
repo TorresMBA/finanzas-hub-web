@@ -23,12 +23,12 @@ const DATE = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short' }
 
 /** The categories in the order they are offered, with the fields of the form that say where each one goes. */
 const CHANNEL_ROWS = [
-  { category: 'budget', email: 'emailBudget', whatsApp: 'whatsAppBudget' },
-  { category: 'largeMovement', email: 'emailLargeMovement', whatsApp: 'whatsAppLargeMovement' },
-  { category: 'bills', email: 'emailBills', whatsApp: 'whatsAppBills' },
-  { category: 'goals', email: 'emailGoals', whatsApp: 'whatsAppGoals' },
-  { category: 'shared', email: 'emailShared', whatsApp: 'whatsAppShared' },
-] as const satisfies readonly { category: NotificationCategory; email: string; whatsApp: string }[];
+  { category: 'budget', inbox: 'inboxBudget', email: 'emailBudget', whatsApp: 'whatsAppBudget' },
+  { category: 'largeMovement', inbox: 'inboxLargeMovement', email: 'emailLargeMovement', whatsApp: 'whatsAppLargeMovement' },
+  { category: 'bills', inbox: 'inboxBills', email: 'emailBills', whatsApp: 'whatsAppBills' },
+  { category: 'goals', inbox: 'inboxGoals', email: 'emailGoals', whatsApp: 'whatsAppGoals' },
+  { category: 'shared', inbox: 'inboxShared', email: 'emailShared', whatsApp: 'whatsAppShared' },
+] as const satisfies readonly { category: NotificationCategory; inbox: string; email: string; whatsApp: string }[];
 
 const SEVERITY_COLOR: Readonly<Record<Notification['severity'], TileColor>> = { info: 'blue', warning: 'amber', critical: 'red' };
 
@@ -53,8 +53,28 @@ export class Notifications {
   protected readonly categoryLook = CATEGORY_LOOK;
   protected readonly channelRows = CHANNEL_ROWS;
 
+  protected readonly categoryFilters = CHANNEL_ROWS.map((row) => ({ value: row.category, label: CATEGORY_LOOK[row.category].label }));
+
   protected readonly unreadOnly = signal(false);
-  protected readonly list = httpResource<NotificationList>(() => this.api.listUrl(this.unreadOnly()));
+  protected readonly category = signal<NotificationCategory | null>(null);
+  protected readonly list = httpResource<NotificationList>(() => this.api.listUrl(this.unreadOnly(), this.category()));
+
+  /** The older pages asked for with «Ver anteriores». Another filter starts again from the first page. */
+  private readonly filterKey = computed(() => `${this.unreadOnly()}|${this.category()}`);
+  private readonly older = linkedSignal<string, { items: readonly Notification[]; nextCursor: string | null } | null>({
+    source: this.filterKey,
+    computation: () => null,
+  });
+  protected readonly loadingOlder = signal(false);
+  protected readonly nextCursor = computed(() => {
+    const older = this.older();
+    return older ? older.nextCursor : (this.list.value()?.nextCursor ?? null);
+  });
+  private readonly items = computed(() => {
+    const first = this.list.value()?.items ?? [];
+    const seen = new Set(first.map((item) => item.id));
+    return [...first, ...(this.older()?.items ?? []).filter((item) => !seen.has(item.id))];
+  });
   protected readonly settings = httpResource<NotificationSettings>(() => this.api.settingsUrl);
   protected readonly whatsApp = httpResource<Channel>(() => this.api.whatsAppUrl);
 
@@ -77,7 +97,7 @@ export class Notifications {
       { label: 'Ayer', items: [] },
       { label: 'Anteriores', items: [] },
     ];
-    for (const notification of this.list.value()?.items ?? []) {
+    for (const notification of this.items()) {
       const created = new Date(notification.createdAt);
       const day = toIsoDate(created);
       const group = day === today ? groups[0] : day === yesterday ? groups[1] : groups[2];
@@ -96,7 +116,13 @@ export class Notifications {
     const settings = this.settings.value();
     const email = new Map((settings?.preferences ?? []).map((preference) => [preference.category, preference.emailEnabled]));
     const whatsApp = new Map((settings?.preferences ?? []).map((preference) => [preference.category, preference.whatsAppEnabled]));
+    const inbox = new Map((settings?.preferences ?? []).map((preference) => [preference.category, preference.inboxEnabled]));
     return {
+      inboxBudget: inbox.get('budget') ?? true,
+      inboxLargeMovement: inbox.get('largeMovement') ?? true,
+      inboxBills: inbox.get('bills') ?? true,
+      inboxGoals: inbox.get('goals') ?? true,
+      inboxShared: inbox.get('shared') ?? true,
       emailBudget: email.get('budget') ?? true,
       emailLargeMovement: email.get('largeMovement') ?? false,
       emailBills: email.get('bills') ?? true,
@@ -152,6 +178,24 @@ export class Notifications {
     }
   }
 
+  protected async loadOlder(): Promise<void> {
+    const cursor = this.nextCursor();
+    if (!cursor) {
+      return;
+    }
+
+    this.loadingOlder.set(true);
+    this.failure.set(null);
+    try {
+      const page = await this.api.list(this.unreadOnly(), this.category(), cursor);
+      this.older.update((older) => ({ items: [...(older?.items ?? []), ...page.items], nextCursor: page.nextCursor ?? null }));
+    } catch (error) {
+      this.failure.set(errorMessage(error));
+    } finally {
+      this.loadingOlder.set(false);
+    }
+  }
+
   protected markAllRead(): Promise<void> {
     return this.run(() => this.api.markAllRead());
   }
@@ -173,6 +217,7 @@ export class Notifications {
             category: row.category,
             emailEnabled: model[row.email],
             whatsAppEnabled: this.whatsAppReady() ? model[row.whatsApp] : null,
+            inboxEnabled: model[row.inbox],
           })),
         });
         this.notice.set('Preferencias guardadas.');

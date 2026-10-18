@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output } f
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter, map } from 'rxjs';
+import { NotificationCenter } from '../../core/notifications/notification-center';
 import { Icon } from '../../shared/ui/icon';
 import { MOBILE_MORE, MOBILE_TABS } from '../navigation';
 
@@ -28,10 +29,14 @@ import { MOBILE_MORE, MOBILE_TABS } from '../navigation';
         type="button"
         aria-haspopup="dialog"
         [attr.aria-expanded]="moreOpen()"
+        [attr.aria-label]="unread() > 0 ? 'Más secciones: ' + unread() + ' avisos sin leer' : null"
         [class.is-active]="moreOpen() || onMoreSection()"
         (click)="more.emit()"
       >
         <app-icon name="menu" [size]="24" />
+        @if (unread() > 0) {
+          <b class="dot" aria-hidden="true"></b>
+        }
         <span>Más</span>
       </button>
     </nav>
@@ -57,6 +62,7 @@ import { MOBILE_MORE, MOBILE_TABS } from '../navigation';
     }
     a,
     button {
+      position: relative;
       flex: 1;
       height: 56px;
       display: flex;
@@ -68,6 +74,16 @@ import { MOBILE_MORE, MOBILE_TABS } from '../navigation';
       color: var(--mu);
       font-size: 10.5px;
       font-weight: 700;
+    }
+    .dot {
+      position: absolute;
+      top: 10px;
+      left: calc(50% + 7px);
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--rd);
+      box-shadow: 0 0 0 2px var(--sf);
     }
     .is-active {
       color: var(--ac);
@@ -89,5 +105,7 @@ export class MobileTabBar {
   readonly more = output<void>();
 
   protected readonly tabs = MOBILE_TABS;
+  /** Notifications have no tab on mobile: "Más" says when some are unread. */
+  protected readonly unread = inject(NotificationCenter).unread;
   protected readonly onMoreSection = computed(() => MOBILE_MORE.some((item) => this.url().startsWith(item.path)));
 }

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { Category, CategoryColor, CreateCategoryRequest, SeededCategories, UpdateCategoryRequest } from '../../core/api/api-types';
+import { Category, CategoryColor, CreateCategoryRequest, SeededCategories, Tag, UpdateCategoryRequest } from '../../core/api/api-types';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 
 export const KIND_LABELS = { expense: 'Gasto', income: 'Ingreso' } as const;
@@ -77,6 +77,15 @@ export class CategoriesApi {
 
   seedDefaults(): Promise<SeededCategories> {
     return firstValueFrom(this.http.post<SeededCategories>(`${this.base()}/categories/defaults`, null));
+  }
+
+  /** Moves a subcategory under another category of the same kind; answers with the category it moved to. */
+  move(categoryId: string, parentId: string): Promise<Category> {
+    return firstValueFrom(this.http.post<Category>(`${this.base()}/categories/${categoryId}/move`, { parentId }));
+  }
+
+  renameTag(tagId: string, name: string): Promise<Tag> {
+    return firstValueFrom(this.http.patch<Tag>(`${this.base()}/tags/${tagId}`, { name }));
   }
 
   archiveTag(tagId: string): Promise<void> {

@@ -61,6 +61,11 @@ export class GoalsApi {
     return firstValueFrom(this.http.delete<void>(`${this.base()}/goals/${goalId}/participants/${userId}`));
   }
 
+  /** Voids a contribution of the person with its transfer: the money is back where it came from. */
+  voidContribution(goalId: string, contributionId: string): Promise<Goal> {
+    return firstValueFrom(this.http.post<Goal>(`${this.base()}/goals/${goalId}/contributions/${contributionId}/void`, null));
+  }
+
   close(goalId: string, how: 'archive' | 'cancel'): Promise<Goal> {
     return firstValueFrom(this.http.post<Goal>(`${this.base()}/goals/${goalId}/${how}`, null));
   }

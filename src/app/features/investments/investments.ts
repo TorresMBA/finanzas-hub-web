@@ -12,7 +12,7 @@ import { Skeleton } from '../../shared/ui/skeleton';
 import { HoldingForm, HoldingFormTarget } from './holding-form';
 import { InvestmentsApi, TYPE_LOOK } from './investments-api';
 
-type Filter = 'all' | 'mutualFund' | 'termDeposit' | 'shares' | 'crypto';
+type Filter = 'all' | 'mutualFund' | 'termDeposit' | 'shares' | 'crypto' | 'closed';
 
 const FILTERS: readonly { value: Filter; label: string; types: readonly InvestmentType[] | null }[] = [
   { value: 'all', label: 'Todas', types: null },
@@ -20,6 +20,7 @@ const FILTERS: readonly { value: Filter; label: string; types: readonly Investme
   { value: 'termDeposit', label: 'Depósitos a plazo', types: ['termDeposit'] },
   { value: 'shares', label: 'Acciones y ETFs', types: ['stock', 'etf'] },
   { value: 'crypto', label: 'Cripto', types: ['crypto'] },
+  { value: 'closed', label: 'Cerradas', types: null },
 ];
 
 const LONG_DATE = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -83,7 +84,8 @@ export class Investments {
   private readonly api = inject(InvestmentsApi);
   private readonly today = inject(TODAY);
 
-  protected readonly filters = FILTERS;
+  /** "Cerradas" shows only once something was withdrawn in full. */
+  protected readonly filters = computed(() => FILTERS.filter((option) => option.value !== 'closed' || (this.summary.value()?.closed.length ?? 0) > 0));
   protected readonly typeLook = TYPE_LOOK;
   protected readonly shortDate = formatShortDate;
 
@@ -97,6 +99,10 @@ export class Investments {
 
   protected readonly visible = computed(() => {
     const types = FILTERS.find((option) => option.value === this.filter())?.types;
+    if (this.filter() === 'closed') {
+      return this.summary.value()?.closed ?? [];
+    }
+
     return (this.summary.value()?.holdings ?? []).filter((holding) => !types || types.includes(holding.type));
   });
 
@@ -158,6 +164,13 @@ export class Investments {
 
     if (holding.quantity !== null) {
       facts.push({ label: 'Unidades', value: Number(holding.quantity).toLocaleString('es-PE', { maximumFractionDigits: 8 }) });
+    }
+
+    if (holding.closedOn) {
+      facts.push(
+        { label: 'Cerrada el', value: formatShortDate(holding.closedOn) },
+        { label: 'Ganancia realizada', value: formatMoney(holding.realized, holding.currency, { signed: true }) },
+      );
     }
 
     if (holding.lastValuedOn) {

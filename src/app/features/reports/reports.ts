@@ -2,6 +2,7 @@ import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ReportFormat, ReportPeriodKind, ReportSummary } from '../../core/api/api-types';
+import { SessionStore } from '../../core/auth/session-store';
 import { PeriodStore } from '../../core/period/period-store';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { EmptyState } from '../../shared/ui/empty-state';
@@ -94,6 +95,20 @@ function trend(value: number | null): { tone: 'good' | 'bad' | ''; icon: string 
 export class Reports {
   private readonly workspaces = inject(WorkspaceStore);
   private readonly period = inject(PeriodStore);
+  private readonly session = inject(SessionStore);
+
+  /** The share of income the person aims to save, from their preferences; null without one. */
+  protected readonly target = computed(() => {
+    const target = this.session.user()?.preferences.savingsRateTarget;
+    return target ? Number(target) : null;
+  });
+
+  /** How many of the months with income reached the target. */
+  protected readonly targetMet = computed(() => {
+    const target = this.target();
+    const rates = (this.report.value()?.months ?? []).filter((month) => month.savingsRate !== null).map((month) => Number(month.savingsRate));
+    return target === null ? null : { met: rates.filter((rate) => rate >= target).length, of: rates.length };
+  });
 
   protected readonly periods = PERIODS;
   protected readonly kind = signal<ReportPeriodKind>('month');
@@ -181,7 +196,8 @@ export class Reports {
   /** The savings rate of each month, as bars over and under a line at zero. */
   protected readonly trend = computed(() => {
     const months = this.report.value()?.months ?? [];
-    const top = Math.max(25, ...months.map((month) => Math.abs(Number(month.savingsRate ?? 0))));
+    const target = this.target();
+    const top = Math.max(25, target ?? 0, ...months.map((month) => Math.abs(Number(month.savingsRate ?? 0))));
     return months.map((month) => {
       const [year, number] = month.month.split('-').map(Number);
       const rate = month.savingsRate === null ? null : Number(month.savingsRate);
@@ -191,6 +207,8 @@ export class Reports {
         text: rate === null ? '—' : `${rate.toLocaleString('es-PE', { maximumFractionDigits: 0 })}%`,
         height: rate === null ? 0 : Math.max(2, (Math.abs(rate) / top) * 100),
         negative: rate !== null && rate < 0,
+        targetHeight: target === null ? null : (target / top) * 100,
+        met: rate !== null && target !== null && rate >= target,
       };
     });
   });

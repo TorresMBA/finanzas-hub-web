@@ -98,11 +98,23 @@
         @if (!hasRates()) {
           <p class="muted">Sin ingresos en estos meses: la tasa de ahorro aparece cuando registres alguno.</p>
         }
+        @if (targetMet(); as goal) {
+          <p class="muted">
+            Tu meta: ahorrar el {{ target() }} % de lo que ingresa.{{ goal.of > 0 ? ' La cumpliste en ' + goal.met + ' de ' + goal.of + (goal.of === 1 ? ' mes.' : ' meses.') : '' }}
+          </p>
+        } @else {
+          <p class="muted">¿Quieres una meta de ahorro? <a class="link" routerLink="/settings/preferences">Fíjala en Preferencias</a>.</p>
+        }
         <ul class="trend" aria-label="Tasa de ahorro por mes">
           @for (month of trend(); track month.month) {
-            <li [attr.aria-label]="month.label + ': ' + month.text">
+            <li [attr.aria-label]="month.label + ': ' + month.text + (month.met ? ', cumple la meta' : '')">
               <span class="value" [class.is-negative]="month.negative" aria-hidden="true">{{ month.text }}</span>
-              <span class="track" aria-hidden="true"><span class="fill" [class.is-negative]="month.negative" [style.height.%]="month.height"></span></span>
+              <span class="track" aria-hidden="true">
+                <span class="fill" [class.is-negative]="month.negative" [class.is-met]="month.met" [style.height.%]="month.height"></span>
+                @if (month.targetHeight !== null) {
+                  <span class="target" [style.bottom.%]="month.targetHeight"></span>
+                }
+              </span>
               <span class="muted" aria-hidden="true">{{ month.label }}</span>
             </li>
           }

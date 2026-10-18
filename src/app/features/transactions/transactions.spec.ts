@@ -15,6 +15,7 @@ const LIST_URL = `${BASE}/transactions`;
 const BCP: Account = {
   id: 'a-bcp', name: 'BCP', type: 'bank', currency: 'PEN', institution: null, balance: 946, includeInNetWorth: true, creditCard: null, isArchived: false,
   createdAt: '2026-10-01T10:00:00Z',
+  isFavorite: false,
 };
 const DOLLARS: Account = { ...BCP, id: 'a-usd', name: 'BCP Dólares', currency: 'USD' };
 const GROCERIES: Category = {

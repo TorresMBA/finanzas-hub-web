@@ -35,7 +35,7 @@ const TRIP: Goal = {
 const LIST: GoalList = { goals: [TRIP], members: [], baseCurrency: 'PEN' };
 const DETAIL: GoalDetail = {
   goal: TRIP,
-  contributions: [{ id: 'c-1', userId: 'u-brian', displayName: 'Brian', type: 'contribution', amount: 500, occurredOn: '2026-10-12', isMine: false }],
+  contributions: [{ id: 'c-1', userId: 'u-brian', displayName: 'Brian', type: 'contribution', amount: 500, occurredOn: '2026-10-12', isMine: false, isVoided: false }],
   monthly: [{ month: '2026-10', amount: 500 }],
 };
 

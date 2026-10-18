@@ -73,6 +73,12 @@ export class Categories {
   protected readonly quickTag = signal('');
   private readonly chosenQuickCategory = signal('');
 
+  /** The new name being typed for the tag of the filter; null while it is not being renamed. */
+  protected readonly tagRename = signal<string | null>(null);
+
+  /** The subcategory being moved and the category it would go to. */
+  protected readonly moving = signal<{ subcategory: Subcategory; from: Category; to: string } | null>(null);
+
   protected readonly failure = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly busy = signal(false);
@@ -147,6 +153,7 @@ export class Categories {
 
   protected filterByTag(tag: string): void {
     this.confirmingTagArchive.set(false);
+    this.tagRename.set(null);
     this.tagFilter.update((current) => (current === tag ? null : tag));
   }
 
@@ -214,6 +221,53 @@ export class Categories {
     return this.run(`Etiqueta agregada a «${category.name}».`, async () => {
       await this.api.setTags(category.id, [...category.tags, name]);
       this.quickTag.set('');
+    });
+  }
+
+  /** Where a subcategory can go: the other categories in use of the same kind. */
+  protected moveTargets(from: Category): Category[] {
+    return this.active().filter((category) => category.kind === from.kind && category.id !== from.id);
+  }
+
+  protected startMove(from: Category, subcategory: Subcategory): void {
+    this.moving.set({ subcategory, from, to: this.moveTargets(from)[0]?.id ?? '' });
+  }
+
+  protected chooseMoveTarget(categoryId: string): void {
+    this.moving.update((current) => (current ? { ...current, to: categoryId } : current));
+  }
+
+  protected confirmMove(): Promise<void> {
+    const current = this.moving();
+    const to = this.active().find((category) => category.id === current?.to);
+    if (!current || !to) {
+      return Promise.resolve();
+    }
+
+    return this.run(`«${current.subcategory.name}» ahora está en «${to.name}». Lo que movió cuenta allí, también en meses pasados.`, async () => {
+      await this.api.move(current.subcategory.id, to.id);
+      this.moving.set(null);
+      this.expanded.update((open) => new Set(open).add(to.id));
+    });
+  }
+
+  protected renameTag(): Promise<void> {
+    const tag = this.tagCloud().find((candidate) => candidate.name === this.tagFilter());
+    const name = this.tagRename()?.trim() ?? '';
+    if (!tag || name === '') {
+      return Promise.resolve();
+    }
+
+    if (!isValidTag(name)) {
+      this.notice.set(null);
+      this.failure.set('Una etiqueta tiene hasta 40 letras, números o guiones.');
+      return Promise.resolve();
+    }
+
+    return this.run(`Etiqueta renombrada. Tus movimientos con #${tag.name} la muestran con su nuevo nombre.`, async () => {
+      const renamed = await this.api.renameTag(tag.id, name);
+      this.tagFilter.set(renamed.name);
+      this.tagRename.set(null);
     });
   }
 

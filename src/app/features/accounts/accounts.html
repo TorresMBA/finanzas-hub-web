@@ -91,6 +91,9 @@
                       <strong>{{ account.name }}</strong>
                       <span>{{ type.label }} · {{ account.currency }}{{ account.institution ? ' · ' + account.institution : '' }}</span>
                     </span>
+                    @if (account.isFavorite && !account.isArchived) {
+                      <span class="badge" title="Se muestra primero en Inicio">Principal</span>
+                    }
                     @if (account.isArchived) {
                       <span class="badge">Archivada</span>
                     } @else if (!account.includeInNetWorth) {
@@ -188,6 +191,9 @@
               <button class="button button--small button--primary" type="button" (click)="payingCard.set(account)">Pagar tarjeta</button>
             }
             <button class="button button--small" type="button" (click)="open({ mode: 'edit', account: account })">Editar</button>
+            <button class="button button--small" type="button" [attr.aria-pressed]="account.isFavorite" [disabled]="busy()" (click)="toggleFavorite(account)">
+              {{ account.isFavorite ? 'Quitar de Inicio' : 'Mostrar en Inicio' }}
+            </button>
             @if (isManaged(account)) {
               <!-- Its money moves from its own section, never by hand. -->
               <a class="button button--small" [routerLink]="account.type === 'investment' ? '/investments' : '/goals'">{{ account.type === 'investment' ? 'Ver en Inversiones' : 'Ver en Metas' }}</a>

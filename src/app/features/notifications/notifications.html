@@ -13,9 +13,17 @@
 
 <div class="layout">
   <div class="main">
-    <div class="segmented filters" role="group" aria-label="Qué avisos ver">
-      <button type="button" [attr.aria-pressed]="!unreadOnly()" (click)="unreadOnly.set(false)">Todas</button>
-      <button type="button" [attr.aria-pressed]="unreadOnly()" (click)="unreadOnly.set(true)">No leídas ({{ unread() }})</button>
+    <div class="toolbar">
+      <div class="segmented filters" role="group" aria-label="Qué avisos ver">
+        <button type="button" [attr.aria-pressed]="!unreadOnly()" (click)="unreadOnly.set(false)">Todas</button>
+        <button type="button" [attr.aria-pressed]="unreadOnly()" (click)="unreadOnly.set(true)">No leídas ({{ unread() }})</button>
+      </div>
+      <select #categoryChoice class="input category-filter" aria-label="Categoría de los avisos" (change)="category.set($any(categoryChoice.value) || null)">
+        <option value="" [selected]="category() === null">Todas las categorías</option>
+        @for (option of categoryFilters; track option.value) {
+          <option [value]="option.value" [selected]="category() === option.value">{{ option.label }}</option>
+        }
+      </select>
     </div>
 
     @if (!list.hasValue() && list.isLoading()) {
@@ -55,6 +63,9 @@
           </ul>
         </section>
       }
+      @if (nextCursor()) {
+        <button class="button older" type="button" [disabled]="loadingOlder()" (click)="loadOlder()">{{ loadingOlder() ? 'Cargando…' : 'Ver anteriores' }}</button>
+      }
     }
   </div>
 
@@ -74,9 +85,10 @@
     } @else {
       <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
         <fieldset class="channels">
-          <legend>Todo aviso llega a esta bandeja. Elige cuáles llegan también por correo o WhatsApp.</legend>
+          <legend>Elige dónde te llega cada aviso. Sacar uno de la bandeja no lo pierde: se guarda como leído.</legend>
           <div class="channel-row channel-head" aria-hidden="true">
             <span></span>
+            <span>Bandeja</span>
             <span>Correo</span>
             <span>WhatsApp</span>
           </div>
@@ -86,6 +98,7 @@
                 <strong>{{ categoryLook[row.category].label }}</strong>
                 <small>{{ categoryLook[row.category].hint }}</small>
               </span>
+              <input type="checkbox" [formField]="settingsForm[row.inbox]" [attr.aria-label]="categoryLook[row.category].label + ' en la bandeja'" />
               <input type="checkbox" [formField]="settingsForm[row.email]" [attr.aria-label]="categoryLook[row.category].label + ' por correo'" />
               <input type="checkbox" [formField]="settingsForm[row.whatsApp]" [attr.aria-label]="categoryLook[row.category].label + ' por WhatsApp'" />
             </div>

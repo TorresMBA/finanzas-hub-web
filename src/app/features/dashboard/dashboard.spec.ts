@@ -48,9 +48,9 @@ const OCTOBER: DashboardData = {
     },
   ],
   accounts: [
-    { id: 'a-bcp', name: 'BCP', type: 'bank', currency: 'PEN', balance: 6100 },
-    { id: 'a-visa', name: 'Visa', type: 'creditCard', currency: 'PEN', balance: -400 },
-    { id: 'a-usd', name: 'Dólares', type: 'bank', currency: 'USD', balance: 75 },
+    { id: 'a-bcp', name: 'BCP', type: 'bank', currency: 'PEN', balance: 6100, isFavorite: false },
+    { id: 'a-visa', name: 'Visa', type: 'creditCard', currency: 'PEN', balance: -400, isFavorite: false },
+    { id: 'a-usd', name: 'Dólares', type: 'bank', currency: 'USD', balance: 75, isFavorite: false },
   ],
   budget: null,
   upcoming: [],

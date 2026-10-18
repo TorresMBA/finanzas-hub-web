@@ -36,9 +36,10 @@ test('the month report adds up the expenses, downloads as Excel, and the search 
   // The search of the top bar, from anywhere.
   await page.keyboard.press('Control+k');
   const search = page.getByRole('dialog', { name: 'Buscar' });
-  await search.getByLabel('Buscar movimientos, cuentas y metas').fill('wong');
+  await search.getByLabel('Buscar movimientos, cuentas, metas, categorías y grupos').fill('wong');
   await expect(search.getByRole('region', { name: 'Movimientos' }).getByRole('link')).toHaveCount(2);
   await search.getByRole('region', { name: 'Movimientos' }).getByRole('link').first().click();
-  await expect(page).toHaveURL(/\/transactions\?q=wong$/);
+  // It opens that very movement, among the others with the same text.
+  await expect(page).toHaveURL(/\/transactions\?q=wong&range=all&open=[0-9a-f-]+$/);
   await expect(page.getByLabel('Buscar movimientos')).toHaveValue('wong');
 });

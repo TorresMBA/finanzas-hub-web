@@ -238,6 +238,16 @@ export class Integrations {
     });
   }
 
+  protected reapplyRules(detail: ImportDetail): Promise<void> {
+    return this.run(async () => {
+      const done = await this.api.reapplyRules(detail.import.id);
+      const classified = Number(detail.counts.pending) - Number(done.counts.pending);
+      return classified > 0
+        ? `${classified} ${classified === 1 ? 'línea tomó' : 'líneas tomaron'} una categoría de tus reglas.`
+        : 'Ninguna línea sin categoría coincide con tus reglas.';
+    });
+  }
+
   protected discard(detail: ImportDetail): Promise<void> {
     return this.run(async () => {
       await this.api.discard(detail.import.id);
@@ -252,7 +262,7 @@ export class Integrations {
       const pattern = this.rulePattern();
       this.rulePattern.set('');
       this.ruleCategory.set('');
-      return `Regla guardada: lo que diga «${pattern}» se clasificará solo en tus próximas importaciones.`;
+      return `Regla guardada: lo que diga «${pattern}» se clasificará solo al importar. En una importación que estás revisando, usa «Aplicar reglas».`;
     });
   }
 

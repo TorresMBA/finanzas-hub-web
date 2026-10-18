@@ -14,7 +14,7 @@ const BASE = `/api/v1/workspaces/${TEST_WORKSPACE.id}`;
 const holding = (overrides: Partial<HoldingSummary>): HoldingSummary => ({
   id: 'h', type: 'mutualFund', name: 'Fondo', ticker: null, institution: null, currency: 'PEN', invested: 1000, value: 1000, gain: 0, gainPercent: 0,
   weight: 0, quantity: null, openedOn: '2026-01-10', closedOn: null, maturesOn: null, annualRate: null, termDays: null, projectedValue: null,
-  lastValuedOn: null, trend: Array.from({ length: 12 }, () => 1000), ...overrides,
+  lastValuedOn: null, trend: Array.from({ length: 12 }, () => 1000), realized: 0, ...overrides,
 });
 
 const DEPOSIT = holding({
@@ -26,7 +26,7 @@ const ETF = holding({ id: 'h-etf', type: 'etf', name: 'Vanguard S&P 500', ticker
 const SUMMARY: InvestmentSummary = {
   baseCurrency: 'PEN', value: 16400, invested: 16000, gain: 400, gainPercent: 2.5,
   distribution: [{ type: 'termDeposit', value: 15200, share: 92.6 }, { type: 'etf', value: 1200, share: 7.4 }],
-  holdings: [DEPOSIT, ETF], missingRates: [],
+  holdings: [DEPOSIT, ETF], missingRates: [], closed: [],
 };
 
 describe('Investments', () => {

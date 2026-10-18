@@ -245,3 +245,19 @@ h2 {
     background: var(--rd);
   }
 }
+
+// The target of the preferences, as a dashed line across every month.
+.track {
+  position: relative;
+}
+
+.fill:not(.is-met):not(.is-negative) {
+  opacity: 0.75;
+}
+
+.target {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  border-top: 2px dashed var(--tx2);
+}

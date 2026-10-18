@@ -48,7 +48,7 @@
     </section>
 
     <div class="segmented filters" role="group" aria-label="Qué inversiones ver">
-      @for (option of filters; track option.value) {
+      @for (option of filters(); track option.value) {
         <button type="button" [attr.aria-pressed]="filter() === option.value" (click)="filter.set(option.value)">{{ option.label }}</button>
       }
     </div>
@@ -94,15 +94,19 @@
               <div><dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd></div>
             }
           </dl>
-          <div class="actions">
-            @if (holding.type !== 'termDeposit') {
-              <button class="button button--small button--primary" type="button" (click)="open('contribute')">Aportar</button>
-            }
-            <button class="button button--small" type="button" (click)="open('withdraw')">Rescatar</button>
-            @if (holding.type !== 'termDeposit') {
-              <button class="button button--small" type="button" (click)="open('value')">Actualizar valor</button>
-            }
-          </div>
+          @if (holding.closedOn) {
+            <p class="muted">Rescatada por completo. Su historial y su cuenta se conservan.</p>
+          } @else {
+            <div class="actions">
+              @if (holding.type !== 'termDeposit') {
+                <button class="button button--small button--primary" type="button" (click)="open('contribute')">Aportar</button>
+              }
+              <button class="button button--small" type="button" (click)="open('withdraw')">Rescatar</button>
+              @if (holding.type !== 'termDeposit') {
+                <button class="button button--small" type="button" (click)="open('value')">Actualizar valor</button>
+              }
+            </div>
+          }
 
           <h3>Historial</h3>
           @if (detail.value(); as history) {

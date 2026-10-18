@@ -30,8 +30,8 @@ const SETTINGS: NotificationSettings = {
   quietTo: '07:00:00',
   largeMovementThreshold: 500,
   preferences: [
-    { category: 'budget', emailEnabled: true, whatsAppEnabled: false },
-    { category: 'largeMovement', emailEnabled: false, whatsAppEnabled: false },
+    { category: 'budget', emailEnabled: true, whatsAppEnabled: false, inboxEnabled: true },
+    { category: 'largeMovement', emailEnabled: false, whatsAppEnabled: false, inboxEnabled: true },
   ],
 };
 

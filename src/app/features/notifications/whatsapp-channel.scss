@@ -38,3 +38,54 @@ h3 {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+.deliveries {
+  font-size: 12.5px;
+
+  summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--tx2);
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .what {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-weight: 600;
+    color: var(--tx);
+
+    small {
+      font-weight: 500;
+      color: var(--mu);
+    }
+  }
+
+  .status {
+    flex: none;
+    font-weight: 700;
+    color: var(--ac);
+
+    &[data-tone='wait'] {
+      color: var(--am);
+    }
+
+    &[data-tone='bad'] {
+      color: var(--rd);
+    }
+  }
+}

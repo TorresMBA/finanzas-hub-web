@@ -89,6 +89,11 @@ export class AccountsApi {
     return firstValueFrom(this.http.put<ExchangeRate>(`${this.base()}/exchange-rates/${currency}`, { rate }));
   }
 
+  /** Marks or unmarks the account as one of the main ones of Inicio. */
+  setFavorite(accountId: string, isFavorite: boolean): Promise<Account> {
+    return firstValueFrom(this.http.put<Account>(`${this.base()}/accounts/${accountId}/favorite`, { isFavorite }));
+  }
+
   archive(accountId: string): Promise<Account> {
     return firstValueFrom(this.http.post<Account>(`${this.base()}/accounts/${accountId}/archive`, null));
   }

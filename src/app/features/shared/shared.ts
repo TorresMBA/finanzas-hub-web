@@ -1,6 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, resource, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, linkedSignal, resource, signal } from '@angular/core';
 import { Account, Category, SharedDebt, SharedExpense, SharedGroupDetail, SharedSettlement } from '../../core/api/api-types';
 import { isManagedAccount } from '../../core/api/managed-accounts';
 import { SessionStore } from '../../core/auth/session-store';
@@ -63,8 +63,11 @@ export class Shared {
   private readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
   private readonly categories = httpResource<Category[]>(() => this.api.categoriesUrl());
 
+  /** From the URL: the group to open on arrival, as a result of the global search does. */
+  readonly open = input<string>();
+
   /** The group on screen; null is the summary of all of them. */
-  private readonly chosenId = signal<string | null>(null);
+  private readonly chosenId = linkedSignal<string | null>(() => this.open() ?? null);
 
   protected readonly groupForm = signal<GroupFormTarget | null>(null);
   protected readonly expenseForm = signal<ExpenseFormTarget | null>(null);
@@ -192,6 +195,7 @@ export class Shared {
       return {
         id: detail.group.id,
         name: detail.group.name,
+        icon: detail.group.icon,
         currency,
         figures,
         total: formatMoney(figures.total, currency),
@@ -333,6 +337,10 @@ export class Shared {
     );
   }
 
+  protected changeIcon(detail: SharedGroupDetail, icon: string): Promise<void> {
+    return this.run(`«${detail.group.name}» tiene un ícono nuevo.`, () => this.api.changeIcon(detail.group.id, icon));
+  }
+
   protected archive(detail: SharedGroupDetail): Promise<void> {
     return this.run(`«${detail.group.name}» archivado.`, () => this.api.archive(detail.group.id));
   }
@@ -351,6 +359,7 @@ export class Shared {
         return {
           id: detail.group.id,
           name: detail.group.name,
+          icon: detail.group.icon,
           meta: `${members} ${members === 1 ? 'miembro' : 'miembros'} · ${figures.count} ${figures.count === 1 ? 'gasto' : 'gastos'}`,
           total: formatMoney(figures.total, detail.group.currency),
           chip: chipOf(figures.balance, detail.group.currency),

@@ -52,11 +52,18 @@
         @if (tagFilter(); as tag) {
           <div class="tag-filter">
             <span>Categorías con <b>#{{ tag }}</b></span>
-            @if (confirmingTagArchive()) {
+            @if (tagRename() !== null) {
+              <form class="inline-form" (submit)="$event.preventDefault(); renameTag()">
+                <input #renameInput class="input input--small" type="text" maxlength="40" aria-label="Nuevo nombre de la etiqueta" [value]="tagRename()" (input)="tagRename.set(renameInput.value)" />
+                <button type="submit" class="link" [disabled]="busy() || (tagRename() ?? '').trim() === ''">Guardar</button>
+                <button type="button" class="link" (click)="tagRename.set(null)">Cancelar</button>
+              </form>
+            } @else if (confirmingTagArchive()) {
               <span class="confirm">Se quitará de todas tus categorías.</span>
               <button type="button" class="link danger" [disabled]="busy()" (click)="archiveTag()">Sí, archivar</button>
               <button type="button" class="link" (click)="confirmingTagArchive.set(false)">Cancelar</button>
             } @else {
+              <button type="button" class="link" (click)="tagRename.set(tag)">Renombrar</button>
               <button type="button" class="link danger" (click)="confirmingTagArchive.set(true)">Archivar etiqueta</button>
               <button type="button" class="link" (click)="filterByTag(tag)">Quitar filtro</button>
             }
@@ -124,11 +131,32 @@
                         <button type="button" class="icon-button" [attr.aria-label]="'Editar ' + subcategory.name" (click)="openRename(category, subcategory)">
                           <app-icon name="edit" [size]="18" />
                         </button>
+                        @if (moveTargets(category).length > 0) {
+                          <button type="button" class="icon-button" [attr.aria-label]="'Mover ' + subcategory.name + ' a otra categoría'" (click)="startMove(category, subcategory)">
+                            <app-icon name="drive_file_move" [size]="18" />
+                          </button>
+                        }
                         <button type="button" class="icon-button" [attr.aria-label]="'Archivar ' + subcategory.name" [disabled]="busy()" (click)="archive(subcategory)">
                           <app-icon name="archive" [size]="18" />
                         </button>
                       }
                     </li>
+                    @if (moving(); as move) {
+                      @if (move.subcategory.id === subcategory.id) {
+                        <li class="move">
+                          <form class="inline-form" (submit)="$event.preventDefault(); confirmMove()">
+                            <label class="move-label" [for]="'move-' + subcategory.id">Mover a</label>
+                            <select #moveTo class="input input--small" [id]="'move-' + subcategory.id" (change)="chooseMoveTarget(moveTo.value)">
+                              @for (target of moveTargets(category); track target.id) {
+                                <option [value]="target.id" [selected]="target.id === move.to">{{ target.name }}</option>
+                              }
+                            </select>
+                            <button type="submit" class="link" [disabled]="busy()">Mover</button>
+                            <button type="button" class="link" (click)="moving.set(null)">Cancelar</button>
+                          </form>
+                        </li>
+                      }
+                    }
                   }
                   @if (!category.isArchived) {
                     <li class="add-sub">

@@ -161,7 +161,7 @@
               <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="34" />
               <span class="names">
                 <strong>{{ account.name }}</strong>
-                <span>{{ account.currency }}</span>
+                <span>{{ account.currency }}{{ account.isFavorite ? ' · Principal' : '' }}</span>
               </span>
               <strong class="figure" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</strong>
             </li>

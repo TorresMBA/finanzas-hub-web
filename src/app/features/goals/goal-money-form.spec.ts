@@ -17,6 +17,7 @@ const TRIP: Goal = {
 const BCP: Account = {
   id: 'a-bcp', name: 'BCP', type: 'bank', currency: 'PEN', institution: null, balance: 1000, includeInNetWorth: true, creditCard: null, isArchived: false,
   createdAt: '2026-10-01T10:00:00Z',
+  isFavorite: false,
 };
 const FUND: Account = { ...BCP, id: 'a-fund', name: 'Meta: Viaje Cusco', type: 'goalFund' };
 const LEISURE: Category = {

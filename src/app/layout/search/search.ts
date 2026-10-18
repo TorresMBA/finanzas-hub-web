@@ -12,7 +12,7 @@ const DELAY_MS = 250;
 const MIN_LENGTH = 2;
 
 /**
- * The global search of the top bar: the person's own movements, accounts and goals by a piece of their text.
+ * The global search of the top bar: the person's own movements, accounts, goals and categories, and their groups, by a piece of their text.
  * It opens with its button or with Ctrl+K (⌘K on a Mac).
  */
 @Component({
@@ -32,20 +32,20 @@ const MIN_LENGTH = 2;
           #field
           class="input"
           type="search"
-          aria-label="Buscar movimientos, cuentas y metas"
+          aria-label="Buscar movimientos, cuentas, metas, categorías y grupos"
           placeholder="Wong, BCP, viaje…"
           [value]="text()"
           (input)="type($any($event.target).value)"
         />
 
         @if (query().length < minLength) {
-          <p class="hint">Escribe al menos {{ minLength }} letras: busca en tus movimientos, cuentas y metas.</p>
+          <p class="hint">Escribe al menos {{ minLength }} letras: busca en tus movimientos, cuentas, metas, categorías y grupos.</p>
         } @else if (!results.hasValue() && results.isLoading()) {
           <p class="hint" aria-busy="true">Buscando…</p>
         } @else if (results.error()) {
           <p class="hint" role="alert">No se pudo buscar. Inténtalo otra vez.</p>
         } @else if (results.value(); as found) {
-          @if (found.movements.length + found.accounts.length + found.goals.length === 0) {
+          @if (found.movements.length + found.accounts.length + found.goals.length + found.categories.length + found.groups.length === 0) {
             <p class="hint">Nada coincide con «{{ query() }}».</p>
           } @else {
             @if (found.movements.length > 0) {
@@ -54,7 +54,7 @@ const MIN_LENGTH = 2;
                 <ul>
                   @for (movement of found.movements; track movement.id) {
                     <li>
-                      <a routerLink="/transactions" [queryParams]="{ q: query(), range: 'all' }" (click)="close()">
+                      <a routerLink="/transactions" [queryParams]="{ q: query(), range: 'all', open: movement.id }" (click)="close()">
                         <span class="name">{{ movement.description }}<small>{{ day(movement.occurredOn) }} · {{ movement.accountName }}{{ movement.categoryName ? ' · ' + movement.categoryName : '' }}</small></span>
                         <strong [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</strong>
                       </a>
@@ -84,9 +84,39 @@ const MIN_LENGTH = 2;
                 <ul>
                   @for (goal of found.goals; track goal.id) {
                     <li>
-                      <a routerLink="/goals" (click)="close()">
+                      <a routerLink="/goals" [queryParams]="{ open: goal.id }" (click)="close()">
                         <span class="name">{{ goal.name }}<small>{{ goal.percent }}% de {{ goal.targetAmount | money: goal.currency }}</small></span>
                         <strong>{{ goal.saved | money: goal.currency }}</strong>
+                      </a>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+            @if (found.categories.length > 0) {
+              <section aria-label="Categorías">
+                <h3>Categorías</h3>
+                <ul>
+                  @for (category of found.categories; track category.id) {
+                    <li>
+                      <a routerLink="/transactions" [queryParams]="{ categoryId: category.id, range: 'all' }" (click)="close()">
+                        <app-icon [name]="category.icon" [size]="18" />
+                        <span class="name">{{ category.name }}<small>{{ category.parentName ? category.parentName + ' · ' : '' }}{{ category.isIncome ? 'Ingreso' : 'Gasto' }}</small></span>
+                      </a>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+            @if (found.groups.length > 0) {
+              <section aria-label="Gastos compartidos">
+                <h3>Gastos compartidos</h3>
+                <ul>
+                  @for (group of found.groups; track group.id) {
+                    <li>
+                      <a routerLink="/shared" [queryParams]="{ open: group.id }" (click)="close()">
+                        <app-icon [name]="group.icon" [size]="18" />
+                        <span class="name">{{ group.name }}{{ group.isArchived ? ' · Archivado' : '' }}</span>
                       </a>
                     </li>
                   }

@@ -84,6 +84,11 @@ export class IntegrationsApi {
     );
   }
 
+  /** Runs the rules again over the lines still without category; what was chosen by hand stays. */
+  reapplyRules(importId: string): Promise<ImportDetail> {
+    return firstValueFrom(this.http.post<ImportDetail>(`${this.base()}/imports/${importId}/reapply-rules`, null));
+  }
+
   discard(importId: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.base()}/imports/${importId}`));
   }

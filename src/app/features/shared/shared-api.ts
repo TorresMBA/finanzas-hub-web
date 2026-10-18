@@ -18,6 +18,18 @@ export interface SharedBoard {
   readonly details: ReadonlyMap<string, SharedGroupDetail>;
 }
 
+/** The icons a group can have: glyph name of the icon font and what to call it. `group` is the one a group starts with. */
+export const GROUP_ICONS: readonly { value: string; label: string }[] = [
+  { value: 'group', label: 'Grupo' },
+  { value: 'home', label: 'Casa' },
+  { value: 'flight', label: 'Viaje' },
+  { value: 'restaurant', label: 'Comidas' },
+  { value: 'favorite', label: 'Pareja' },
+  { value: 'family_restroom', label: 'Familia' },
+  { value: 'sports_soccer', label: 'Deporte' },
+  { value: 'celebration', label: 'Celebración' },
+];
+
 export const SPLIT_TYPES: readonly { value: SplitType; label: string; unit: string }[] = [
   { value: 'equal', label: 'Partes iguales', unit: '' },
   { value: 'percentage', label: 'Porcentajes', unit: '%' },
@@ -79,8 +91,8 @@ export class SharedApi {
     return { list, details: new Map(details.map((detail) => [detail.group.id, detail])) };
   }
 
-  createGroup(name: string, memberUserIds: readonly string[]): Promise<SharedGroupDetail> {
-    return firstValueFrom(this.http.post<SharedGroupDetail>(`${this.base()}/shared-groups`, { name, memberUserIds }));
+  createGroup(name: string, memberUserIds: readonly string[], icon?: string): Promise<SharedGroupDetail> {
+    return firstValueFrom(this.http.post<SharedGroupDetail>(`${this.base()}/shared-groups`, { name, memberUserIds, icon }));
   }
 
   addMember(groupId: string, userId: string): Promise<SharedGroupDetail> {
@@ -90,6 +102,11 @@ export class SharedApi {
   /** Who created the group removes someone; anyone else leaves by naming themselves. */
   removeMember(groupId: string, userId: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.base()}/shared-groups/${groupId}/members/${userId}`));
+  }
+
+  /** Only who created the group can change it; everyone in it sees the new one. */
+  changeIcon(groupId: string, icon: string): Promise<SharedGroupDetail> {
+    return firstValueFrom(this.http.put<SharedGroupDetail>(`${this.base()}/shared-groups/${groupId}/icon`, { icon }));
   }
 
   archive(groupId: string): Promise<SharedGroupDetail> {

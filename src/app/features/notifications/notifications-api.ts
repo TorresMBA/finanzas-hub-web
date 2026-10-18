@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { NotificationCategory, NotificationSettings, UpdateNotificationSettingsRequest, WhatsAppChannel, WhatsAppVerification } from '../../core/api/api-types';
+import { NotificationCategory, NotificationList, NotificationSettings, UpdateNotificationSettingsRequest, WhatsAppChannel, WhatsAppVerification } from '../../core/api/api-types';
 
 /** How each category is called, what it is for and how it looks in the inbox. */
 export const CATEGORY_LOOK: Readonly<Record<NotificationCategory, { label: string; hint: string; icon: string }>> = {
@@ -20,9 +20,26 @@ export class NotificationsApi {
   readonly settingsUrl = '/api/v1/me/notification-settings';
   readonly whatsAppUrl = '/api/v1/me/channels/whatsapp';
 
-  listUrl(unreadOnly: boolean): string {
-    return `/api/v1/me/notifications?unreadOnly=${unreadOnly}`;
+  /** A page of the inbox, newest first; `before` (the `nextCursor` of a page) asks for the one after it. */
+  listUrl(unreadOnly: boolean, category: NotificationCategory | null = null, before: string | null = null): string {
+    const query = new URLSearchParams({ unreadOnly: String(unreadOnly) });
+    if (category) {
+      query.set('category', category);
+    }
+
+    if (before) {
+      query.set('before', before);
+    }
+
+    return `/api/v1/me/notifications?${query}`;
   }
+
+  list(unreadOnly: boolean, category: NotificationCategory | null, before: string): Promise<NotificationList> {
+    return firstValueFrom(this.http.get<NotificationList>(this.listUrl(unreadOnly, category, before)));
+  }
+
+  /** The last messages sent by WhatsApp and how each went. */
+  readonly deliveriesUrl = '/api/v1/me/channels/whatsapp/deliveries';
 
   markRead(notificationId: string): Promise<void> {
     return firstValueFrom(this.http.post<void>(`/api/v1/me/notifications/${notificationId}/read`, null));

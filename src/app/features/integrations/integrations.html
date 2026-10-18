@@ -29,6 +29,9 @@
         @if (isOpen()) {
           <div class="actions">
             <button type="button" class="button" [disabled]="busy()" (click)="discard(data)">Descartar</button>
+            @if (counts.pending > 0 && (rules.value()?.length ?? 0) > 0) {
+              <button type="button" class="button" [disabled]="busy()" (click)="reapplyRules(data)">Aplicar reglas</button>
+            }
             <button type="button" class="button button--primary" [disabled]="busy() || counts.pending > 0 || counts.ready === 0" (click)="commit(data)">
               Importar {{ counts.ready }} {{ counts.ready === 1 ? 'movimiento' : 'movimientos' }}
             </button>

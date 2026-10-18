@@ -175,6 +175,13 @@ export class Accounts {
     this.reload();
   }
 
+  protected toggleFavorite(account: Account): Promise<void> {
+    return this.run(
+      account.isFavorite ? `«${account.name}» ya no se muestra primero en Inicio.` : `«${account.name}» se muestra primero entre tus cuentas de Inicio.`,
+      () => this.api.setFavorite(account.id, !account.isFavorite),
+    );
+  }
+
   protected archive(account: Account): Promise<void> {
     return this.run(`«${account.name}» archivada. Conserva su saldo y sus movimientos, pero ya no se ofrece.`, () => this.api.archive(account.id));
   }

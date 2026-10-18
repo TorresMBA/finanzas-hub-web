@@ -39,6 +39,11 @@ export class BudgetsApi {
     return this.workspaces.current() ? `${this.base()}/transactions/category-totals?from=${range.from}&to=${range.to}` : undefined;
   }
 
+  /** A limit from what the category spent in the last three closed months. Undefined without a category. */
+  suggestionUrl(categoryId: string): string | undefined {
+    return this.workspaces.current() && categoryId ? `${this.base()}/budgets/suggestion?categoryId=${categoryId}` : undefined;
+  }
+
   detailUrl(budgetId: string | null, month: string): string | undefined {
     return this.workspaces.current() && budgetId ? `${this.base()}/budgets/${budgetId}?month=${month}` : undefined;
   }

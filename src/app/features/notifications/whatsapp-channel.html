@@ -15,6 +15,19 @@
       <button class="button" type="button" [disabled]="busy()" (click)="changing.set(true)">Cambiar número</button>
       <button class="button" type="button" [disabled]="busy()" (click)="remove()">Quitar</button>
     </div>
+    @if (deliveryRows().length > 0) {
+      <details class="deliveries">
+        <summary>Últimos mensajes</summary>
+        <ul>
+          @for (row of deliveryRows(); track row.id) {
+            <li>
+              <span class="what">{{ row.what }}<small>{{ row.when }}</small></span>
+              <span class="status" [attr.data-tone]="row.tone" [attr.title]="row.error">{{ row.status }}</span>
+            </li>
+          }
+        </ul>
+      </details>
+    }
   } @else if (channel().pendingPhone && !changing()) {
     <form class="form-stack" (submit)="$event.preventDefault(); confirm()" novalidate>
       <p class="form-note">Te enviamos un código por WhatsApp a <strong>{{ channel().pendingPhone }}</strong>. Vence en 10 minutos.</p>

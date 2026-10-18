@@ -4,7 +4,7 @@
 
 <header class="card group-head">
   <div class="group-title">
-    <span class="square square--big"><app-icon name="groups" [size]="22" /></span>
+    <span class="square square--big"><app-icon [name]="data.group.icon" [size]="22" /></span>
     <div class="names">
       <h2>{{ data.group.name }}</h2>
       <span class="lead">{{ h.memberNames }}{{ open() ? '' : ' · Archivado' }}</span>
@@ -236,6 +236,14 @@
           @if (!inviting() && candidates().length > 0) {
             <button type="button" class="link" (click)="inviting.set(true)">Invitar miembro</button>
           }
+          <label class="icon-picker">
+            <span>Ícono</span>
+            <select #iconChoice class="input" [disabled]="busy()" (change)="changeIcon.emit(iconChoice.value)">
+              @for (option of groupIcons; track option.value) {
+                <option [value]="option.value" [selected]="option.value === data.group.icon">{{ option.label }}</option>
+              }
+            </select>
+          </label>
           <button type="button" class="link muted" [disabled]="busy()" (click)="archive.emit()">Archivar grupo</button>
         </div>
       }
