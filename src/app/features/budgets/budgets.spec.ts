@@ -2,7 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Budget, BudgetDetail, BudgetMonth, Category, CategoryTotals } from '../../core/api/api-types';
+import { Budget, BudgetDetail, BudgetMonth, BudgetSuggestion, Category, CategoryTotals } from '../../core/api/api-types';
 import { apiErrorInterceptor, idempotencyKeyInterceptor } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
 import { TEST_WORKSPACE, provideSession } from '../../core/testing/signed-in';
@@ -207,6 +207,13 @@ describe('Budgets', () => {
     http.expectOne(LIST_URL).flush(MONTH);
     await settle();
     http.expectOne(detailUrl('food')).flush(DETAIL);
+    // The form asked for a suggested limit; with no spending history there is none to offer. Whether the requests
+    // are still open once the form closes depends on the runtime (Node 22 keeps them, Node 24 cancels them).
+    const noSuggestion: BudgetSuggestion = { categoryId: 'c-new', currency: 'PEN', suggestedLimit: 0, months: [] };
+    http
+      .match(`${BASE}/budgets/suggestion?categoryId=c-new`)
+      .filter((request) => !request.cancelled)
+      .forEach((request) => request.flush(noSuggestion));
     await fixture.whenStable();
     expect(text('[role="status"]')).toBe('Presupuesto de S/ 450.00 al mes para «Educación» creado.');
   });
