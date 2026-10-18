@@ -127,7 +127,9 @@ export class GoalMoneyForm {
     ({ contribute: 'Desde la cuenta', withdraw: 'Hacia la cuenta', spend: 'Pagas con la cuenta' })[this.target().kind],
   );
   protected readonly hint = computed(() =>
-    this.target().kind === 'contribute' ? '' : `Tienes ${formatMoney(this.target().goal.mySaved, this.target().goal.currency)} en esta meta.`,
+    this.target().kind === 'contribute'
+      ? `Faltan ${formatMoney(this.target().goal.remaining, this.target().goal.currency)} para el objetivo.`
+      : `Tienes ${formatMoney(this.target().goal.mySaved, this.target().goal.currency)} en esta meta.`,
   );
   protected readonly note = computed(
     () =>
@@ -152,9 +154,14 @@ export class GoalMoneyForm {
         return { kind: 'amount', message: 'Un monto mayor que cero, con hasta dos decimales.' };
       }
 
-      return this.target().kind !== 'contribute' && amount > Number(this.target().goal.mySaved)
-        ? { kind: 'max', message: 'No puedes usar más de lo que aportaste.' }
-        : undefined;
+      // The agreed target is not passed: a contribution is at most what is missing.
+      if (this.target().kind === 'contribute') {
+        return amount > Number(this.target().goal.remaining)
+          ? { kind: 'max', message: `Solo faltan ${formatMoney(this.target().goal.remaining, this.target().goal.currency)} para el objetivo.` }
+          : undefined;
+      }
+
+      return amount > Number(this.target().goal.mySaved) ? { kind: 'max', message: 'No puedes usar más de lo que aportaste.' } : undefined;
     });
     validate(path.accountId, ({ value }) => (value() ? undefined : { kind: 'required', message: 'Elige una cuenta.' }));
     validate(path.categoryId, ({ value }) =>

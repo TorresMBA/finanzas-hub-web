@@ -49,7 +49,33 @@
         <button type="button" class="chip-toggle" [attr.aria-pressed]="showVoided()" (click)="showVoided.set(!showVoided())">Anuladas</button>
       </div>
 
+      <!-- With several currencies the total in the base one comes first and each block says what it is, so the base
+           currency showing twice (its own movements, and everything converted to it) does not read as a repeated row. -->
+      @if (inBase(); as base) {
+        <p class="summary-caption">Total de todas las monedas, convertido a {{ base.currency }}</p>
+        <dl class="summary summary--base" [attr.aria-label]="'Resumen en ' + base.currency + ', todas las monedas'">
+          <div>
+            <dt>Ingresos</dt>
+            <dd class="is-income">{{ base.income | money: base.currency }}</dd>
+          </div>
+          <div>
+            <dt>Gastos</dt>
+            <dd>{{ base.expense | money: base.currency }}</dd>
+          </div>
+          <div>
+            <dt>Neto</dt>
+            <dd [class.is-income]="+base.net > 0" [class.is-negative]="+base.net < 0">{{ base.net | money: base.currency : { signed: true } }}</dd>
+          </div>
+        </dl>
+        @if (base.missingRates.length > 0) {
+          <p class="hint">Sin contar lo que está en {{ base.missingRates.join(', ') }}: falta su tipo de cambio. Defínelo en <a class="link" routerLink="/accounts">Cuentas</a>.</p>
+        }
+      }
+
       @for (total of totals(); track total.currency) {
+        @if (inBase()) {
+          <p class="summary-caption">Solo movimientos en {{ total.currency }}</p>
+        }
         <dl class="summary" [attr.aria-label]="'Resumen en ' + total.currency">
           <div>
             <dt>Ingresos</dt>
@@ -64,26 +90,6 @@
             <dd [class.is-income]="+total.net > 0" [class.is-negative]="+total.net < 0">{{ total.net | money: total.currency : { signed: true } }}</dd>
           </div>
         </dl>
-      }
-
-      @if (inBase(); as base) {
-        <dl class="summary summary--base" [attr.aria-label]="'Resumen en ' + base.currency + ', todas las monedas'">
-          <div>
-            <dt>Ingresos en {{ base.currency }}</dt>
-            <dd class="is-income">{{ base.income | money: base.currency }}</dd>
-          </div>
-          <div>
-            <dt>Gastos en {{ base.currency }}</dt>
-            <dd>{{ base.expense | money: base.currency }}</dd>
-          </div>
-          <div>
-            <dt>Neto en {{ base.currency }}</dt>
-            <dd [class.is-income]="+base.net > 0" [class.is-negative]="+base.net < 0">{{ base.net | money: base.currency : { signed: true } }}</dd>
-          </div>
-        </dl>
-        @if (base.missingRates.length > 0) {
-          <p class="hint">Sin contar lo que está en {{ base.missingRates.join(', ') }}: falta su tipo de cambio. Defínelo en <a class="link" routerLink="/accounts">Cuentas</a>.</p>
-        }
       }
 
       @if (state() === 'loading') {

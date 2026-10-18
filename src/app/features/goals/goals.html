@@ -77,7 +77,8 @@
         }
 
         <div class="detail-actions">
-          @if (goal.status === 'active') {
+          <!-- The agreed target is not passed: once reached, nothing more goes in. -->
+          @if (goal.status === 'active' && +goal.remaining > 0) {
             <button type="button" class="button button--small button--primary" (click)="openMoney(goal, 'contribute')">Aportar</button>
           }
           @if (+goal.mySaved > 0) {
@@ -175,7 +176,7 @@
         <div class="detail-actions">
           @if (confirming(); as what) {
             <span class="lead">
-              {{ what === 'leave' ? '¿Salir de la meta?' : what === 'cancel' ? '¿Cancelar la meta? Nadie pierde dinero: cada quien retira lo suyo.' : '¿Archivar la meta?' }}
+              {{ what === 'leave' ? '¿Salir de la meta?' : what === 'cancel' ? '¿Cancelar la meta? Lo que cada quien aportó vuelve a las cuentas de donde salió.' : '¿Archivar la meta?' }}
             </span>
             <button type="button" class="button button--small button--danger" [disabled]="busy()" (click)="confirm(goal)">Sí</button>
             <button type="button" class="button button--small" (click)="confirming.set(null)">No</button>

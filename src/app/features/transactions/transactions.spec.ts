@@ -178,8 +178,10 @@ describe('Transactions', () => {
     listRequest().flush(page([WONG, NETFLIX], TOTALS, null, { ...IN_BASE, missingRates: ['EUR'] }));
     await fixture.whenStable();
 
-    expect(texts('.summary--base dt')).toEqual(['Ingresos en PEN', 'Gastos en PEN', 'Neto en PEN']);
+    // The total in the base one comes first, and each block says what it is: PEN shows twice without looking repeated.
+    expect(texts('.summary-caption')).toEqual(['Total de todas las monedas, convertido a PEN', 'Solo movimientos en PEN', 'Solo movimientos en USD']);
     expect(texts('.summary--base dd')).toEqual(['S/ 4,500.00', 'S/ 102.71', '+S/ 4,397.29']);
+    expect(texts('.summary dd').slice(0, 3)).toEqual(['S/ 4,500.00', 'S/ 102.71', '+S/ 4,397.29']);
     expect(element.querySelector('.hint')?.textContent).toContain('Sin contar lo que está en EUR');
 
     // With one currency that is already the base one, the summary of that currency says it all.
@@ -187,6 +189,7 @@ describe('Transactions', () => {
     listRequest().flush(page([WONG], [TOTALS[0]], null, IN_BASE));
     await settle();
     expect(element.querySelector('.summary--base')).toBeNull();
+    expect(element.querySelector('.summary-caption')).toBeNull();
   });
 
   it('shows a transfer as money between two accounts, neither earned nor spent', async () => {

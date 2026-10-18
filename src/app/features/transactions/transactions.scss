@@ -84,6 +84,13 @@
   background: var(--sf2);
 }
 
+.summary-caption {
+  margin: 0 0 -4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mu);
+}
+
 .summary dt {
   @include m.truncate;
 }

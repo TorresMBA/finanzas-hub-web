@@ -174,7 +174,7 @@ export class Goals {
     }
 
     return this.run(
-      what === 'cancel' ? `«${goal.name}» cancelada. Cada quien puede retirar lo suyo.` : `«${goal.name}» archivada.`,
+      what === 'cancel' ? `«${goal.name}» cancelada. Lo aportado volvió a sus cuentas.` : `«${goal.name}» archivada.`,
       () => this.api.close(goal.id, what === 'cancel' ? 'cancel' : 'archive'),
     );
   }
