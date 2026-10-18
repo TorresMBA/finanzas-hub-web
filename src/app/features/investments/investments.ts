@@ -85,7 +85,8 @@ export class Investments {
   private readonly today = inject(TODAY);
 
   /** "Cerradas" shows only once something was withdrawn in full. */
-  protected readonly filters = computed(() => FILTERS.filter((option) => option.value !== 'closed' || (this.summary.value()?.closed.length ?? 0) > 0));
+  // `closed?.`: an API from before closed holdings does not send the list, and the page must still show
+  protected readonly filters = computed(() => FILTERS.filter((option) => option.value !== 'closed' || (this.summary.value()?.closed?.length ?? 0) > 0));
   protected readonly typeLook = TYPE_LOOK;
   protected readonly shortDate = formatShortDate;
 
