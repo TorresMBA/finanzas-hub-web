@@ -242,9 +242,11 @@ export class Integrations {
     return this.run(async () => {
       const done = await this.api.reapplyRules(detail.import.id);
       const classified = Number(detail.counts.pending) - Number(done.counts.pending);
-      return classified > 0
-        ? `${classified} ${classified === 1 ? 'línea tomó' : 'líneas tomaron'} una categoría de tus reglas.`
-        : 'Ninguna línea sin categoría coincide con tus reglas.';
+      if (classified <= 0) {
+        return 'Ninguna línea sin categoría coincide con tus reglas.';
+      }
+      const lines = classified === 1 ? 'línea tomó' : 'líneas tomaron';
+      return `${classified} ${lines} una categoría de tus reglas.`;
     });
   }
 

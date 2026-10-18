@@ -20,6 +20,14 @@ const STATUS_LABELS: Readonly<Record<WhatsAppDelivery['status'], string>> = {
   failed: 'No se pudo enviar',
 };
 
+const STATUS_TONES: Readonly<Record<WhatsAppDelivery['status'], 'ok' | 'wait' | 'bad'>> = {
+  pending: 'wait',
+  sent: 'ok',
+  delivered: 'ok',
+  read: 'ok',
+  failed: 'bad',
+};
+
 const WHEN = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 /**
@@ -53,7 +61,7 @@ export class WhatsAppChannel {
       id: delivery.id,
       what: delivery.title ?? KIND_LABELS[delivery.kind],
       status: STATUS_LABELS[delivery.status],
-      tone: delivery.status === 'failed' ? 'bad' : delivery.status === 'pending' ? 'wait' : 'ok',
+      tone: STATUS_TONES[delivery.status],
       when: WHEN.format(new Date(delivery.sentAt ?? delivery.createdAt)).replace('.', ''),
       error: delivery.lastError,
     })),

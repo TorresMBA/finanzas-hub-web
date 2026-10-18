@@ -30,7 +30,10 @@ const QUOTES = ['“Pequeñas decisiones, grandes resultados.”', '“Cada sol 
 /** The stars of the banner: always the same sky, so it does not jump between visits. */
 const STARS = (() => {
   let seed = 7;
-  const next = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const next = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
   return Array.from({ length: 46 }, () => ({
     left: next() * 100,
     top: next() * 100,
@@ -80,6 +83,49 @@ function against(current: number, previous: number, currency: string): string {
   return change === 0 ? 'Igual que el mes anterior' : `${formatMoney(change, currency, { signed: true })} vs. mes anterior`;
 }
 
+/** "1 día", "3 días". */
+function dayCount(days: number): string {
+  return `${days} ${days === 1 ? 'día' : 'días'}`;
+}
+
+/** Days gone by in a month: all of a past one, none of one to come. */
+function elapsedDays(selected: number, current: number, total: number, dayOfMonth: number): number {
+  if (selected < current) {
+    return total;
+  }
+  return selected === current ? dayOfMonth : 0;
+}
+
+function greetingAt(hour: number): string {
+  if (hour >= 5 && hour < 12) {
+    return 'Buenos días';
+  }
+  return hour >= 5 && hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+}
+
+/** Up is good, down is bad. */
+function trendTone(change: number): Tone {
+  if (change < 0) {
+    return 'bad';
+  }
+  return change > 0 ? 'good' : 'neutral';
+}
+
+/** Over the limit is bad; from 80% on, a warning. */
+function budgetTone(spent: number, limit: number, used: number): Tone {
+  if (spent > limit) {
+    return 'bad';
+  }
+  return used >= 80 ? 'warn' : 'good';
+}
+
+function savingsNote(rate: number | null, target: number | string | null | undefined): string {
+  if (rate === null) {
+    return 'Sin ingresos este mes';
+  }
+  return target ? `Meta: ${target}%` : 'De lo que ingresó, lo que quedó';
+}
+
 /**
  * The home page: the month selected in the top bar, in the base currency of the workspace. It adds nothing
  * up: every figure comes from the API, and it is only about the signed-in person's own money.
@@ -121,8 +167,7 @@ export class Dashboard {
     const today = this.today();
     const selected = year * 12 + month;
     const current = today.getFullYear() * 12 + today.getMonth() + 1;
-    const elapsed = selected < current ? total : selected === current ? today.getDate() : 0;
-    return { total, elapsed, isCurrent: selected === current };
+    return { total, elapsed: elapsedDays(selected, current, total, today.getDate()), isCurrent: selected === current };
   });
 
   protected readonly eyebrow = computed(() => {
@@ -131,8 +176,7 @@ export class Dashboard {
   });
 
   protected readonly greeting = computed(() => {
-    const hour = this.today().getHours();
-    const hello = hour >= 5 && hour < 12 ? 'Buenos días' : hour >= 5 && hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+    const hello = greetingAt(this.today().getHours());
     const name = this.session.user()?.displayName.trim().split(/\s+/)[0];
     return name ? `${hello}, ${name}` : hello;
   });
@@ -160,12 +204,12 @@ export class Dashboard {
     }
     if (data.budget) {
       const used = Math.round(Number(data.budget.usedPercent));
-      insights.push({ text: `Presupuesto al ${used}%`, tone: Number(data.budget.spent) > Number(data.budget.limit) ? 'bad' : used >= 80 ? 'warn' : 'good' });
+      insights.push({ text: `Presupuesto al ${used}%`, tone: budgetTone(Number(data.budget.spent), Number(data.budget.limit), used) });
     }
     const { total, elapsed, isCurrent } = this.days();
     if (isCurrent) {
       const left = total - elapsed;
-      insights.push({ text: left === 0 ? 'Hoy cierra el mes' : `${left} ${left === 1 ? 'día' : 'días'} para cerrar el mes`, tone: 'warn' });
+      insights.push({ text: left === 0 ? 'Hoy cierra el mes' : `${dayCount(left)} para cerrar el mes`, tone: 'warn' });
     }
     return insights;
   });
@@ -183,7 +227,7 @@ export class Dashboard {
 
     const target = this.session.user()?.preferences.savingsRateTarget;
     const rate = data.savingsRate === null ? null : Number(data.savingsRate);
-    const netChange = Number(data.netWorth.change);
+    const negativeRate = rate !== null && rate < 0;
     const { elapsed } = this.days();
     const kpis: Partial<Record<KpiId, Kpi>> = {
       netWorth: {
@@ -191,7 +235,7 @@ export class Dashboard {
         value: formatMoney(data.netWorth.amount, currency),
         valueTone: Number(data.netWorth.amount) < 0 ? 'bad' : 'neutral',
         note: against(Number(data.netWorth.amount), Number(data.netWorth.previousAmount), currency),
-        noteTone: netChange < 0 ? 'bad' : netChange > 0 ? 'good' : 'neutral',
+        noteTone: trendTone(Number(data.netWorth.change)),
       },
       income: {
         ...this.named('income', 'green'),
@@ -208,30 +252,22 @@ export class Dashboard {
         noteTone: 'neutral',
       },
       savings: {
-        ...this.named('savings', rate !== null && rate < 0 ? 'red' : 'green'),
+        ...this.named('savings', negativeRate ? 'red' : 'green'),
         value: rate === null ? '—' : `${rate.toFixed(1)}%`,
-        valueTone: rate !== null && rate < 0 ? 'bad' : 'neutral',
-        note: rate === null ? 'Sin ingresos este mes' : target ? `Meta: ${target}%` : 'De lo que ingresó, lo que quedó',
-        noteTone: rate !== null && rate < 0 ? 'bad' : 'neutral',
+        valueTone: negativeRate ? 'bad' : 'neutral',
+        note: savingsNote(rate, target),
+        noteTone: negativeRate ? 'bad' : 'neutral',
       },
       daily: {
         ...this.named('daily', 'violet'),
         value: elapsed === 0 ? '—' : formatMoney(Number(data.expense) / elapsed, currency),
         valueTone: 'neutral',
-        note: elapsed === 0 ? 'El mes aún no empieza' : `Promedio en ${elapsed} ${elapsed === 1 ? 'día' : 'días'}`,
+        note: elapsed === 0 ? 'El mes aún no empieza' : `Promedio en ${dayCount(elapsed)}`,
         noteTone: 'neutral',
       },
     };
     if (data.budget) {
-      const over = Number(data.budget.spent) > Number(data.budget.limit);
-      kpis.budget = {
-        ...this.named('budget', 'amber'),
-        value: `${Math.round(Number(data.budget.usedPercent))}% usado`,
-        valueTone: over ? 'bad' : 'neutral',
-        note: `${formatMoney(data.budget.spent, currency)} de ${formatMoney(data.budget.limit, currency)}`,
-        noteTone: over ? 'bad' : 'neutral',
-        bar: Math.min(100, Number(data.budget.usedPercent)),
-      };
+      kpis.budget = this.budgetKpi(data.budget, currency);
     }
     return kpis;
   });
@@ -328,6 +364,18 @@ export class Dashboard {
 
   private named(id: KpiId, color: TileColor): Pick<Kpi, 'id' | 'label' | 'icon' | 'color'> {
     return { id, color, ...KPI_NAMES[id] };
+  }
+
+  private budgetKpi(budget: NonNullable<DashboardData['budget']>, currency: string): Kpi {
+    const tone: Tone = Number(budget.spent) > Number(budget.limit) ? 'bad' : 'neutral';
+    return {
+      ...this.named('budget', 'amber'),
+      value: `${Math.round(Number(budget.usedPercent))}% usado`,
+      valueTone: tone,
+      note: `${formatMoney(budget.spent, currency)} de ${formatMoney(budget.limit, currency)}`,
+      noteTone: tone,
+      bar: Math.min(100, Number(budget.usedPercent)),
+    };
   }
 
   private readOrder(): readonly KpiId[] {

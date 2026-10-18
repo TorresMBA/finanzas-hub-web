@@ -160,7 +160,7 @@ export class BudgetForm {
   private readonly suggestion = httpResource<BudgetSuggestion>(() => this.api.suggestionUrl(this.model().categoryId));
   protected readonly suggested = computed(() => {
     const suggestion = this.suggestion.hasValue() ? this.suggestion.value() : undefined;
-    if (!suggestion || suggestion.categoryId !== this.model().categoryId || Number(suggestion.suggestedLimit) <= 0) {
+    if (suggestion?.categoryId !== this.model().categoryId ||Number(suggestion.suggestedLimit) <= 0) {
       return null;
     }
 
@@ -191,14 +191,13 @@ export class BudgetForm {
         const budget =
           target.mode === 'create' ? await this.api.create({ categoryId, ...request }) : await this.api.adjust(target.budget.id, { ...request, fromMonth });
         const limit = formatMoney(budget.limit, budget.currency);
-        const fromNow = fromMonth === this.currentMonth();
-        this.saved.emit(
-          target.mode === 'create'
-            ? `Presupuesto de ${limit} al mes para «${budget.categoryName}» creado.`
-            : fromNow
-              ? `«${budget.categoryName}» ahora tiene un límite de ${limit} al mes.`
-              : `«${budget.categoryName}» tendrá un límite de ${limit} al mes desde ${monthName(fromMonth)}.`,
-        );
+        if (target.mode === 'create') {
+          this.saved.emit(`Presupuesto de ${limit} al mes para «${budget.categoryName}» creado.`);
+        } else if (fromMonth === this.currentMonth()) {
+          this.saved.emit(`«${budget.categoryName}» ahora tiene un límite de ${limit} al mes.`);
+        } else {
+          this.saved.emit(`«${budget.categoryName}» tendrá un límite de ${limit} al mes desde ${monthName(fromMonth)}.`);
+        }
       } catch (error) {
         this.failure.set(errorMessage(error));
       } finally {

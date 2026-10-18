@@ -174,6 +174,16 @@ h2 {
   font-size: 13px;
 }
 
+// The label of the filter is for screen readers: the options already say what it filters.
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .older {
   align-self: center;
 }

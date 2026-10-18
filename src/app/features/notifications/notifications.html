@@ -18,7 +18,8 @@
         <button type="button" [attr.aria-pressed]="!unreadOnly()" (click)="unreadOnly.set(false)">Todas</button>
         <button type="button" [attr.aria-pressed]="unreadOnly()" (click)="unreadOnly.set(true)">No leídas ({{ unread() }})</button>
       </div>
-      <select #categoryChoice class="input category-filter" aria-label="Categoría de los avisos" (change)="category.set($any(categoryChoice.value) || null)">
+      <label class="sr-only" for="category-filter">Categoría de los avisos</label>
+      <select #categoryChoice id="category-filter" class="input category-filter" (change)="category.set($any(categoryChoice.value) || null)">
         <option value="" [selected]="category() === null">Todas las categorías</option>
         @for (option of categoryFilters; track option.value) {
           <option [value]="option.value" [selected]="category() === option.value">{{ option.label }}</option>

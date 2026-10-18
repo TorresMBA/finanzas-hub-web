@@ -228,6 +228,8 @@ h2 {
 }
 
 .track {
+  // Relative for the target of the preferences, a dashed line across every month.
+  position: relative;
   width: 100%;
   max-width: 36px;
   height: 120px;
@@ -244,11 +246,6 @@ h2 {
   &.is-negative {
     background: var(--rd);
   }
-}
-
-// The target of the preferences, as a dashed line across every month.
-.track {
-  position: relative;
 }
 
 .fill:not(.is-met):not(.is-negative) {
