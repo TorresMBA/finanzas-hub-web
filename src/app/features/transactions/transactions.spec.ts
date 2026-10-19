@@ -222,7 +222,7 @@ describe('Transactions', () => {
       'USD US$ 0.00 US$ 12.99 −US$ 12.99 ≈ −S/ 48.71',
     ]);
     // The rates the conversions use are in sight, and net worth by currency beside the list.
-    expect(texts('.rates span')).toEqual(['1 US$ = S/ 3.750', '· desde el 1 oct']);
+    expect(texts('.rates span:not(.sr-only)')).toEqual(['1 US$ = S/ 3.750', '· desde el 1 oct']);
     expect(texts('app-net-worth-card .line')).toEqual(['PENMoneda baseS/ 946.00', 'USDUS$ 100.00S/ 375.00']);
 
     element.querySelector<HTMLButtonElement>('[aria-label="Ver solo USD"]')!.click();
@@ -277,7 +277,7 @@ describe('Transactions', () => {
     await settle();
 
     // Seen from one of its accounts, the same transfer is money that came in.
-    const select = element.querySelector<HTMLSelectElement>('select[aria-label="Cuenta"]')!;
+    const select = element.querySelector<HTMLSelectElement>('#account-filter')!;
     select.value = 'a-usd';
     select.dispatchEvent(new Event('change'));
     await settle();
@@ -390,7 +390,7 @@ describe('Transactions', () => {
     voided.flush(page([]));
     await settle();
 
-    const select = element.querySelector<HTMLSelectElement>('select[aria-label="Cuenta"]')!;
+    const select = element.querySelector<HTMLSelectElement>('#account-filter')!;
     select.value = 'a-usd';
     select.dispatchEvent(new Event('change'));
     await settle();
@@ -606,7 +606,7 @@ describe('Transactions', () => {
     await scoped.whenStable();
     await fixture.whenStable();
 
-    expect(scoped.nativeElement.querySelector('select[aria-label="Cuenta"]').value).toBe('a-usd');
+    expect(scoped.nativeElement.querySelector('#account-filter').value).toBe('a-usd');
   });
 
   it('starts on a category from a budget, and on every date from the global search', async () => {

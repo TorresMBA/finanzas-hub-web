@@ -284,3 +284,13 @@ ul {
 .detail {
   padding: 20px;
 }
+
+// Labels for screen readers only: the options already say what each filter is.
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

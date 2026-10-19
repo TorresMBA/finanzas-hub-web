@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
-import { Transaction } from '../../core/api/api-types';
+import { Conversion, OriginalPrice, Transaction, Transfer } from '../../core/api/api-types';
 import { formatDay, formatShortDate } from '../../shared/ui/dates';
 import { FxBreakdown, FxRow } from '../../shared/ui/fx-breakdown';
 import { IconTile } from '../../shared/ui/icon-tile';
@@ -23,6 +23,78 @@ function surcharge(cost: number, over: number, currency: string): string {
 
   const share = over ? ` (${((cost / over) * 100).toLocaleString('es-PE', { maximumFractionDigits: 1 })}%)` : '';
   return `${formatMoney(-cost, currency)}${share}`;
+}
+
+/** A transfer between two currencies: what left, what arrived and what the change cost. */
+function transferStory(transfer: Transfer): FxStory {
+  const [sent, received] = [Number(transfer.amountOut), Number(transfer.amountIn)];
+  const market = transfer.marketRate === null || transfer.marketRate === undefined ? null : Number(transfer.marketRate);
+  const rows: FxRow[] = [
+    { label: 'Enviaste', value: formatMoney(sent, transfer.currencyOut) },
+    { label: 'Recibiste', value: formatMoney(received, transfer.currencyIn) },
+    { label: 'Tipo aplicado', value: formatRate(sent / received, transfer.currencyIn, transfer.currencyOut) },
+  ];
+  if (market !== null) {
+    const cost = sent - received * market;
+    rows.push(
+      { label: 'Mercado ese día', value: formatRate(market, transfer.currencyIn, transfer.currencyOut) },
+      { label: 'Costo del cambio', value: surcharge(cost, received * market, transfer.currencyOut), tone: cost > 0.005 ? 'bad' : 'good' },
+    );
+  }
+
+  if (transfer.fee) {
+    rows.push({ label: 'Comisión del banco', value: formatMoney(-Number(transfer.fee), transfer.currencyOut), tone: 'bad' });
+  }
+
+  return {
+    title: 'Conversión',
+    rows,
+    note: 'Tu patrimonio solo baja por el costo del cambio y la comisión; el resto es el mismo dinero en otra moneda.',
+    adjustable: false,
+  };
+}
+
+/** A purchase priced in another currency than the account's. */
+function purchaseStory(item: Transaction, price: OriginalPrice): FxStory {
+  const [charged, original] = [Number(item.amount), Number(price.amount)];
+  const market = price.marketRate === null ? null : Number(price.marketRate);
+  const rows: FxRow[] = [
+    { label: 'Precio', value: formatMoney(original, price.currency) },
+    { label: `Cobrado en ${item.accountName}`, value: formatMoney(charged, item.currency) },
+    { label: 'Tipo del banco', value: formatRate(charged / original, price.currency, item.currency) },
+  ];
+  if (market !== null) {
+    const cost = charged - original * market;
+    rows.push(
+      { label: 'Mercado ese día', value: formatRate(market, price.currency, item.currency) },
+      { label: 'Recargo por cambio', value: surcharge(cost, original * market, item.currency), tone: cost > 0.005 ? 'bad' : 'good' },
+    );
+  }
+
+  return {
+    title: `Compra en ${price.currency}`,
+    rows,
+    note: `Cuenta en ${item.currency} por lo que realmente salió de tu cuenta. El precio en ${price.currency} queda como referencia.`,
+    adjustable: false,
+  };
+}
+
+/** A movement in another currency than the base one, and what it was worth there. */
+function conversionStory(item: Transaction, conversion: Conversion, today: number | null): FxStory {
+  const rows: FxRow[] = [
+    { label: 'Tipo de cambio usado', value: formatRate(conversion.rate, item.currency, conversion.baseCurrency) },
+    { label: 'Fuente', value: conversion.isManual ? 'Lo escribiste tú' : `Tu tipo de cambio · desde el ${formatShortDate(conversion.rateDate)}` },
+  ];
+  if (today !== null) {
+    rows.push({ label: 'Equivale hoy', value: formatMoney(Number(item.signedAmount) * today, conversion.baseCurrency, { signed: true }) });
+  }
+
+  return {
+    title: `Conversión a ${conversion.baseCurrency}`,
+    rows,
+    note: 'Tus reportes y presupuestos usan este tipo de cambio y no cambian aunque la moneda se mueva después.',
+    adjustable: true,
+  };
 }
 
 /** Everything about one movement, and what can be done with it. It asks; the page does. */
@@ -240,78 +312,14 @@ export class TransactionDetail {
     const item = this.transaction();
     const transfer = item.transfer;
     if (transfer && transfer.currencyIn !== transfer.currencyOut) {
-      const [sent, received] = [Number(transfer.amountOut), Number(transfer.amountIn)];
-      const market = transfer.marketRate === null || transfer.marketRate === undefined ? null : Number(transfer.marketRate);
-      const rows: FxRow[] = [
-        { label: 'Enviaste', value: formatMoney(sent, transfer.currencyOut) },
-        { label: 'Recibiste', value: formatMoney(received, transfer.currencyIn) },
-        { label: 'Tipo aplicado', value: formatRate(sent / received, transfer.currencyIn, transfer.currencyOut) },
-      ];
-      if (market !== null) {
-        const cost = sent - received * market;
-        rows.push(
-          { label: 'Mercado ese día', value: formatRate(market, transfer.currencyIn, transfer.currencyOut) },
-          { label: 'Costo del cambio', value: surcharge(cost, received * market, transfer.currencyOut), tone: cost > 0.005 ? 'bad' : 'good' },
-        );
-      }
-
-      if (transfer.fee) {
-        rows.push({ label: 'Comisión del banco', value: formatMoney(-Number(transfer.fee), transfer.currencyOut), tone: 'bad' });
-      }
-
-      return {
-        title: 'Conversión',
-        rows,
-        note: 'Tu patrimonio solo baja por el costo del cambio y la comisión; el resto es el mismo dinero en otra moneda.',
-        adjustable: false,
-      };
+      return transferStory(transfer);
     }
 
     if (item.originalPrice) {
-      const price = item.originalPrice;
-      const [charged, original] = [Number(item.amount), Number(price.amount)];
-      const market = price.marketRate === null ? null : Number(price.marketRate);
-      const rows: FxRow[] = [
-        { label: 'Precio', value: formatMoney(original, price.currency) },
-        { label: `Cobrado en ${item.accountName}`, value: formatMoney(charged, item.currency) },
-        { label: 'Tipo del banco', value: formatRate(charged / original, price.currency, item.currency) },
-      ];
-      if (market !== null) {
-        const cost = charged - original * market;
-        rows.push(
-          { label: 'Mercado ese día', value: formatRate(market, price.currency, item.currency) },
-          { label: 'Recargo por cambio', value: surcharge(cost, original * market, item.currency), tone: cost > 0.005 ? 'bad' : 'good' },
-        );
-      }
-
-      return {
-        title: `Compra en ${price.currency}`,
-        rows,
-        note: `Cuenta en ${item.currency} por lo que realmente salió de tu cuenta. El precio en ${price.currency} queda como referencia.`,
-        adjustable: false,
-      };
+      return purchaseStory(item, item.originalPrice);
     }
 
-    const conversion = item.conversion;
-    if (conversion && !transfer) {
-      const today = this.rates().inBase(item.currency);
-      const rows: FxRow[] = [
-        { label: 'Tipo de cambio usado', value: formatRate(conversion.rate, item.currency, conversion.baseCurrency) },
-        { label: 'Fuente', value: conversion.isManual ? 'Lo escribiste tú' : `Tu tipo de cambio · desde el ${formatShortDate(conversion.rateDate)}` },
-      ];
-      if (today !== null) {
-        rows.push({ label: 'Equivale hoy', value: formatMoney(Number(item.signedAmount) * today, conversion.baseCurrency, { signed: true }) });
-      }
-
-      return {
-        title: `Conversión a ${conversion.baseCurrency}`,
-        rows,
-        note: 'Tus reportes y presupuestos usan este tipo de cambio y no cambian aunque la moneda se mueva después.',
-        adjustable: true,
-      };
-    }
-
-    return null;
+    return item.conversion && !transfer ? conversionStory(item, item.conversion, this.rates().inBase(item.currency)) : null;
   });
 
   protected readonly rows = computed(() => {

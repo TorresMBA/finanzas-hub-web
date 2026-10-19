@@ -14,7 +14,7 @@ import { Field } from '../../shared/ui/field';
 import { FxBreakdown, FxRow } from '../../shared/ui/fx-breakdown';
 import { Icon } from '../../shared/ui/icon';
 import { TileColor } from '../../shared/ui/icon-tile';
-import { currencyDecimals, currencyLook, currencySymbol, formatMoney, formatRate, parseAmount, sumAmounts } from '../../shared/ui/money';
+import { baseFirst, currencyDecimals, currencyLook, currencySymbol, formatMoney, formatRate, parseAmount, sumAmounts } from '../../shared/ui/money';
 import { MoneyInput } from '../../shared/ui/money-input';
 import { Switch } from '../../shared/ui/switch';
 import { TagInput } from '../../shared/ui/tag-input';
@@ -708,7 +708,7 @@ export class TransactionForm {
   private groupsOf(excluded: string | null): PickerGroup[] {
     const accounts = this.ownAccounts();
     const base = this.baseCurrency();
-    const currencies = [...new Set(accounts.map((account) => account.currency))].sort((a, b) => (a === base ? -1 : b === base ? 1 : a.localeCompare(b)));
+    const currencies = baseFirst(accounts.map((account) => account.currency), base);
     return currencies.map((code) => {
       const inCurrency = accounts.filter((account) => account.currency === code);
       const name = currencyLook(code)?.pluralName ?? code;

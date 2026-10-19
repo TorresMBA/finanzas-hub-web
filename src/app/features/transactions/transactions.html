@@ -1,12 +1,13 @@
 <app-page-header [eyebrow]="scopeLabel()" title="Transacciones" subtitle="Tus ingresos, gastos y transferencias. Solo tú los ves.">
   <div class="header-actions">
     @if (rateChips(); as chips) {
-      <a class="rates" routerLink="/accounts" aria-label="Tus tipos de cambio. Cámbialos en Cuentas">
+      <a class="rates" routerLink="/accounts">
         <app-icon name="currency_exchange" [size]="17" />
         @for (rate of chips.rates; track rate) {
           <span>{{ rate }}</span>
         }
         <span class="since">· desde el {{ chips.since }}</span>
+        <span class="sr-only">. Cámbialos en Cuentas</span>
       </a>
     }
     <button class="button button--primary" type="button" (click)="openPost()"><app-icon name="add" [size]="18" />Nueva transacción</button>
@@ -37,7 +38,8 @@
     </label>
     @if (currencyTabs().length > 0) {
       @if (manyCurrencies()) {
-        <select #currencyFilter class="input filter-select" aria-label="Moneda" (change)="currency.set(currencyFilter.value)">
+        <label class="sr-only" for="currency-filter">Moneda</label>
+        <select #currencyFilter id="currency-filter" class="input filter-select" (change)="currency.set(currencyFilter.value)">
           <option value="" [selected]="currency() === ''">Todas las monedas</option>
           @for (option of currencyTabs(); track option.code) {
             <option [value]="option.code" [selected]="currency() === option.code">{{ option.label }}</option>
@@ -60,7 +62,8 @@
     </button>
   </div>
   <div class="filters more" id="more-filters" [hidden]="!moreFiltersOpen()">
-    <select #accountFilter class="input filter-select" aria-label="Cuenta" (change)="account.set(accountFilter.value)">
+    <label class="sr-only" for="account-filter">Cuenta</label>
+    <select #accountFilter id="account-filter" class="input filter-select" (change)="account.set(accountFilter.value)">
       <option value="" [selected]="account() === ''">Todas las cuentas</option>
       @for (option of accountOptions().own; track option.id) {
         <option [value]="option.id" [selected]="account() === option.id">{{ option.name }}</option>

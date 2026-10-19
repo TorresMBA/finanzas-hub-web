@@ -116,6 +116,24 @@ function units(value: number | string | null): string {
 }
 
 /**
+ * What a contribution or a withdrawal did, as the person would say it.
+ * @param quantity The units bought or sold; undefined for an investment that is not counted in units.
+ */
+function moveMessage(mode: 'contribute' | 'withdraw', holding: HoldingSummary, text: string, quantity: number | null | undefined): string {
+  if (quantity !== undefined) {
+    const verb = mode === 'withdraw' ? 'Vendiste' : 'Compraste';
+    return `${verb} ${units(quantity)} de «${holding.name}» por ${text}.`;
+  }
+
+  if (mode === 'contribute') {
+    return `Aportaste ${text} a «${holding.name}».`;
+  }
+
+  const verb = holding.type === 'mutualFund' ? 'Rescataste' : 'Retiraste';
+  return `${verb} ${text} de «${holding.name}».`;
+}
+
+/**
  * One dialog for everything that changes an investment. Registering one goes in two steps: what it is, then the
  * fields that kind of investment has — units and price for shares and crypto, rate and term for a deposit, an amount
  * for a fund — with a summary of what will happen before confirming. Money always moves between an account of the
@@ -981,16 +999,7 @@ export class HoldingForm {
       await this.api.value(holding.id, model.date, null, price);
     }
 
-    const text = formatMoney(amount, holding.currency);
-    if (this.unitsKind()) {
-      return target.mode === 'withdraw'
-        ? `Vendiste ${units(quantity)} de «${holding.name}» por ${text}.`
-        : `Compraste ${units(quantity)} de «${holding.name}» por ${text}.`;
-    }
-
-    return target.mode === 'withdraw'
-      ? `${holding.type === 'mutualFund' ? 'Rescataste' : 'Retiraste'} ${text} de «${holding.name}».`
-      : `Aportaste ${text} a «${holding.name}».`;
+    return moveMessage(target.mode, holding, formatMoney(amount, holding.currency), this.unitsKind() ? quantity : undefined);
   }
 
   private async open(amount: number): Promise<string> {

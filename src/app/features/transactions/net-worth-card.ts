@@ -5,6 +5,17 @@ import { formatMoney } from '../../shared/ui/money';
 // The bars cycle through these, so any number of currencies gets a colour; the base one is always the first.
 const PALETTE = ['var(--ac)', 'var(--bl)', 'var(--vi)', 'var(--am)', 'var(--rd)'];
 
+type Position = AccountSummary['currencies'][number];
+
+/** A currency's net in the base one; null when there is no rate to bring it there. */
+function valueInBase(position: Position, baseCurrency: string | null | undefined): number | null {
+  if (position.currency === baseCurrency) {
+    return Number(position.net);
+  }
+
+  return position.rate === null ? null : Number(position.net) * Number(position.rate);
+}
+
 /**
  * Net worth by currency, each brought to the base one at today's rate. A balance in another currency is valued again
  * every day: that changes net worth, but it is neither an income nor an expense.
@@ -115,11 +126,12 @@ export class NetWorthCard {
     const valued = currencies.map((position) => ({
       currency: position.currency,
       net: Number(position.net),
-      inBase: position.currency === baseCurrency ? Number(position.net) : position.rate === null ? null : Number(position.net) * Number(position.rate),
+      inBase: valueInBase(position, baseCurrency),
     }));
     const largest = Math.max(1, ...valued.map((position) => Math.abs(position.inBase ?? 0)));
-    return valued
-      .sort((a, b) => (a.currency === baseCurrency ? -1 : b.currency === baseCurrency ? 1 : (b.inBase ?? 0) - (a.inBase ?? 0)))
+    // The base currency first, then the largest in value.
+    const byValue = valued.filter((position) => position.currency !== baseCurrency).sort((a, b) => (b.inBase ?? 0) - (a.inBase ?? 0));
+    return [...valued.filter((position) => position.currency === baseCurrency), ...byValue]
       .map((position, index) => ({
         currency: position.currency,
         native: position.currency === baseCurrency ? 'Moneda base' : formatMoney(position.net, position.currency),

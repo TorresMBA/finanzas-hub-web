@@ -88,8 +88,15 @@ export function sumAmounts(amounts: readonly Amount[]): number {
  */
 export function parseAmount(text: string, decimals = 2): number | null {
   const normalized = text.trim().replace(',', '.');
-  const fraction = decimals > 0 ? `(\\.\\d{1,${decimals}})?` : '';
-  return new RegExp(`^-?\\d{1,12}${fraction}$`).test(normalized) ? Number(normalized) : null;
+  const fraction = decimals > 0 ? String.raw`(\.\d{1,${decimals}})?` : '';
+  return new RegExp(String.raw`^-?\d{1,12}${fraction}$`).test(normalized) ? Number(normalized) : null;
+}
+
+/** Currency codes without repeats: the base one first, when it is among them, and the rest alphabetically. */
+export function baseFirst(codes: Iterable<string>, base: string | null | undefined): string[] {
+  const unique = new Set(codes);
+  const others = [...unique].filter((code) => code !== base).sort((a, b) => a.localeCompare(b));
+  return base && unique.has(base) ? [base, ...others] : others;
 }
 
 @Pipe({ name: 'money' })

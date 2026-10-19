@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, linkedSignal, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Account, AccountSummary, BaseTotals, Category, CurrencyTotals, ExchangeRate, Transaction } from '../../core/api/api-types';
+import { Account, AccountSummary, BaseTotals, Category, Conversion, CurrencyTotals, ExchangeRate, Transaction } from '../../core/api/api-types';
 import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
 import { PeriodStore } from '../../core/period/period-store';
@@ -13,7 +13,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Icon } from '../../shared/ui/icon';
 import { IconTile } from '../../shared/ui/icon-tile';
-import { currencySymbol, formatMoney, formatRate, sumAmounts } from '../../shared/ui/money';
+import { baseFirst, currencySymbol, formatMoney, formatRate, sumAmounts } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { NetWorthCard } from './net-worth-card';
@@ -36,6 +36,11 @@ const SEARCH_DELAY_MS = 300;
 
 /** Beyond this many currencies the filter is a list to open instead of a row of buttons. */
 const MAX_CURRENCY_TABS = 4;
+
+/** What a movement was worth in the base currency, with the sign of its amount. */
+function signedBaseAmount(item: Transaction, conversion: Conversion): number | string {
+  return Number(item.signedAmount) < 0 ? -Number(conversion.baseAmount) : conversion.baseAmount;
+}
 
 /**
  * The person's movements of the month selected in the top bar (or of every date), newest first. Totals come from the API for
@@ -103,7 +108,7 @@ export class Transactions {
       return null;
     }
 
-    const latest = rates.map((rate) => rate.asOf).sort().at(-1)!;
+    const latest = rates.map((rate) => rate.asOf).sort((a, b) => a.localeCompare(b)).at(-1)!;
     return { rates: rates.map((rate) => formatRate(rate.rate, rate.currency, rate.baseCurrency)), since: formatShortDate(latest) };
   });
 
@@ -119,9 +124,7 @@ export class Transactions {
   /** The currencies of the person's accounts, the base one first. Only worth filtering by with more than one. */
   protected readonly currencyTabs = computed(() => {
     const base = this.workspaces.current()?.baseCurrency;
-    const codes = [...new Set((this.accounts.value() ?? []).map((account) => account.currency))].sort((a, b) =>
-      a === base ? -1 : b === base ? 1 : a.localeCompare(b),
-    );
+    const codes = baseFirst((this.accounts.value() ?? []).map((account) => account.currency), base);
     return codes.length > 1 ? codes.map((code) => ({ code, label: `${currencySymbol(code)} ${code}` })) : [];
   });
 
@@ -325,7 +328,7 @@ export class Transactions {
 
     return transfer
       ? `≈ ${formatMoney(conversion.baseAmount, conversion.baseCurrency)}`
-      : `≈ ${formatMoney(Number(item.signedAmount) < 0 ? -Number(conversion.baseAmount) : conversion.baseAmount, conversion.baseCurrency, { signed: true })}`;
+      : `≈ ${formatMoney(signedBaseAmount(item, conversion), conversion.baseCurrency, { signed: true })}`;
   }
 
   protected pickCurrency(code: string): void {
@@ -345,13 +348,13 @@ export class Transactions {
    */
   private netOf(counted: readonly Transaction[]): string {
     const base = this.workspaces.current()?.baseCurrency;
-    const currencies = [...new Set(counted.map((item) => item.currency))].sort();
+    const currencies = [...new Set(counted.map((item) => item.currency))].sort((a, b) => a.localeCompare(b));
     const inBase = counted.map((item) => {
       if (item.currency === base) {
         return item.signedAmount;
       }
 
-      return item.conversion ? (Number(item.signedAmount) < 0 ? -Number(item.conversion.baseAmount) : item.conversion.baseAmount) : null;
+      return item.conversion ? signedBaseAmount(item, item.conversion) : null;
     });
     if (base && currencies.length > 1 && this.currency() === '' && inBase.every((amount) => amount !== null)) {
       return `Neto ${formatMoney(sumAmounts(inBase as string[]), base, { signed: true })} · en ${base}`;
