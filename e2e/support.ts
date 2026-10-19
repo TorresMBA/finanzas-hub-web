@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { Locator, Page, expect } from '@playwright/test';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,6 +7,19 @@ export const PASSWORD = 'Correcta-Bateria-9';
 
 /** The heading of Inicio: a greeting that depends on the time of day. */
 export const GREETING = /^Buen(os días|as tardes|as noches)/;
+
+/**
+ * Chooses an account in the account picker of a form, as a person does: open the list labelled `label` and click
+ * the account by its name. Checks that the list closes and the account is the one shown.
+ */
+export async function pickAccount(form: Locator, label: string, account: string): Promise<void> {
+  const picker = form.getByRole('combobox', { name: label });
+  await picker.click();
+  const list = form.getByRole('listbox', { name: label });
+  await list.getByRole('option').filter({ has: form.page().getByText(account, { exact: true }) }).click();
+  await expect(list).toBeHidden();
+  await expect(picker).toContainText(account);
+}
 
 export function newEmail(name: string): string {
   return `${name.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;

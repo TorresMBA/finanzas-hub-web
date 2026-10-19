@@ -1,4 +1,4 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { InjectionToken, Pipe, PipeTransform, Signal, inject, signal } from '@angular/core';
 
 /** An amount as the API sends it: a JSON number, or a string for values a number cannot hold exactly. */
 export type Amount = number | string;
@@ -60,13 +60,26 @@ function numberWith(decimals: number): Intl.NumberFormat {
 export interface MoneyFormat {
   /** Show "+" on positive amounts, for lists where the sign is the information. */
   readonly signed?: boolean;
+  /** "S/ ••••" instead of the figure, while the person hides their balances. The sign stays: it says which way, not how much. */
+  readonly hidden?: boolean;
 }
+
+/** What stands for a figure while balances are hidden. */
+export const HIDDEN_FIGURE = '••••';
+
+/**
+ * Whether the person chose to hide their balances on this device. The frame provides it; without it, nothing is hidden.
+ * Only the sections with the most sensitive figures read it: the dashboard, accounts, investments, the totals of
+ * transactions and the global search.
+ */
+export const AMOUNTS_HIDDEN = new InjectionToken<Signal<boolean>>('AMOUNTS_HIDDEN', { factory: () => signal(false) });
 
 /** "S/ 1,234.50", "−US$ 20.00". The minus is the typographic one, as in the mock. */
 export function formatMoney(amount: Amount, currency: string, format: MoneyFormat = {}): string {
   const value = Number(amount);
   const sign = value < 0 ? '−' : format.signed && value > 0 ? '+' : '';
-  return `${sign}${currencySymbol(currency)} ${numberWith(currencyDecimals(currency)).format(Math.abs(value))}`;
+  const figure = format.hidden ? HIDDEN_FIGURE : numberWith(currencyDecimals(currency)).format(Math.abs(value));
+  return `${sign}${currencySymbol(currency)} ${figure}`;
 }
 
 /** "1 US$ = S/ 3.745": what one unit of a currency is worth in another. Three decimals, as banks quote it. */
@@ -103,5 +116,18 @@ export function baseFirst(codes: Iterable<string>, base: string | null | undefin
 export class MoneyPipe implements PipeTransform {
   transform(amount: Amount, currency: string, format?: MoneyFormat): string {
     return formatMoney(amount, currency, format);
+  }
+}
+
+/**
+ * Like `money`, but shows "S/ ••••" while the person hides their balances. Not pure, so the figures change as soon
+ * as the setting does; formatting an amount costs little.
+ */
+@Pipe({ name: 'privateMoney', pure: false })
+export class PrivateMoneyPipe implements PipeTransform {
+  private readonly hidden = inject(AMOUNTS_HIDDEN);
+
+  transform(amount: Amount, currency: string, format?: MoneyFormat): string {
+    return formatMoney(amount, currency, { ...format, hidden: this.hidden() });
   }
 }

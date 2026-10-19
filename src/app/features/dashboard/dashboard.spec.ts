@@ -1,5 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Dashboard as DashboardData } from '../../core/api/api-types';
@@ -8,6 +9,7 @@ import { apiErrorInterceptor } from '../../core/http/api-interceptors';
 import { PeriodStore, TODAY } from '../../core/period/period-store';
 import { TEST_WORKSPACE, provideSession } from '../../core/testing/signed-in';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
+import { AMOUNTS_HIDDEN } from '../../shared/ui/money';
 import { Dashboard } from './dashboard';
 
 const url = (month: string) => `/api/v1/workspaces/${TEST_WORKSPACE.id}/dashboard?month=${month}`;
@@ -75,9 +77,11 @@ describe('Dashboard', () => {
   let fixture: ComponentFixture<Dashboard>;
   let element: HTMLElement;
   let http: HttpTestingController;
+  const amountsHidden = signal(false);
 
   beforeEach(async () => {
     localStorage.clear();
+    amountsHidden.set(false);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -85,6 +89,7 @@ describe('Dashboard', () => {
         provideHttpClientTesting(),
         provideSession(),
         { provide: TODAY, useValue: () => new Date(2026, 9, 13, 9) },
+        { provide: AMOUNTS_HIDDEN, useValue: amountsHidden },
       ],
     });
     await TestBed.inject(WorkspaceStore).ensureLoaded();
@@ -210,6 +215,27 @@ describe('Dashboard', () => {
     expect(within('accounts', '.names')).toEqual(['BCPPEN', 'VisaPEN', 'DólaresUSD']);
     expect(within('accounts', '.figure')).toEqual(['S/ 6,100.00', '−S/ 400.00', 'US$ 75.00']);
     expect(element.querySelector('[aria-labelledby="accounts-title"] .is-negative')?.textContent).toBe('−S/ 400.00');
+  });
+
+  it('hides every amount while balances are hidden, but keeps the bars of the cash flow', async () => {
+    await load();
+    amountsHidden.set(true);
+    await fixture.whenStable();
+
+    expect(kpis()).toEqual([
+      'Patrimonio | S/ •••• | +S/ •••• vs. mes anterior',
+      'Ingresos | S/ •••• | −S/ •••• vs. mes anterior',
+      'Gastos | S/ •••• | +S/ •••• vs. mes anterior',
+      'Tasa de ahorro | 50.0% | De lo que ingresó, lo que quedó',
+    ]);
+    expect(texts('.figure').every((figure) => !/[0-9]/.test(figure!))).toBe(true);
+    expect(element.querySelector('.balance')?.textContent).toContain('te quedaron S/ •••• de lo que');
+    expect(element.querySelector('.chart li:last-child')?.getAttribute('aria-label')).toBe('oct: ingresos S/ ••••, gastos S/ ••••');
+    expect(element.querySelector<HTMLElement>('.chart li:last-child .bar')?.style.height).toBe('80%');
+
+    amountsHidden.set(false);
+    await fixture.whenStable();
+    expect(kpis()[0]).toBe('Patrimonio | S/ 6,000.00 | +S/ 2,000.00 vs. mes anterior');
   });
 
   it('says so in a month with nothing in it instead of showing empty charts', async () => {

@@ -6,7 +6,7 @@ import { formatShortDate } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { IconTile } from '../../shared/ui/icon-tile';
-import { MoneyPipe, formatMoney } from '../../shared/ui/money';
+import { AMOUNTS_HIDDEN, PrivateMoneyPipe, formatMoney } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { HoldingForm, HoldingFormTarget } from './holding-form';
@@ -88,12 +88,13 @@ function tone(value: number): 'good' | 'bad' | '' {
  */
 @Component({
   selector: 'app-investments',
-  imports: [EmptyState, ErrorState, HoldingForm, IconTile, MoneyPipe, PageHeader, Skeleton],
+  imports: [EmptyState, ErrorState, HoldingForm, IconTile, PageHeader, PrivateMoneyPipe, Skeleton],
   templateUrl: './investments.html',
   styleUrl: './investments.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Investments {
+  private readonly amountsHidden = inject(AMOUNTS_HIDDEN);
   private readonly api = inject(InvestmentsApi);
   private readonly today = inject(TODAY);
 
@@ -168,14 +169,14 @@ export class Investments {
     const gain = Number(data.gain);
     const percent = data.gainPercent === null ? null : Number(data.gainPercent);
     return [
-      { label: 'Valor del portafolio', value: formatMoney(data.value, currency), note: `${data.holdings.length} ${data.holdings.length === 1 ? 'inversión' : 'inversiones'}`, tone: '' },
+      { label: 'Valor del portafolio', value: formatMoney(data.value, currency, { hidden: this.amountsHidden() }), note: `${data.holdings.length} ${data.holdings.length === 1 ? 'inversión' : 'inversiones'}`, tone: '' },
       {
         label: 'Ganancia no realizada',
-        value: formatMoney(gain, currency, { signed: true }),
+        value: formatMoney(gain, currency, { signed: true, hidden: this.amountsHidden() }),
         note: percent === null ? 'Sin capital invertido' : `${gainSign(percent)}${percent.toLocaleString('es-PE')} % sobre lo invertido`,
         tone: tone(gain),
       },
-      { label: 'Invertido', value: formatMoney(data.invested, currency), note: 'Capital que pusiste y sigue dentro', tone: '' },
+      { label: 'Invertido', value: formatMoney(data.invested, currency, { hidden: this.amountsHidden() }), note: 'Capital que pusiste y sigue dentro', tone: '' },
     ];
   });
 
@@ -194,7 +195,7 @@ export class Investments {
       return [];
     }
 
-    const money = (amount: number | string | null) => (amount === null ? '—' : formatMoney(amount, holding.currency));
+    const money = (amount: number | string | null) => (amount === null ? '—' : formatMoney(amount, holding.currency, { hidden: this.amountsHidden() }));
     const facts = [
       { label: 'Invertido', value: money(holding.invested) },
       { label: 'Tipo', value: `${TYPE_LOOK[holding.type].label}${holding.institution ? ' · ' + holding.institution : ''}` },
@@ -216,8 +217,8 @@ export class Investments {
       const quantity = Number(holding.quantity);
       if (quantity > 0) {
         facts.push(
-          { label: 'Precio promedio', value: formatMoney(Number(holding.invested) / quantity, holding.currency) },
-          { label: 'Precio actual', value: formatMoney(Number(holding.value) / quantity, holding.currency) },
+          { label: 'Precio promedio', value: formatMoney(Number(holding.invested) / quantity, holding.currency, { hidden: this.amountsHidden() }) },
+          { label: 'Precio actual', value: formatMoney(Number(holding.value) / quantity, holding.currency, { hidden: this.amountsHidden() }) },
         );
       }
     }
@@ -225,7 +226,7 @@ export class Investments {
     if (holding.closedOn) {
       facts.push(
         { label: 'Cerrada el', value: formatShortDate(holding.closedOn) },
-        { label: 'Ganancia realizada', value: formatMoney(holding.realized, holding.currency, { signed: true }) },
+        { label: 'Ganancia realizada', value: formatMoney(holding.realized, holding.currency, { signed: true, hidden: this.amountsHidden() }) },
       );
     }
 

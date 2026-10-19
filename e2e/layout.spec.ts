@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signUp } from './support';
+import { GREETING, signUp } from './support';
 
 // Desktop in the dark theme is what every phase checked by eye; these are the two layouts that were left out.
 const SIZES = [
@@ -8,7 +8,7 @@ const SIZES = [
 ];
 
 const SECTIONS = [
-  { path: '/', heading: /Hola|Inicio/ },
+  { path: '/', heading: GREETING },
   { path: '/transactions', heading: 'Transacciones' },
   { path: '/accounts', heading: 'Cuentas' },
   { path: '/budgets', heading: 'Presupuestos' },

@@ -51,11 +51,11 @@ test.describe('accounts', () => {
     await expect(page).toHaveURL(/\/login\?returnUrl=%2Fgoals$/);
 
     await page.getByLabel('Correo').fill(email);
-    await page.getByLabel('Contraseña', { exact: true }).fill('Otra-Clave-Larga-1');
+    await page.getByRole('textbox', { name: 'Contraseña', exact: true }).fill('Otra-Clave-Larga-1');
     await page.getByRole('button', { name: 'Ingresar' }).click();
     await expect(page.getByRole('alert')).toHaveText('El correo o la contraseña no son correctos.');
 
-    await page.getByLabel('Contraseña', { exact: true }).fill(PASSWORD);
+    await page.getByRole('textbox', { name: 'Contraseña', exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: 'Ingresar' }).click();
     await expect(page).toHaveURL(/\/goals$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Metas' })).toBeVisible();

@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { BaseTotals, CurrencyTotals } from '../../core/api/api-types';
 import { Icon } from '../../shared/ui/icon';
-import { Amount, formatMoney } from '../../shared/ui/money';
+import { AMOUNTS_HIDDEN, Amount, formatMoney } from '../../shared/ui/money';
 import { RateBook } from './transactions-api';
 
 interface Kpi {
@@ -209,6 +209,7 @@ function toneOf(net: Amount, income = false): Kpi['tone'] {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransactionsSummary {
+  private readonly amountsHidden = inject(AMOUNTS_HIDDEN);
   readonly totals = input.required<readonly CurrencyTotals[]>();
   readonly baseTotals = input.required<BaseTotals | null>();
   readonly rates = input.required<RateBook>();
@@ -246,9 +247,9 @@ export class TransactionsSummary {
     if (base) {
       const daily = 'Al tipo de cambio de cada día';
       return [
-        { label: 'Ingresos', value: formatMoney(base.income, base.currency), note: daily, tone: 'income' },
-        { label: 'Gastos', value: formatMoney(base.expense, base.currency), note: daily, tone: '' },
-        { label: 'Neto', value: formatMoney(base.net, base.currency, { signed: true }), note: 'Transferencias excluidas', tone: toneOf(base.net) },
+        { label: 'Ingresos', value: formatMoney(base.income, base.currency, { hidden: this.amountsHidden() }), note: daily, tone: 'income' },
+        { label: 'Gastos', value: formatMoney(base.expense, base.currency, { hidden: this.amountsHidden() }), note: daily, tone: '' },
+        { label: 'Neto', value: formatMoney(base.net, base.currency, { signed: true, hidden: this.amountsHidden() }), note: 'Transferencias excluidas', tone: toneOf(base.net) },
       ];
     }
 
@@ -256,9 +257,9 @@ export class TransactionsSummary {
     const currency = single?.currency ?? this.baseTotals()?.currency ?? '';
     const today = (amount: Amount) => this.inBaseToday(amount, currency);
     return [
-      { label: 'Ingresos', value: formatMoney(single?.income ?? 0, currency), note: today(single?.income ?? 0), tone: 'income' },
-      { label: 'Gastos', value: formatMoney(single?.expense ?? 0, currency), note: today(single?.expense ?? 0), tone: '' },
-      { label: 'Neto', value: formatMoney(single?.net ?? 0, currency, { signed: true }), note: today(single?.net ?? 0), tone: toneOf(single?.net ?? 0) },
+      { label: 'Ingresos', value: formatMoney(single?.income ?? 0, currency, { hidden: this.amountsHidden() }), note: today(single?.income ?? 0), tone: 'income' },
+      { label: 'Gastos', value: formatMoney(single?.expense ?? 0, currency, { hidden: this.amountsHidden() }), note: today(single?.expense ?? 0), tone: '' },
+      { label: 'Neto', value: formatMoney(single?.net ?? 0, currency, { signed: true, hidden: this.amountsHidden() }), note: today(single?.net ?? 0), tone: toneOf(single?.net ?? 0) },
     ];
   });
 
@@ -270,9 +271,9 @@ export class TransactionsSummary {
 
     return this.totals().map((total) => ({
       currency: total.currency,
-      income: formatMoney(total.income, total.currency),
-      expense: formatMoney(total.expense, total.currency),
-      net: formatMoney(total.net, total.currency, { signed: true }),
+      income: formatMoney(total.income, total.currency, { hidden: this.amountsHidden() }),
+      expense: formatMoney(total.expense, total.currency, { hidden: this.amountsHidden() }),
+      net: formatMoney(total.net, total.currency, { signed: true, hidden: this.amountsHidden() }),
       tone: toneOf(total.net),
       inBase: this.baseNet(total, base.currency),
     }));
@@ -288,7 +289,7 @@ export class TransactionsSummary {
       return '—';
     }
 
-    return total.baseNet === null || total.baseNet === undefined ? 'Sin tipo de cambio' : `≈ ${formatMoney(total.baseNet, baseCurrency, { signed: true })}`;
+    return total.baseNet === null || total.baseNet === undefined ? 'Sin tipo de cambio' : `≈ ${formatMoney(total.baseNet, baseCurrency, { signed: true, hidden: this.amountsHidden() })}`;
   }
 
   /** "≈ S/ 561.00 hoy", or what the currency is when it needs no conversion. */
@@ -299,6 +300,6 @@ export class TransactionsSummary {
     }
 
     const rate = rates.inBase(currency);
-    return rate === null ? 'Sin tipo de cambio' : `≈ ${formatMoney(Number(amount) * rate, rates.baseCurrency)} hoy`;
+    return rate === null ? 'Sin tipo de cambio' : `≈ ${formatMoney(Number(amount) * rate, rates.baseCurrency, { hidden: this.amountsHidden() })} hoy`;
   }
 }

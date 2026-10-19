@@ -1,5 +1,5 @@
 import { Locator, Page, expect, test } from '@playwright/test';
-import { GREETING, signUp } from './support';
+import { GREETING, pickAccount, signUp } from './support';
 
 async function openAccount(page: Page, name: string, balance: string, currency?: string): Promise<void> {
   await page.getByRole('button', { name: 'Nueva cuenta' }).click();
@@ -32,9 +32,14 @@ async function postTransaction(page: Page, fields: { type: 'Gasto' | 'Ingreso'; 
   await dialog.getByLabel(/^Monto/).fill(fields.amount);
   await dialog.getByLabel('Descripción').fill(fields.description);
   await dialog.getByLabel('Categoría').selectOption({ label: fields.category });
-  await dialog.getByLabel(/^Cuenta/).selectOption({ label: fields.account });
+  await pickAccount(dialog, 'Cuenta', fields.account);
   await dialog.getByRole('button', { name: 'Registrar' }).click();
   await expect(dialog).toBeHidden();
+}
+
+/** The income, expenses and net of the month at the top of Transacciones. */
+function summary(page: Page): Locator {
+  return page.locator('app-transactions-summary');
 }
 
 /** The three figures at the top of Cuentas: net worth, what is owned and what is owed. */
@@ -54,18 +59,18 @@ test.describe('transfers, cards and net worth', () => {
     await page.getByRole('button', { name: 'Nueva transacción' }).click();
     const form = page.getByRole('dialog', { name: 'Nueva transacción' });
     await form.getByRole('button', { name: 'Transferencia', exact: true }).click();
-    await expect(form).toContainText('No es un ingreso ni un gasto');
+    await expect(form).toContainText('No es ingreso ni gasto');
     await expect(form.getByLabel('Categoría')).toHaveCount(0);
 
-    // The form says what is missing, and refuses the same account on both sides.
+    // The form says what is missing, and the account money leaves from cannot be the one that receives it.
     await form.getByRole('button', { name: 'Registrar' }).click();
-    await expect(form.getByRole('alert')).toHaveText(['Escribe el monto.', 'Elige una cuenta.', 'Elige la cuenta que recibe.']);
+    await expect(form.getByRole('alert')).toHaveText(['Elige una cuenta.', 'Escribe el monto.', 'Elige la cuenta que recibe.']);
     await form.getByLabel(/^Monto/).fill('500');
-    await form.getByLabel('Desde').selectOption({ label: 'BCP · PEN' });
-    await form.getByLabel('Hacia').selectOption({ label: 'BCP · PEN' });
-    await form.getByRole('button', { name: 'Registrar' }).click();
-    await expect(form.getByRole('alert')).toHaveText('Elige una cuenta distinta de la de origen.');
-    await form.getByLabel('Hacia').selectOption({ label: 'Interbank · PEN' });
+    await pickAccount(form, 'Desde', 'BCP');
+    await form.getByRole('combobox', { name: 'Hacia' }).click();
+    await expect(form.getByRole('listbox', { name: 'Hacia' }).getByRole('option').filter({ has: page.getByText('BCP', { exact: true }) })).toHaveAttribute('aria-disabled', 'true');
+    await page.keyboard.press('Escape');
+    await pickAccount(form, 'Hacia', 'Interbank');
     await form.getByRole('button', { name: 'Registrar' }).click();
     await expect(page.getByRole('status')).toHaveText('Transferencia de S/ 500.00 registrada.');
 
@@ -76,7 +81,7 @@ test.describe('transfers, cards and net worth', () => {
     await expect(row).toContainText('BCP → Interbank');
     await expect(row).toContainText('S/ 500.00');
     await expect(row).not.toContainText('−');
-    await expect(page.getByLabel('Resumen en PEN')).toHaveCount(0);
+    await expect(summary(page)).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Transferencias', exact: true }).click();
     await expect(list.getByRole('button')).toHaveCount(1);
@@ -111,7 +116,7 @@ test.describe('transfers, cards and net worth', () => {
     await expect(card).toContainText('Disponible S/ 5,000.00 de S/ 5,000.00');
 
     await page.goto('/transactions');
-    await postTransaction(page, { type: 'Gasto', amount: '200', description: 'Wong', category: 'Supermercado', account: 'Visa · PEN' });
+    await postTransaction(page, { type: 'Gasto', amount: '200', description: 'Wong', category: 'Supermercado', account: 'Visa' });
 
     await page.goto('/accounts');
     await expect(card).toContainText('S/ 200.00');
@@ -140,7 +145,7 @@ test.describe('transfers, cards and net worth', () => {
     await page.goto('/transactions');
     const list = page.getByRole('region', { name: 'Movimientos' });
     await expect(list.getByRole('button', { name: /^Pago de tarjeta/ })).toContainText('BCP → Visa');
-    await expect(page.getByLabel('Resumen en PEN')).toContainText('S/ 200.00');
+    await expect(summary(page)).toContainText('S/ 200.00');
   });
 
   test('another currency counts in net worth once it has a rate, an account can be left out, and Inicio shows the month', async ({ page }) => {
@@ -177,15 +182,15 @@ test.describe('transfers, cards and net worth', () => {
     await expect(detail).toContainText('No cuenta en tu patrimonio');
 
     await page.goto('/transactions');
-    await postTransaction(page, { type: 'Ingreso', amount: '4000', description: 'Sueldo', category: 'Sueldo', account: 'BCP · PEN' });
-    await postTransaction(page, { type: 'Gasto', amount: '1200', description: 'Alquiler', category: 'Vivienda › Alquiler', account: 'BCP · PEN' });
-    await postTransaction(page, { type: 'Gasto', amount: '20', description: 'Netflix', category: 'Suscripciones y ocio › Streaming', account: 'Ahorro en dólares · USD' });
+    await postTransaction(page, { type: 'Ingreso', amount: '4000', description: 'Sueldo', category: 'Sueldo', account: 'BCP' });
+    await postTransaction(page, { type: 'Gasto', amount: '1200', description: 'Alquiler', category: 'Vivienda › Alquiler', account: 'BCP' });
+    await postTransaction(page, { type: 'Gasto', amount: '20', description: 'Netflix', category: 'Suscripciones y ocio › Streaming', account: 'Ahorro en dólares' });
     // Two currencies: the API also gives the month in soles, the dollars at the rate they were registered with.
-    await expect(page.getByLabel('Resumen en PEN, todas las monedas')).toContainText('S/ 1,275.00');
+    await expect(summary(page)).toContainText('todas las monedas');
+    await expect(summary(page)).toContainText('S/ 1,275.00');
 
     await page.getByRole('link', { name: 'Inicio' }).first().click();
     await expect(page.getByRole('heading', { level: 1, name: GREETING })).toBeVisible();
-    await expect(page.getByText('Hola, Brian.')).toBeVisible();
     const figures = page.getByRole('list', { name: 'Cifras del mes' }).getByRole('listitem');
     await expect(figures).toContainText(['S/ 3,800.00', 'S/ 4,000.00', 'S/ 1,275.00', '68.1%']);
     const spent = page.getByRole('region', { name: 'En qué se fue' });
@@ -207,7 +212,7 @@ test.describe('transfers, cards and net worth', () => {
     await openAccount(page, 'Cuenta sueldo con un nombre bastante largo', '12345.67');
     await openCard(page, 'Tarjeta de crédito Visa Signature', '25000', '28');
     await page.goto('/transactions');
-    await postTransaction(page, { type: 'Gasto', amount: '1999.90', description: 'Compra grande', category: 'Supermercado', account: 'Tarjeta de crédito Visa Signature · PEN' });
+    await postTransaction(page, { type: 'Gasto', amount: '1999.90', description: 'Compra grande', category: 'Supermercado', account: 'Tarjeta de crédito Visa Signature' });
 
     for (const path of ['/', '/accounts', '/transactions']) {
       await page.goto(path);

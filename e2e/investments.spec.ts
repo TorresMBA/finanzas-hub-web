@@ -12,15 +12,16 @@ test('a term deposit of 15,000 lowers the account but leaves the net worth and t
   await expect(account).toBeHidden();
 
   await page.goto('/investments');
-  await page.getByRole('button', { name: 'Registrar inversión' }).first().click();
-  const form = page.getByRole('dialog', { name: 'Registrar inversión' });
-  await form.getByLabel('Tipo').selectOption({ label: 'Depósito a plazo' });
-  await form.getByLabel('Nombre').fill('Plazo fijo BCP');
-  await form.getByLabel('Desde la cuenta').selectOption({ label: 'BCP · PEN' });
-  await form.getByLabel(/^Monto/).fill('15000');
-  await form.getByLabel('TEA (%)').fill('6');
-  await form.getByLabel('Plazo (días)').fill('360');
-  await expect(form).toContainText('Al vencer valdrá unos S/ 15,900.00');
+  await page.getByRole('button', { name: 'Nueva inversión' }).first().click();
+  // First what it is, then only what that type needs.
+  const form = page.getByRole('dialog', { name: 'Nueva inversión' });
+  await form.getByRole('group', { name: 'Tipo de inversión' }).getByRole('button', { name: /^Depósito a plazo/ }).click();
+  await form.getByLabel('Nombre', { exact: true }).fill('Plazo fijo BCP');
+  await form.getByLabel(/^Monto a invertir/).fill('15000');
+  await form.getByLabel('Tasa (TEA %)').fill('6');
+  await form.getByRole('group', { name: 'Plazos frecuentes' }).getByRole('button', { name: '360', exact: true }).click();
+  await form.getByLabel('Desde la cuenta').selectOption({ index: 1 });
+  await expect(form.getByRole('region', { name: 'Resumen' })).toContainText('S/ 15,900.00');
   await form.getByRole('button', { name: 'Registrar inversión' }).click();
   await expect(form).toBeHidden();
 

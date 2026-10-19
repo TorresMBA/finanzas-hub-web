@@ -70,7 +70,7 @@
             <h2 [id]="'group-' + group.id">{{ group.label }}</h2>
             <span class="group-total">
               @for (total of group.totals; track total.currency) {
-                <span>{{ total.total | money: total.currency }}</span>
+                <span>{{ total.total | privateMoney: total.currency }}</span>
               }
             </span>
           </div>
@@ -102,13 +102,13 @@
                   </span>
                   @if (account.creditCard; as card) {
                     @let usage = usageOf(account);
-                    <span class="balance" [class.is-negative]="+card.used > 0">{{ card.used | money: account.currency }}</span>
+                    <span class="balance" [class.is-negative]="+card.used > 0">{{ card.used | privateMoney: account.currency }}</span>
                     <span class="usage">
                       <span class="meter" [attr.data-level]="usage?.level" [style.--meter]="usage?.percent"></span>
-                      <span>Disponible {{ card.available | money: account.currency }} de {{ card.creditLimit | money: account.currency }}</span>
+                      <span>Disponible {{ card.available | privateMoney: account.currency }} de {{ card.creditLimit | privateMoney: account.currency }}</span>
                     </span>
                   } @else {
-                    <span class="balance" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</span>
+                    <span class="balance" [class.is-negative]="+account.balance < 0">{{ account.balance | privateMoney: account.currency }}</span>
                   }
                 </button>
               </li>
@@ -133,16 +133,16 @@
         @if (account.creditCard; as card) {
           <div>
             <div class="detail-label">Deuda</div>
-            <div class="detail-balance" [class.is-negative]="+card.used > 0">{{ card.used | money: account.currency }}</div>
+            <div class="detail-balance" [class.is-negative]="+card.used > 0">{{ card.used | privateMoney: account.currency }}</div>
           </div>
           <dl class="facts">
             <div>
               <dt>Disponible</dt>
-              <dd>{{ card.available | money: account.currency }}</dd>
+              <dd>{{ card.available | privateMoney: account.currency }}</dd>
             </div>
             <div>
               <dt>Línea</dt>
-              <dd>{{ card.creditLimit | money: account.currency }}</dd>
+              <dd>{{ card.creditLimit | privateMoney: account.currency }}</dd>
             </div>
             <div>
               <dt>Próximo pago</dt>
@@ -152,7 +152,7 @@
         } @else {
           <div>
             <div class="detail-label">Saldo</div>
-            <div class="detail-balance" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</div>
+            <div class="detail-balance" [class.is-negative]="+account.balance < 0">{{ account.balance | privateMoney: account.currency }}</div>
           </div>
         }
         @if (!account.includeInNetWorth && !account.isArchived) {
@@ -173,7 +173,7 @@
                     <strong>{{ movement.description }}</strong>
                     <span>{{ shortDate(movement.occurredOn) }}{{ movement.category ? ' · ' + movement.category.name : '' }}{{ counterpart(movement, account.id) }}</span>
                   </span>
-                  <span class="amount" [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</span>
+                  <span class="amount" [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | privateMoney: movement.currency : { signed: true } }}</span>
                 </li>
               } @empty {
                 <li class="lead">Sin movimientos todavía.</li>

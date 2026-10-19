@@ -62,7 +62,7 @@
           {{ editing() ? 'Listo' : 'Personalizar' }}
         </button>
       </header>
-      <ul class="kpis" [class.is-editing]="editing()">
+      <ul class="kpis" aria-label="Cifras del mes" [class.is-editing]="editing()">
         @for (kpi of kpis(); track kpi.id; let first = $first, last = $last) {
           <li class="card kpi">
             <span class="kpi-head">
@@ -143,9 +143,9 @@
                   <span>{{ placeOf(movement) }}</span>
                 </span>
                 @if (movement.kind === 'transfer') {
-                  <strong class="figure">{{ magnitude(movement.signedAmount) | money: movement.currency }}</strong>
+                  <strong class="figure">{{ magnitude(movement.signedAmount) | privateMoney: movement.currency }}</strong>
                 } @else {
-                  <strong class="figure" [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</strong>
+                  <strong class="figure" [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | privateMoney: movement.currency : { signed: true } }}</strong>
                 }
               </li>
             } @empty {
@@ -168,7 +168,7 @@
                 <span class="share">
                   <span class="share-line">
                     <strong class="share-name">{{ category.name }}</strong>
-                    <strong class="figure">{{ category.amount | money: currency }}</strong>
+                    <strong class="figure">{{ category.amount | privateMoney: currency }}</strong>
                   </span>
                   <span class="share-line">
                     <span class="meter" [attr.data-color]="category.color" [style.--meter]="category.share"></span>
@@ -195,10 +195,10 @@
                   <span class="share">
                     <span class="share-line">
                       <strong class="share-name">{{ goal.name }}</strong>
-                      <strong class="figure">{{ goal.saved | money: goal.currency }}</strong>
+                      <strong class="figure">{{ goal.saved | privateMoney: goal.currency }}</strong>
                     </span>
                     <span class="meter" data-color="violet" [style.--meter]="goal.percent"></span>
-                    <span class="percent">{{ goal.percent }}% de {{ goal.targetAmount | money: goal.currency }}{{ goal.isShared ? ' · compartida' : '' }}</span>
+                    <span class="percent">{{ goal.percent }}% de {{ goal.targetAmount | privateMoney: goal.currency }}{{ goal.isShared ? ' · compartida' : '' }}</span>
                   </span>
                 </li>
               }
@@ -220,7 +220,7 @@
                     <strong>{{ payment.description }}</strong>
                     <span>{{ shortDate(payment.date) }}</span>
                   </span>
-                  <strong class="figure">{{ payment.amount | money: payment.currency }}</strong>
+                  <strong class="figure">{{ payment.amount | privateMoney: payment.currency }}</strong>
                 </li>
               }
             </ul>
@@ -241,7 +241,7 @@
                   <strong>{{ account.name }}</strong>
                   <span>{{ account.currency }}{{ account.isFavorite ? ' · Principal' : '' }}</span>
                 </span>
-                <strong class="figure" [class.is-negative]="+account.balance < 0">{{ account.balance | money: account.currency }}</strong>
+                <strong class="figure" [class.is-negative]="+account.balance < 0">{{ account.balance | privateMoney: account.currency }}</strong>
               </li>
             }
           </ul>

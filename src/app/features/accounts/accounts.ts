@@ -10,7 +10,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Icon } from '../../shared/ui/icon';
 import { IconTile } from '../../shared/ui/icon-tile';
-import { MoneyPipe, formatMoney, sumAmounts } from '../../shared/ui/money';
+import { AMOUNTS_HIDDEN, PrivateMoneyPipe, formatMoney, sumAmounts } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { StatCard } from '../../shared/ui/stat-card';
@@ -55,12 +55,13 @@ function totalsByCurrency(accounts: readonly Account[]): { currency: string; tot
  */
 @Component({
   selector: 'app-accounts',
-  imports: [AccountForm, CardPaymentForm, EmptyState, ErrorState, ExchangeRateForm, Icon, IconTile, MoneyPipe, PageHeader, RouterLink, Skeleton, StatCard],
+  imports: [AccountForm, CardPaymentForm, EmptyState, ErrorState, ExchangeRateForm, Icon, IconTile, PageHeader, PrivateMoneyPipe, RouterLink, Skeleton, StatCard],
   templateUrl: './accounts.html',
   styleUrl: './accounts.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Accounts {
+  private readonly amountsHidden = inject(AMOUNTS_HIDDEN);
   private readonly api = inject(AccountsApi);
   private readonly injector = inject(Injector);
   private readonly detail = viewChild<ElementRef<HTMLElement>>('detail');
@@ -101,9 +102,9 @@ export class Accounts {
     const currency = worth?.baseCurrency;
     return worth && currency
       ? [
-          { label: 'Patrimonio', value: formatMoney(worth.amount, currency), icon: 'savings', color: 'green' as const },
-          { label: 'Tienes', value: formatMoney(worth.assets, currency), icon: 'account_balance', color: 'blue' as const },
-          { label: 'Debes', value: formatMoney(worth.debts, currency), icon: 'credit_card', color: 'amber' as const },
+          { label: 'Patrimonio', value: formatMoney(worth.amount, currency, { hidden: this.amountsHidden() }), icon: 'savings', color: 'green' as const },
+          { label: 'Tienes', value: formatMoney(worth.assets, currency, { hidden: this.amountsHidden() }), icon: 'account_balance', color: 'blue' as const },
+          { label: 'Debes', value: formatMoney(worth.debts, currency, { hidden: this.amountsHidden() }), icon: 'credit_card', color: 'amber' as const },
         ]
       : [];
   });

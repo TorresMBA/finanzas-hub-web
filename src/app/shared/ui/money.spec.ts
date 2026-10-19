@@ -16,6 +16,12 @@ describe('money', () => {
     expect(formatMoney(0, 'PEN', { signed: true })).toBe('S/ 0.00');
   });
 
+  it('hides the figure but keeps the currency and the sign while balances are hidden', () => {
+    expect(formatMoney(1234.5, 'PEN', { hidden: true })).toBe('S/ ••••');
+    expect(formatMoney(-54, 'USD', { hidden: true })).toBe('−US$ ••••');
+    expect(formatMoney(54, 'PEN', { signed: true, hidden: true })).toBe('+S/ ••••');
+  });
+
   it('adds amounts exactly, where floating point would not', () => {
     expect(0.1 + 0.2).not.toBe(0.3);
     expect(sumAmounts([0.1, 0.2])).toBe(0.3);

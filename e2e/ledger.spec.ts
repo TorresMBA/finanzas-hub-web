@@ -11,15 +11,25 @@ async function openAccount(page: Page, name: string, balance: string, type = 'Ba
   await expect(page.getByRole('status')).toHaveText(`Cuenta «${name}» creada.`);
 }
 
-async function postTransaction(page: Page, fields: { type?: 'Gasto' | 'Ingreso'; amount: string; description: string; category: string; pending?: boolean }): Promise<void> {
+async function postTransaction(page: Page, fields: { type?: 'Gasto' | 'Ingreso'; amount: string; description: string; category: string; pending?: boolean; tag?: string }): Promise<void> {
   await page.getByRole('button', { name: 'Nueva transacción' }).click();
   const dialog = page.getByRole('dialog', { name: 'Nueva transacción' });
   await dialog.getByRole('button', { name: fields.type ?? 'Gasto', exact: true }).click();
   await dialog.getByLabel(/^Monto/).fill(fields.amount);
   await dialog.getByLabel('Descripción').fill(fields.description);
   await dialog.getByLabel('Categoría').selectOption({ label: fields.category });
+  if (fields.pending || fields.tag) {
+    // The less common details wait behind a disclosure.
+    await dialog.getByRole('button', { name: /^Etiquetas, comercio, nota/ }).click();
+  }
+
+  if (fields.tag) {
+    // The category offers its tags; one click adds one.
+    await dialog.getByRole('button', { name: new RegExp(String.raw`^\+ #?${fields.tag}$`) }).click();
+  }
+
   if (fields.pending) {
-    await dialog.getByRole('checkbox', { name: /pendiente/ }).check();
+    await dialog.getByRole('switch', { name: /Pendiente de revisar/ }).click();
   }
 
   await dialog.getByRole('button', { name: 'Registrar' }).click();
@@ -42,8 +52,8 @@ test.describe('ledger', () => {
     await expect(page.getByRole('status')).toHaveText('Gasto de S/ 54.00 registrado.');
     const list = page.getByRole('region', { name: 'Movimientos' });
     await expect(list.getByRole('button', { name: /Wong/ })).toContainText('−S/ 54.00');
-    await expect(page.getByLabel('Resumen en PEN')).toContainText('Gastos');
-    await expect(page.getByLabel('Resumen en PEN')).toContainText('S/ 54.00');
+    await expect(page.locator('app-transactions-summary')).toContainText('Gastos');
+    await expect(page.locator('app-transactions-summary')).toContainText('S/ 54.00');
 
     await page.goto('/accounts');
     await expect(page.getByRole('button', { name: /^BCP Sueldo/ })).toContainText('S/ 946.00');
@@ -59,6 +69,7 @@ test.describe('ledger', () => {
     await expect(page.getByRole('status')).toContainText('«Wong» anulado');
     await expect(list.getByRole('button', { name: /Wong/ })).toHaveCount(0);
 
+    await page.getByRole('button', { name: 'Más filtros' }).click();
     await page.getByRole('button', { name: 'Anuladas' }).click();
     await expect(list.getByRole('button', { name: /Wong/ })).toContainText('Anulada');
 
@@ -77,14 +88,14 @@ test.describe('ledger', () => {
     await page.getByRole('button', { name: 'Nueva transacción' }).click();
     const form = page.getByRole('dialog', { name: 'Nueva transacción' });
     await form.getByRole('button', { name: 'Registrar' }).click();
-    await expect(form.getByRole('alert')).toHaveText(['Escribe el monto.', 'Escribe una descripción.', 'Elige una categoría.']);
+    await expect(form.getByRole('alert')).toHaveText(['Escribe una descripción.', 'Escribe el monto.', 'Elige una categoría.']);
     await form.getByRole('button', { name: 'Cancelar' }).click();
 
-    await postTransaction(page, { type: 'Ingreso', amount: '4500.50', description: 'Sueldo octubre', category: 'Sueldo', pending: true });
+    await postTransaction(page, { type: 'Ingreso', amount: '4500.50', description: 'Sueldo octubre', category: 'Sueldo', pending: true, tag: 'fijo' });
     await postTransaction(page, { amount: '80', description: 'Gasfitero', category: 'Vivienda › Mantenimiento' });
     const list = page.getByRole('region', { name: 'Movimientos' });
     await expect(list.getByRole('button', { name: /Sueldo octubre/ })).toContainText('Pendiente');
-    await expect(page.getByLabel('Resumen en PEN')).toContainText('+S/ 4,420.50');
+    await expect(page.locator('app-transactions-summary')).toContainText('+S/ 4,420.50');
 
     await list.getByRole('button', { name: /Sueldo octubre/ }).click();
     const detail = page.getByRole('complementary', { name: 'Detalle del movimiento' });
@@ -153,7 +164,12 @@ test.describe('ledger', () => {
     // An archived account is not offered for a new transaction.
     await page.goto('/transactions');
     await page.getByRole('button', { name: 'Nueva transacción' }).click();
-    await expect(page.getByRole('dialog').getByLabel('Cuenta').getByRole('option')).toHaveText(['Elige una cuenta', 'BCP Dólares · PEN']);
+    const form = page.getByRole('dialog', { name: 'Nueva transacción' });
+    // The only account left is chosen by itself, and it is the only one in the list.
+    const picker = form.getByRole('combobox', { name: 'Cuenta' });
+    await expect(picker).toContainText('BCP Dólares');
+    await picker.click();
+    await expect(form.getByRole('listbox', { name: 'Cuenta' }).getByRole('option')).toHaveCount(1);
   });
 
   test('on a phone the movement opens in a sheet and nothing overflows', async ({ page }) => {

@@ -6,7 +6,7 @@ import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { formatShortDate } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
-import { MoneyPipe } from '../../shared/ui/money';
+import { PrivateMoneyPipe } from '../../shared/ui/money';
 
 const DELAY_MS = 250;
 const MIN_LENGTH = 2;
@@ -17,7 +17,7 @@ const MIN_LENGTH = 2;
  */
 @Component({
   selector: 'app-search',
-  imports: [Dialog, Icon, MoneyPipe, RouterLink],
+  imports: [Dialog, Icon, PrivateMoneyPipe, RouterLink],
   host: { '(document:keydown)': 'shortcut($event)' },
   template: `
     <button type="button" class="trigger" aria-label="Buscar" aria-keyshortcuts="Control+K Meta+K" (click)="open.set(true)">
@@ -56,7 +56,7 @@ const MIN_LENGTH = 2;
                     <li>
                       <a routerLink="/transactions" [queryParams]="{ q: query(), range: 'all', open: movement.id }" (click)="close()">
                         <span class="name">{{ movement.description }}<small>{{ day(movement.occurredOn) }} · {{ movement.accountName }}{{ movement.categoryName ? ' · ' + movement.categoryName : '' }}</small></span>
-                        <strong [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | money: movement.currency : { signed: true } }}</strong>
+                        <strong [class.is-income]="+movement.signedAmount > 0">{{ movement.signedAmount | privateMoney: movement.currency : { signed: true } }}</strong>
                       </a>
                     </li>
                   }
@@ -71,7 +71,7 @@ const MIN_LENGTH = 2;
                     <li>
                       <a routerLink="/transactions" [queryParams]="{ accountId: account.id }" (click)="close()">
                         <span class="name">{{ account.name }}</span>
-                        <strong>{{ account.balance | money: account.currency }}</strong>
+                        <strong>{{ account.balance | privateMoney: account.currency }}</strong>
                       </a>
                     </li>
                   }
@@ -85,8 +85,8 @@ const MIN_LENGTH = 2;
                   @for (goal of found.goals; track goal.id) {
                     <li>
                       <a routerLink="/goals" [queryParams]="{ open: goal.id }" (click)="close()">
-                        <span class="name">{{ goal.name }}<small>{{ goal.percent }}% de {{ goal.targetAmount | money: goal.currency }}</small></span>
-                        <strong>{{ goal.saved | money: goal.currency }}</strong>
+                        <span class="name">{{ goal.name }}<small>{{ goal.percent }}% de {{ goal.targetAmount | privateMoney: goal.currency }}</small></span>
+                        <strong>{{ goal.saved | privateMoney: goal.currency }}</strong>
                       </a>
                     </li>
                   }

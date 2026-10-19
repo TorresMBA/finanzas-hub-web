@@ -11,7 +11,7 @@ import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Icon } from '../../shared/ui/icon';
 import { IconTile, TileColor } from '../../shared/ui/icon-tile';
-import { MoneyPipe, formatMoney } from '../../shared/ui/money';
+import { AMOUNTS_HIDDEN, PrivateMoneyPipe, formatMoney } from '../../shared/ui/money';
 import { Skeleton } from '../../shared/ui/skeleton';
 
 const MONTH = new Intl.DateTimeFormat('es-PE', { month: 'short' });
@@ -78,9 +78,9 @@ function monthLabel(iso: string): string {
 }
 
 /** How a figure moved against the month before, as the line under a KPI. */
-function against(current: number, previous: number, currency: string): string {
+function against(current: number, previous: number, currency: string, hidden: boolean): string {
   const change = current - previous;
-  return change === 0 ? 'Igual que el mes anterior' : `${formatMoney(change, currency, { signed: true })} vs. mes anterior`;
+  return change === 0 ? 'Igual que el mes anterior' : `${formatMoney(change, currency, { signed: true, hidden })} vs. mes anterior`;
 }
 
 /** "1 día", "3 días". */
@@ -134,12 +134,13 @@ function savingsNote(rate: number | null, target: number | string | null | undef
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [EmptyState, ErrorState, Icon, IconTile, MoneyPipe, RouterLink, Skeleton],
+  imports: [EmptyState, ErrorState, Icon, IconTile, PrivateMoneyPipe, RouterLink, Skeleton],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Dashboard {
+  private readonly amountsHidden = inject(AMOUNTS_HIDDEN);
   private readonly workspaces = inject(WorkspaceStore);
   private readonly session = inject(SessionStore);
   private readonly period = inject(PeriodStore);
@@ -232,23 +233,23 @@ export class Dashboard {
     const kpis: Partial<Record<KpiId, Kpi>> = {
       netWorth: {
         ...this.named('netWorth', 'blue'),
-        value: formatMoney(data.netWorth.amount, currency),
+        value: formatMoney(data.netWorth.amount, currency, { hidden: this.amountsHidden() }),
         valueTone: Number(data.netWorth.amount) < 0 ? 'bad' : 'neutral',
-        note: against(Number(data.netWorth.amount), Number(data.netWorth.previousAmount), currency),
+        note: against(Number(data.netWorth.amount), Number(data.netWorth.previousAmount), currency, this.amountsHidden()),
         noteTone: trendTone(Number(data.netWorth.change)),
       },
       income: {
         ...this.named('income', 'green'),
-        value: formatMoney(data.income, currency),
+        value: formatMoney(data.income, currency, { hidden: this.amountsHidden() }),
         valueTone: 'neutral',
-        note: against(Number(data.income), Number(data.previousIncome), currency),
+        note: against(Number(data.income), Number(data.previousIncome), currency, this.amountsHidden()),
         noteTone: 'good',
       },
       expense: {
         ...this.named('expense', 'red'),
-        value: formatMoney(data.expense, currency),
+        value: formatMoney(data.expense, currency, { hidden: this.amountsHidden() }),
         valueTone: 'neutral',
-        note: against(Number(data.expense), Number(data.previousExpense), currency),
+        note: against(Number(data.expense), Number(data.previousExpense), currency, this.amountsHidden()),
         noteTone: 'neutral',
       },
       savings: {
@@ -260,7 +261,7 @@ export class Dashboard {
       },
       daily: {
         ...this.named('daily', 'violet'),
-        value: elapsed === 0 ? '—' : formatMoney(Number(data.expense) / elapsed, currency),
+        value: elapsed === 0 ? '—' : formatMoney(Number(data.expense) / elapsed, currency, { hidden: this.amountsHidden() }),
         valueTone: 'neutral',
         note: elapsed === 0 ? 'El mes aún no empieza' : `Promedio en ${dayCount(elapsed)}`,
         noteTone: 'neutral',
@@ -299,7 +300,7 @@ export class Dashboard {
       isSelected: month.month === data.month,
       income: (Number(month.income) / tallest) * 100,
       expense: (Number(month.expense) / tallest) * 100,
-      summary: `${monthLabel(month.month)}: ingresos ${formatMoney(month.income, currency)}, gastos ${formatMoney(month.expense, currency)}`,
+      summary: `${monthLabel(month.month)}: ingresos ${formatMoney(month.income, currency, { hidden: this.amountsHidden() })}, gastos ${formatMoney(month.expense, currency, { hidden: this.amountsHidden() })}`,
     }));
   });
 
@@ -316,9 +317,9 @@ export class Dashboard {
     const left = Number(data.income) - Number(data.expense);
     const when = this.days().isCurrent ? 'Este mes' : `En ${this.period.label().split(' ')[0].toLowerCase()}`;
     if (left < 0) {
-      return { tone: 'bad', icon: 'trending_down', text: `${when} gastaste ${formatMoney(-left, currency)} más de lo que ingresaste.` };
+      return { tone: 'bad', icon: 'trending_down', text: `${when} gastaste ${formatMoney(-left, currency, { hidden: this.amountsHidden() })} más de lo que ingresaste.` };
     }
-    return left > 0 ? { tone: 'good', icon: 'trending_up', text: `${when} te quedaron ${formatMoney(left, currency)} de lo que ingresaste.` } : null;
+    return left > 0 ? { tone: 'good', icon: 'trending_up', text: `${when} te quedaron ${formatMoney(left, currency, { hidden: this.amountsHidden() })} de lo que ingresaste.` } : null;
   });
 
   protected move(id: KpiId, step: -1 | 1): void {
@@ -372,7 +373,7 @@ export class Dashboard {
       ...this.named('budget', 'amber'),
       value: `${Math.round(Number(budget.usedPercent))}% usado`,
       valueTone: tone,
-      note: `${formatMoney(budget.spent, currency)} de ${formatMoney(budget.limit, currency)}`,
+      note: `${formatMoney(budget.spent, currency, { hidden: this.amountsHidden() })} de ${formatMoney(budget.limit, currency, { hidden: this.amountsHidden() })}`,
       noteTone: tone,
       bar: Math.min(100, Number(budget.usedPercent)),
     };

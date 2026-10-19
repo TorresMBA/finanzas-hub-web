@@ -126,6 +126,11 @@
     background: var(--sf);
     border: 1px solid var(--bd);
   }
+
+  // Balances hidden: the eye stays marked so it is clear why the figures are dots.
+  &[aria-pressed='true'] {
+    color: var(--ac);
+  }
 }
 
 // On mobile, notifications are reached through "Más".

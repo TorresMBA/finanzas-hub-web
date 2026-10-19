@@ -70,8 +70,8 @@
                 }
               </svg>
               <span class="figure">
-                <strong>{{ holding.value | money: holding.currency }}</strong>
-                <small [attr.data-tone]="rising(holding) ? 'good' : 'bad'">{{ holding.gain | money: holding.currency : { signed: true } }}</small>
+                <strong>{{ holding.value | privateMoney: holding.currency }}</strong>
+                <small [attr.data-tone]="rising(holding) ? 'good' : 'bad'">{{ holding.gain | privateMoney: holding.currency : { signed: true } }}</small>
               </span>
             </button>
           </li>
@@ -84,9 +84,9 @@
         <aside class="card detail" [attr.aria-label]="'Detalle de ' + holding.name">
           <header>
             <h2>{{ holding.name }}</h2>
-            <strong class="worth">{{ holding.value | money: holding.currency }}</strong>
+            <strong class="worth">{{ holding.value | privateMoney: holding.currency }}</strong>
             <span class="muted" [attr.data-tone]="rising(holding) ? 'good' : 'bad'">
-              {{ holding.gain | money: holding.currency : { signed: true } }}{{ holding.gainPercent !== null ? ' (' + holding.gainPercent + ' %)' : '' }}
+              {{ holding.gain | privateMoney: holding.currency : { signed: true } }}{{ holding.gainPercent !== null ? ' (' + holding.gainPercent + ' %)' : '' }}
             </span>
           </header>
           <dl>
@@ -115,7 +115,7 @@
               @for (event of history(); track event.id) {
                 <li [class.is-valuation]="event.valuation">
                   <span>{{ event.label }}<small>{{ shortDate(event.date) }}{{ event.note ? ' · ' + event.note : '' }}</small></span>
-                  <strong>{{ event.amount | money: holding.currency }}</strong>
+                  <strong>{{ event.amount | privateMoney: holding.currency }}</strong>
                 </li>
               } @empty {
                 <li class="muted">Todavía no hay movimientos.</li>

@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { AccountSummary } from '../../core/api/api-types';
-import { formatMoney } from '../../shared/ui/money';
+import { AMOUNTS_HIDDEN, formatMoney } from '../../shared/ui/money';
 
 // The bars cycle through these, so any number of currencies gets a colour; the base one is always the first.
 const PALETTE = ['var(--ac)', 'var(--bl)', 'var(--vi)', 'var(--am)', 'var(--rd)'];
@@ -117,9 +117,10 @@ function valueInBase(position: Position, baseCurrency: string | null | undefined
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NetWorthCard {
+  private readonly amountsHidden = inject(AMOUNTS_HIDDEN);
   readonly summary = input.required<AccountSummary>();
 
-  protected readonly total = computed(() => formatMoney(this.summary().netWorth, this.summary().baseCurrency ?? ''));
+  protected readonly total = computed(() => formatMoney(this.summary().netWorth, this.summary().baseCurrency ?? '', { hidden: this.amountsHidden() }));
 
   protected readonly rows = computed(() => {
     const { baseCurrency, currencies } = this.summary();
@@ -134,8 +135,8 @@ export class NetWorthCard {
     return [...valued.filter((position) => position.currency === baseCurrency), ...byValue]
       .map((position, index) => ({
         currency: position.currency,
-        native: position.currency === baseCurrency ? 'Moneda base' : formatMoney(position.net, position.currency),
-        inBase: position.inBase === null ? 'Sin tipo de cambio' : formatMoney(position.inBase, baseCurrency ?? ''),
+        native: position.currency === baseCurrency ? 'Moneda base' : formatMoney(position.net, position.currency, { hidden: this.amountsHidden() }),
+        inBase: position.inBase === null ? 'Sin tipo de cambio' : formatMoney(position.inBase, baseCurrency ?? '', { hidden: this.amountsHidden() }),
         width: Math.max(2, (Math.abs(position.inBase ?? 0) / largest) * 100),
         color: PALETTE[index % PALETTE.length],
       }));

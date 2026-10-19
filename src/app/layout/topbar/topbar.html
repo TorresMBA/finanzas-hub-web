@@ -42,6 +42,17 @@
 <button
   type="button"
   class="icon-button"
+  aria-label="Ocultar saldos"
+  title="Oculta los montos en pantalla, por si alguien más la ve"
+  [attr.aria-pressed]="privacy.amountsHidden()"
+  (click)="privacy.toggle()"
+>
+  <app-icon [name]="privacy.amountsHidden() ? 'visibility_off' : 'visibility'" [size]="19" />
+</button>
+
+<button
+  type="button"
+  class="icon-button"
   [attr.aria-label]="theme.isDark() ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
   (click)="theme.toggle()"
 >
