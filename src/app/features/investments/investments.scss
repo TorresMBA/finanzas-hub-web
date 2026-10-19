@@ -236,3 +236,9 @@ h3 {
     flex-direction: column;
   }
 }
+
+// A value written down is not money moving: it reads quieter than a purchase or a sale.
+.history li.is-valuation strong {
+  font-weight: 600;
+  color: var(--mu);
+}

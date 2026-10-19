@@ -232,3 +232,20 @@ h3 {
   color: var(--mu);
   text-decoration: line-through;
 }
+
+// Choosing who to add: a panel of its own, with a way out.
+.candidates {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  background: var(--sf2);
+
+  .people {
+    align-self: stretch;
+    margin-bottom: 0;
+  }
+}

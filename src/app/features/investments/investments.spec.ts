@@ -75,7 +75,7 @@ describe('Investments', () => {
     // A term deposit keeps its amount and is valued by its rate: it can only be redeemed.
     expect(facts()).toContain('Valor al vencer S/ 15,900.00');
     expect(facts()).toContain('Antigüedad 9 meses');
-    expect(buttons()).toEqual(['Rescatar']);
+    expect(buttons()).toEqual(['Retirar']);
 
     (Array.from(element.querySelectorAll<HTMLButtonElement>('.filters button')).find((button) => button.textContent?.trim() === 'Acciones y ETFs'))!.click();
     await settle();
@@ -83,7 +83,9 @@ describe('Investments', () => {
     await fixture.whenStable();
 
     expect(texts('[aria-label="Posiciones"] .name strong')).toEqual(['Vanguard S&P 500 · VOO']);
-    expect(buttons()).toEqual(['Aportar', 'Rescatar', 'Actualizar valor']);
+    expect(buttons()).toEqual(['Comprar más', 'Vender', 'Actualizar precio']);
     expect(facts()).toContain('Unidades 2');
+    // What a broker shows next to the units: 1 000 invested in 2, now worth 1 200.
+    expect(facts()).toEqual(expect.arrayContaining(['Precio promedio S/ 500.00', 'Precio actual S/ 600.00']));
   });
 });

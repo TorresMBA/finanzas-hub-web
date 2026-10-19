@@ -23,6 +23,16 @@ export function hasUnits(type: InvestmentType): boolean {
   return type === 'stock' || type === 'etf' || type === 'crypto';
 }
 
+/** How a bank or a broker calls putting money in, taking it out and writing down the value, for each kind of investment. */
+export function actionsFor(type: InvestmentType): { readonly contribute: string; readonly withdraw: string; readonly value: string } {
+  if (hasUnits(type)) {
+    return { contribute: 'Comprar más', withdraw: 'Vender', value: 'Actualizar precio' };
+  }
+
+  // A fund is redeemed; a deposit or anything else, withdrawn.
+  return { contribute: 'Aportar', withdraw: type === 'mutualFund' ? 'Rescatar' : 'Retirar', value: 'Actualizar valor' };
+}
+
 export interface HoldingMoney {
   readonly amount: number;
   readonly quantity: number | null;

@@ -10,7 +10,7 @@ import { MoneyPipe, formatMoney } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { HoldingForm, HoldingFormTarget } from './holding-form';
-import { InvestmentsApi, TYPE_LOOK } from './investments-api';
+import { InvestmentsApi, TYPE_LOOK, actionsFor, hasUnits } from './investments-api';
 
 type Filter = 'all' | 'mutualFund' | 'termDeposit' | 'shares' | 'crypto' | 'closed';
 
@@ -55,6 +55,19 @@ function count(value: number, one: string, many: string): string {
   }
 
   return `${value} ${value === 1 ? one : many}`;
+}
+
+/** A movement in the words of its kind of investment: shares are bought and sold, a fund redeemed, the rest withdrawn. */
+function movementLabel(type: InvestmentType, bought: boolean): string {
+  if (hasUnits(type)) {
+    return bought ? 'Compra' : 'Venta';
+  }
+
+  if (bought) {
+    return 'Aporte';
+  }
+
+  return type === 'mutualFund' ? 'Rescate' : 'Retiro';
 }
 
 function gainSign(value: number): string {
@@ -111,6 +124,40 @@ export class Investments {
   protected readonly selected = computed(() => this.visible().find((holding) => holding.id === this.chosenId()) ?? this.visible()[0] ?? null);
   protected readonly detail = httpResource<HoldingDetail>(() => this.api.detailUrl(this.selected()?.id ?? null));
 
+  /** The words of the buttons for the selected investment: buy and sell shares, redeem a fund, withdraw a deposit. */
+  protected readonly actions = computed(() => actionsFor(this.selected()?.type ?? 'other'));
+
+  /** Movements and values written down, in one list, newest first, in the words of that kind of investment. */
+  protected readonly history = computed(() => {
+    const holding = this.selected();
+    const detail = this.detail.value();
+    if (!holding || !detail) {
+      return [];
+    }
+
+    const withUnits = hasUnits(holding.type);
+    const movements = detail.movements.map((movement) => {
+      const quantity = withUnits && movement.quantity !== null ? `${Number(movement.quantity).toLocaleString('es-PE', { maximumFractionDigits: 8 })} u.` : null;
+      return {
+        id: movement.id,
+        date: movement.occurredOn,
+        label: movementLabel(holding.type, movement.kind === 'contribution'),
+        note: [quantity, movement.accountName].filter(Boolean).join(' · '),
+        amount: movement.amount,
+        valuation: false,
+      };
+    });
+    const valuations = detail.valuations.map((valuation) => ({
+      id: valuation.id,
+      date: valuation.onDate,
+      label: withUnits ? 'Precio actualizado' : 'Valor actualizado',
+      note: '',
+      amount: valuation.value,
+      valuation: true,
+    }));
+    return [...movements, ...valuations].sort((a, b) => b.date.localeCompare(a.date));
+  });
+
   protected readonly kpis = computed(() => {
     const data = this.summary.value();
     const currency = data?.baseCurrency;
@@ -165,6 +212,14 @@ export class Investments {
 
     if (holding.quantity !== null) {
       facts.push({ label: 'Unidades', value: Number(holding.quantity).toLocaleString('es-PE', { maximumFractionDigits: 8 }) });
+      // What a broker shows next to the units: what each one cost on average and what it is worth now.
+      const quantity = Number(holding.quantity);
+      if (quantity > 0) {
+        facts.push(
+          { label: 'Precio promedio', value: formatMoney(Number(holding.invested) / quantity, holding.currency) },
+          { label: 'Precio actual', value: formatMoney(Number(holding.value) / quantity, holding.currency) },
+        );
+      }
     }
 
     if (holding.closedOn) {

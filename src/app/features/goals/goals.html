@@ -111,14 +111,18 @@
           </ul>
           @if (goal.isOwner && goal.status === 'active' && candidates().length > 0) {
             @if (inviting()) {
-              <ul class="people people--candidates" aria-label="Miembros que puedes sumar">
-                @for (member of candidates(); track member.userId) {
-                  <li>
-                    <span class="names"><strong>{{ member.displayName }}</strong></span>
-                    <button type="button" class="link" [disabled]="busy()" (click)="addParticipant(goal, member.userId, member.displayName)">Sumar</button>
-                  </li>
-                }
-              </ul>
+              <div class="candidates">
+                <p class="lead">¿A quién sumas? Verá la meta y lo que aporta cada uno, nunca tus cuentas.</p>
+                <ul class="people people--candidates" aria-label="Miembros que puedes sumar">
+                  @for (member of candidates(); track member.userId) {
+                    <li>
+                      <span class="names"><strong>{{ member.displayName }}</strong></span>
+                      <button type="button" class="button button--small" [disabled]="busy()" (click)="addParticipant(goal, member.userId, member.displayName)">Sumar</button>
+                    </li>
+                  }
+                </ul>
+                <button type="button" class="button button--small" [disabled]="busy()" (click)="inviting.set(false)">Cancelar</button>
+              </div>
             } @else {
               <button type="button" class="link" (click)="inviting.set(true)">Sumar a alguien del espacio</button>
             }
