@@ -114,6 +114,8 @@ describe('Transactions', () => {
   afterEach(() => {
     // The rates and net worth are asked for on opening and again after every change: answered whenever they are pending.
     rates();
+    // So are the accounts again after saving, voiding or confirming: their balances moved.
+    http.match(`${BASE}/accounts?includeArchived=true`).forEach((request) => request.flush([]));
     http.verify();
   });
 
@@ -530,6 +532,8 @@ describe('Transactions', () => {
     listRequest().flush(page([WONG], TOTALS, null, IN_BASE));
     await settle();
     expect(element.querySelector('[role="status"]')?.textContent).toBe('Gasto de S/ 58.71 registrado.');
+    // The balances shown in the account picker follow without refreshing the page.
+    http.expectOne(`${BASE}/accounts?includeArchived=true`).flush([BCP]);
   });
 
   it('shows what an amount in another currency was worth, and lets its rate be adjusted', async () => {

@@ -66,7 +66,8 @@ let nextId = 0;
       <app-icon [name]="open() ? 'expand_less' : 'expand_more'" />
     </button>
     @if (open()) {
-      <div class="panel">
+      <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+      <div class="panel" (click)="stopLabel($event)">
         <!-- The list keeps the focus and says which option is active, as a combobox list does. -->
         <div #list class="list" role="listbox" tabindex="-1" [id]="listId" [attr.aria-label]="label()" [attr.aria-activedescendant]="activeId()" (keydown)="onListKey($event)">
           @for (group of groups(); track group.label; let g = $index) {
@@ -349,6 +350,16 @@ export class AccountPicker implements FormValueControl<string> {
         return this.close(true);
       case 'Tab':
         return this.close(false);
+    }
+  }
+
+  /**
+   * Inside a `<label>`, as in a form field, a click on the list would also click the trigger, which opens the list
+   * again. Cancelling the click stops that, except on links and buttons projected below the list, which a label leaves alone.
+   */
+  protected stopLabel(event: MouseEvent): void {
+    if (!(event.target as Element | null)?.closest('a, button')) {
+      event.preventDefault();
     }
   }
 

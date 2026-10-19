@@ -61,7 +61,7 @@
       }
     </button>
   </div>
-  <div class="filters more" id="more-filters" [hidden]="!moreFiltersOpen()">
+  <div class="filters more-panel" id="more-filters" [hidden]="!moreFiltersOpen()">
     <label class="sr-only" for="account-filter">Cuenta</label>
     <select #accountFilter id="account-filter" class="input filter-select" (change)="account.set(accountFilter.value)">
       <option value="" [selected]="account() === ''">Todas las cuentas</option>

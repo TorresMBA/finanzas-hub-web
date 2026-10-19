@@ -285,9 +285,13 @@ export class Transactions {
       void this.load(filters, null);
     }
 
-    // Saving, voiding or confirming moves balances: net worth follows.
+    // Saving, voiding or confirming moves balances: net worth and the balances in the account pickers follow.
     if (this.netWorth.hasValue()) {
       this.netWorth.reload();
+    }
+
+    if (this.accounts.hasValue()) {
+      this.accounts.reload();
     }
   }
 
