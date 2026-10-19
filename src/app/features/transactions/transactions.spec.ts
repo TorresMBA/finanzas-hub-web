@@ -2,7 +2,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Account, BaseTotals, Category, CurrencyTotals, Transaction, TransactionPage } from '../../core/api/api-types';
+import { Account, AccountSummary, BaseTotals, Category, CurrencyTotals, ExchangeRate, Transaction, TransactionPage } from '../../core/api/api-types';
 import { apiErrorInterceptor, idempotencyKeyInterceptor } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
 import { TEST_WORKSPACE, provideSession } from '../../core/testing/signed-in';
@@ -67,9 +67,21 @@ const TRANSFER = movement('t-transfer', 'Transferencia', -375, '2026-10-11', {
 });
 const IN_BASE: BaseTotals = { currency: 'PEN', income: 4500, expense: 102.71, net: 4397.29, missingRates: [] };
 const TOTALS: CurrencyTotals[] = [
-  { currency: 'PEN', income: 4500, expense: 54, net: 4446, count: 2 },
-  { currency: 'USD', income: 0, expense: 12.99, net: -12.99, count: 1 },
+  { currency: 'PEN', income: 4500, expense: 54, net: 4446, count: 2, baseNet: 4446 },
+  { currency: 'USD', income: 0, expense: 12.99, net: -12.99, count: 1, baseNet: -48.71 },
 ];
+const RATES: ExchangeRate[] = [{ currency: 'USD', baseCurrency: 'PEN', rate: 3.75, asOf: '2026-10-01' }];
+const NET_WORTH: AccountSummary = {
+  baseCurrency: 'PEN',
+  netWorth: 1321,
+  assets: 1321,
+  debts: 0,
+  missingRates: [],
+  currencies: [
+    { currency: 'PEN', assets: 946, debts: 0, net: 946, rate: null, rateDate: null },
+    { currency: 'USD', assets: 100, debts: 0, net: 100, rate: 3.75, rateDate: '2026-10-01' },
+  ],
+};
 const page = (items: Transaction[], totals: CurrencyTotals[] = [], nextCursor: string | null = null, baseTotals: BaseTotals | null = null): TransactionPage => ({
   items,
   totals,
@@ -99,7 +111,11 @@ describe('Transactions', () => {
     TestBed.tick();
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // The rates and net worth are asked for on opening and again after every change: answered whenever they are pending.
+    rates();
+    http.verify();
+  });
 
   /** Lets what a click or an answer started run and renders it; with a request waiting the application is not stable. */
   async function settle(): Promise<void> {
@@ -110,15 +126,22 @@ describe('Transactions', () => {
   const listRequest = (): TestRequest => http.expectOne((request) => request.method === 'GET' && request.url === LIST_URL);
   const paramsOf = (request: TestRequest) => Object.fromEntries(request.request.params.keys().map((key) => [key, request.request.params.get(key)]));
 
-  /** Answers the accounts and the categories the page asks for when it opens. */
+  /** Answers the person's exchange rates and net worth, wherever they are pending. */
+  function rates(): void {
+    http.match(`${BASE}/exchange-rates`).forEach((request) => request.flush(RATES));
+    http.match(`${BASE}/accounts/summary`).forEach((request) => request.flush(NET_WORTH));
+  }
+
+  /** Answers the accounts and the categories the page asks for when it opens, and the rates and net worth. */
   function lists(accounts: Account[] = [BCP, DOLLARS]): void {
     http.expectOne(`${BASE}/accounts?includeArchived=true`).flush(accounts);
     http.expectOne(`${BASE}/categories?includeArchived=true`).flush([GROCERIES, SALARY]);
+    rates();
   }
 
-  async function open(items: Transaction[] = [WONG, SALARY_PAID, NETFLIX, OPENING], totals = TOTALS): Promise<void> {
+  async function open(items: Transaction[] = [WONG, SALARY_PAID, NETFLIX, OPENING], totals = TOTALS, baseTotals: BaseTotals | null = IN_BASE): Promise<void> {
     lists();
-    listRequest().flush(page(items, totals));
+    listRequest().flush(page(items, totals, null, baseTotals));
     await fixture.whenStable();
   }
 
@@ -131,9 +154,26 @@ describe('Transactions', () => {
     await settle();
   }
 
+  /** Chooses an account by name in the picker of a field, as a person does: open it, click the account. */
+  async function pick(label: string, account: string): Promise<void> {
+    const field = Array.from(element.querySelectorAll('app-transaction-form app-field')).find((node) => node.querySelector('.label')?.textContent === label)!;
+    field.querySelector<HTMLButtonElement>('app-account-picker .trigger')!.click();
+    await settle();
+    Array.from(field.querySelectorAll<HTMLElement>('[role="option"]'))
+      .find((option) => option.querySelector('strong')?.textContent === account)!
+      .click();
+    await settle();
+  }
+
+  const options = (label: string) => {
+    const field = Array.from(element.querySelectorAll('app-transaction-form app-field')).find((node) => node.querySelector('.label')?.textContent === label)!;
+    return Array.from(field.querySelectorAll('[role="option"]')).map((option) => `${option.querySelector('strong')?.textContent}${option.getAttribute('aria-disabled') ? ' (no)' : ''}`);
+  };
+
   async function fill(label: string, value: string): Promise<void> {
     const field = Array.from(element.querySelectorAll('app-transaction-form label')).find((node) => node.textContent?.includes(label))!;
-    const control = field.querySelector<HTMLInputElement | HTMLSelectElement>('input, select')!;
+    // An amount with a choice of currency has a select in front: what is typed goes to the amount.
+    const control = (field.querySelector<HTMLInputElement>('input, textarea') ?? field.querySelector<HTMLSelectElement>('select'))!;
     control.value = value;
     // A browser raises both on a select, in this order.
     control.dispatchEvent(new Event('input'));
@@ -167,29 +207,48 @@ describe('Transactions', () => {
     expect(texts('.row .status')).toEqual(['Confirmada', 'Pendiente', 'Confirmada', 'Confirmada']);
   });
 
-  it('shows the totals the API calculated, one row per currency', async () => {
+  it('adds every currency up in the base one, with a row per currency that filters the list by it', async () => {
     await open();
 
-    expect(texts('.summary dd')).toEqual(['S/ 4,500.00', 'S/ 54.00', '+S/ 4,446.00', 'US$ 0.00', 'US$ 12.99', '−US$ 12.99']);
+    expect(texts('app-transactions-summary h2')).toEqual(['Octubre 2026 · todas las monedas']);
+    expect(texts('app-transactions-summary .badge')).toEqual(['Convertido a PEN']);
+    expect(texts('.kpis dd:not(.note)')).toEqual(['S/ 4,500.00', 'S/ 102.71', '+S/ 4,397.29']);
+    // Each currency in its own amounts, and its net in soles at the rate of each day.
+    const cells = Array.from(element.querySelectorAll('app-transactions-summary tbody tr')).map((row) =>
+      Array.from(row.querySelectorAll('th, td:not(:last-child)')).map((cell) => cell.textContent?.trim()).join(' '),
+    );
+    expect(cells).toEqual([
+      'PEN S/ 4,500.00 S/ 54.00 +S/ 4,446.00 —',
+      'USD US$ 0.00 US$ 12.99 −US$ 12.99 ≈ −S/ 48.71',
+    ]);
+    // The rates the conversions use are in sight, and net worth by currency beside the list.
+    expect(texts('.rates span')).toEqual(['1 US$ = S/ 3.750', '· desde el 1 oct']);
+    expect(texts('app-net-worth-card .line')).toEqual(['PENMoneda baseS/ 946.00', 'USDUS$ 100.00S/ 375.00']);
+
+    element.querySelector<HTMLButtonElement>('[aria-label="Ver solo USD"]')!.click();
+    await settle();
+    const dollars = listRequest();
+    expect(paramsOf(dollars)).toMatchObject({ currency: 'USD' });
+    dollars.flush(page([NETFLIX], [TOTALS[1]], null, IN_BASE));
+    await settle();
+
+    // One currency in its own amounts, and what they are worth today in the base one.
+    expect(texts('app-transactions-summary h2')).toEqual(['Octubre 2026 · solo movimientos en USD']);
+    expect(texts('.kpis dd:not(.note)')).toEqual(['US$ 0.00', 'US$ 12.99', '−US$ 12.99']);
+    expect(texts('.kpis .note')).toEqual(['≈ S/ 0.00 hoy', '≈ S/ 48.71 hoy', '≈ −S/ 48.71 hoy']);
+    expect(element.querySelector('[aria-label="Moneda"] [aria-pressed="true"]')?.textContent).toBe('US$ USD');
   });
 
-  it('adds every currency up in the base one only when the API did, and says what it could not convert', async () => {
-    lists();
-    listRequest().flush(page([WONG, NETFLIX], TOTALS, null, { ...IN_BASE, missingRates: ['EUR'] }));
-    await fixture.whenStable();
+  it('says what it could not convert, and shows a single base currency in its own amounts', async () => {
+    await open([WONG, NETFLIX], TOTALS, { ...IN_BASE, missingRates: ['EUR'] });
+    expect(element.querySelector('app-transactions-summary .hint')?.textContent).toContain('Sin contar lo que está en EUR');
 
-    // The total in the base one comes first, and each block says what it is: PEN shows twice without looking repeated.
-    expect(texts('.summary-caption')).toEqual(['Total de todas las monedas, convertido a PEN', 'Solo movimientos en PEN', 'Solo movimientos en USD']);
-    expect(texts('.summary--base dd')).toEqual(['S/ 4,500.00', 'S/ 102.71', '+S/ 4,397.29']);
-    expect(texts('.summary dd').slice(0, 3)).toEqual(['S/ 4,500.00', 'S/ 102.71', '+S/ 4,397.29']);
-    expect(element.querySelector('.hint')?.textContent).toContain('Sin contar lo que está en EUR');
-
-    // With one currency that is already the base one, the summary of that currency says it all.
     await click('Gastos');
     listRequest().flush(page([WONG], [TOTALS[0]], null, IN_BASE));
     await settle();
-    expect(element.querySelector('.summary--base')).toBeNull();
-    expect(element.querySelector('.summary-caption')).toBeNull();
+    expect(texts('app-transactions-summary .badge')).toEqual(['Monto original']);
+    expect(element.querySelector('app-transactions-summary table')).toBeNull();
+    expect(texts('.kpis .note')).toEqual(['Moneda base', 'Moneda base', 'Moneda base']);
   });
 
   it('shows a transfer as money between two accounts, neither earned nor spent', async () => {
@@ -197,13 +256,17 @@ describe('Transactions', () => {
 
     expect(texts('.day')).toEqual(['Lunes, 12 de octubre−S/ 54.00', 'Domingo, 11 de octubre']);
     expect(texts('.row .names span')).toEqual(['Supermercado · BCP', 'BCP → BCP Dólares']);
-    expect(texts('.row .amount')).toEqual(['−S/ 54.00', 'S/ 375.00']);
+    // Between two currencies the row shows what left and what arrived, and the rate that implies.
+    expect(texts('.row .amount')).toEqual(['−S/ 54.00', 'S/ 375.00 → US$ 100.00']);
+    expect(texts('.row .figures small')).toEqual(['1 US$ = S/ 3.750']);
 
     element.querySelectorAll<HTMLButtonElement>('.row')[1].click();
     await settle();
     const detail = element.querySelector('.detail')!;
     expect(detail.querySelector('.amount')?.textContent?.trim()).toBe('S/ 375.00');
-    expect(texts('.detail dl div')).toEqual(['TipoTransferencia', 'DesdeBCP', 'HaciaBCP Dólares', 'LlegaUS$ 100.00', 'EstadoConfirmada']);
+    expect(detail.querySelector('.sub')?.textContent).toBe('Recibiste US$ 100.00');
+    expect(texts('app-transaction-detail > dl > div')).toEqual(['TipoTransferencia', 'DesdeBCP', 'HaciaBCP Dólares', 'LlegaUS$ 100.00', 'EstadoConfirmada']);
+    expect(texts('.detail app-fx-breakdown dl div')).toEqual(['EnviasteS/ 375.00', 'RecibisteUS$ 100.00', 'Tipo aplicado1 US$ = S/ 3.750']);
     expect(button('Editar', detail)).toBeUndefined();
     expect(button('Anular', detail)).toBeDefined();
 
@@ -214,7 +277,7 @@ describe('Transactions', () => {
     await settle();
 
     // Seen from one of its accounts, the same transfer is money that came in.
-    const select = element.querySelector<HTMLSelectElement>('.account-filter')!;
+    const select = element.querySelector<HTMLSelectElement>('select[aria-label="Cuenta"]')!;
     select.value = 'a-usd';
     select.dispatchEvent(new Event('change'));
     await settle();
@@ -233,27 +296,34 @@ describe('Transactions', () => {
     };
 
     await click('Transferencia');
-    expect(texts('app-transaction-form label .label')).toEqual(['Monto', 'Fecha', 'Desde', 'Hacia', 'Descripción (opcional)', 'Nota (opcional)']);
+    expect(texts('app-transaction-form label .label')).toEqual([
+      'Descripción (opcional)', 'Desde', 'Monto que envías', 'Fecha', 'Hacia', 'Comisión cobrada (opcional)', 'Nota (opcional)',
+    ]);
     await send();
-    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Escribe el monto.', 'Elige una cuenta.', 'Elige la cuenta que recibe.']);
+    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Elige una cuenta.', 'Escribe el monto.', 'Elige la cuenta que recibe.']);
 
-    await fill('Monto', '375');
+    await pick('Desde', 'BCP');
+    await fill('Monto que envías', '375');
     await fill('Fecha', '2026-10-13');
-    await fill('Desde', 'a-bcp');
-    await fill('Hacia', 'a-bcp');
+    // The accounts come by currency with their balances, and the origin cannot receive.
+    element.querySelectorAll<HTMLButtonElement>('app-transaction-form app-account-picker .trigger')[1].click();
+    await settle();
+    expect(options('Hacia')).toEqual(['BCP (no)', 'BCP Dólares']);
+    element.querySelectorAll<HTMLElement>('app-transaction-form [role="option"]')[1].click();
+    await settle();
     await send();
-    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Elige una cuenta distinta de la de origen.']);
+    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Un monto mayor que cero, con hasta 2 decimales.']);
 
-    await fill('Hacia', 'a-usd');
-    await send();
-    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Un monto mayor que cero, con hasta dos decimales.']);
-
-    await fill('Llega a la cuenta (USD)', '100');
+    await fill('Monto que recibes', '100');
+    // What the exchange cost against the person's rate: nothing, at 3.75.
+    expect(texts('app-transaction-form app-fx-breakdown dl div')).toEqual([
+      'Tipo de cambio aplicado1 US$ = S/ 3.750', 'Mercado hoy1 US$ = S/ 3.750', 'Costo del cambioSin costo',
+    ]);
     await send();
 
     const request = http.expectOne({ method: 'POST', url: `${BASE}/transfers` });
     expect(request.request.body).toEqual({
-      fromAccountId: 'a-bcp', toAccountId: 'a-usd', amount: 375, destinationAmount: 100, occurredOn: '2026-10-13', description: null, note: null,
+      fromAccountId: 'a-bcp', toAccountId: 'a-usd', amount: 375, destinationAmount: 100, occurredOn: '2026-10-13', description: null, note: null, fee: null,
     });
     expect(request.request.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
     request.flush(TRANSFER);
@@ -320,11 +390,13 @@ describe('Transactions', () => {
     voided.flush(page([]));
     await settle();
 
-    const select = element.querySelector<HTMLSelectElement>('.account-filter')!;
+    const select = element.querySelector<HTMLSelectElement>('select[aria-label="Cuenta"]')!;
     select.value = 'a-usd';
     select.dispatchEvent(new Event('change'));
     await settle();
     expect(paramsOf(listRequest())).toMatchObject({ accountId: 'a-usd' });
+    // The filters folded under "Más filtros" say how many are on.
+    expect(element.querySelector('.more-filters .count')?.textContent).toBe('2');
   });
 
   it('adds the next page to the list instead of replacing it', async () => {
@@ -362,14 +434,18 @@ describe('Transactions', () => {
 
     form().querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
-    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Escribe el monto.', 'Escribe una descripción.', 'Elige una categoría.', 'Elige una cuenta.']);
+    expect(texts('app-transaction-form [role="alert"]')).toEqual(['Escribe una descripción.', 'Elige una cuenta.', 'Escribe el monto.', 'Elige una categoría.']);
 
+    await fill('Descripción', ' Wong ');
+    await pick('Cuenta', 'BCP');
     await fill('Monto', '54,90');
     await fill('Fecha', '2026-10-13');
-    await fill('Descripción', ' Wong ');
     await fill('Categoría', 's-pantry');
-    await fill('Cuenta', 'a-bcp');
-    expect(texts('app-transaction-form label .label')[0]).toBe('Monto (PEN)');
+    // The category offers its tags; one click adds them.
+    element.querySelector<HTMLButtonElement>('app-disclosure .toggle')!.click();
+    await settle();
+    await click('+ mercado');
+    expect(texts('app-tag-input .chip')).toEqual(['#mercado ×']);
     form().querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
 
@@ -384,6 +460,9 @@ describe('Transactions', () => {
       merchant: null,
       note: null,
       tags: ['mercado'],
+      originalAmount: null,
+      originalCurrency: null,
+      fxRate: null,
       pending: false,
     });
     expect(request.request.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
@@ -411,6 +490,7 @@ describe('Transactions', () => {
 
   it('chooses the only account by itself, even when the accounts arrive after the form opened', async () => {
     http.expectOne(`${BASE}/categories?includeArchived=true`).flush([GROCERIES, SALARY]);
+    rates();
     listRequest().flush(page([]));
     await settle();
     await click('addNueva transacción');
@@ -419,9 +499,61 @@ describe('Transactions', () => {
     http.expectOne(`${BASE}/accounts?includeArchived=true`).flush([BCP]);
     await fixture.whenStable();
 
-    const selects = element.querySelectorAll<HTMLSelectElement>('app-transaction-form select');
-    expect(selects[1].value).toBe('a-bcp');
+    expect(texts('app-transaction-form app-account-picker .trigger strong')).toEqual(['BCP']);
     expect(element.querySelector<HTMLInputElement>('app-transaction-form input[placeholder^="ej."]')?.value).toBe('Ya escrita');
+  });
+
+  it('registers a purchase priced in another currency: what the card charged counts, the price stays as a reference', async () => {
+    await open();
+    await click('addNueva transacción');
+    await fill('Descripción', 'Netflix');
+    await pick('Cuenta', 'BCP');
+    Array.from(element.querySelectorAll<HTMLButtonElement>('app-transaction-form .quick button')).find((chip) => chip.textContent?.includes('Pagar en US$'))!.click();
+    await settle();
+
+    await fill('Precio', '15.49');
+    // Until the statement arrives, the charge is estimated at the person's rate.
+    expect(element.querySelector<HTMLInputElement>('app-transaction-form .foreign input')?.placeholder).toBe('58.09');
+    await fill('Se cobra en tu cuenta', '58.71');
+    expect(texts('app-transaction-form .foreign app-fx-breakdown dl div')).toEqual([
+      'Tipo de cambio del banco1 US$ = S/ 3.7902', 'Mercado hoy1 US$ = S/ 3.750', 'Recargo por cambio−S/ 0.62 (1.1%)',
+    ]);
+    await fill('Fecha', '2026-10-13');
+    await fill('Categoría', 'c-groceries');
+    element.querySelector('app-transaction-form form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+
+    const request = http.expectOne({ method: 'POST', url: LIST_URL });
+    expect(request.request.body).toMatchObject({ accountId: 'a-bcp', amount: 58.71, originalAmount: 15.49, originalCurrency: 'USD', fxRate: null });
+    request.flush(movement('t-netflix-2', 'Netflix', -58.71, '2026-10-13'));
+    await settle();
+    listRequest().flush(page([WONG], TOTALS, null, IN_BASE));
+    await settle();
+    expect(element.querySelector('[role="status"]')?.textContent).toBe('Gasto de S/ 58.71 registrado.');
+  });
+
+  it('shows what an amount in another currency was worth, and lets its rate be adjusted', async () => {
+    const converted = { ...NETFLIX, conversion: { baseCurrency: 'PEN', baseAmount: 48.06, rate: 3.7, rateDate: '2026-10-01', isManual: false } };
+    await open([converted], [TOTALS[1]]);
+    expect(texts('.row .figures small')).toEqual(['≈ −S/ 48.06']);
+
+    const detail = element.querySelector('.detail')!;
+    expect(texts('.detail app-fx-breakdown dl div')).toEqual([
+      'Tipo de cambio usado1 US$ = S/ 3.700', 'FuenteTu tipo de cambio · desde el 1 oct', 'Equivale hoy−S/ 48.71',
+    ]);
+    await click('Ajustar tipo de cambio', detail);
+
+    // The edit opens on the rate: the one the bank applied is written by hand.
+    await fill('1 US$ = S/', '3.80');
+    expect(texts('app-transaction-form .rate-line span')).toEqual(['currency_exchange≈ S/ 49.36 · 1 US$ = S/ 3.800']);
+    element.querySelector('app-transaction-form form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    const request = http.expectOne({ method: 'PATCH', url: `${LIST_URL}/t-netflix` });
+    expect(request.request.body).toMatchObject({ amount: 12.99, fxRate: 3.8, originalAmount: null });
+    request.flush({ ...converted, conversion: { ...converted.conversion, rate: 3.8, baseAmount: 49.36, isManual: true } });
+    await settle();
+    listRequest().flush(page([converted], [TOTALS[1]], null, IN_BASE));
+    await settle();
   });
 
   it('voids a movement with the reason the person gives', async () => {
@@ -470,10 +602,11 @@ describe('Transactions', () => {
     const request = listRequest();
     expect(paramsOf(request)).toMatchObject({ accountId: 'a-usd' });
     request.flush(page([NETFLIX]));
+    rates();
     await scoped.whenStable();
     await fixture.whenStable();
 
-    expect(scoped.nativeElement.querySelector('.account-filter').value).toBe('a-usd');
+    expect(scoped.nativeElement.querySelector('select[aria-label="Cuenta"]').value).toBe('a-usd');
   });
 
   it('starts on a category from a budget, and on every date from the global search', async () => {
@@ -490,6 +623,7 @@ describe('Transactions', () => {
     // No month: what the search found in March has to be on the list too.
     expect(paramsOf(request)).toEqual({ limit: '50', categoryId: 'c-groceries', q: 'wong' });
     request.flush(page([WONG]));
+    rates();
     await scoped.whenStable();
     await fixture.whenStable();
 

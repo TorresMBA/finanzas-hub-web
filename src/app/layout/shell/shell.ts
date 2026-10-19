@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { CurrencyCatalog } from '../../core/currency/currency-catalog';
 import { NotificationCenter } from '../../core/notifications/notification-center';
+import { useCurrencies } from '../../shared/ui/money';
 import { MobileTabBar } from '../mobile-tab-bar/mobile-tab-bar';
 import { MoreSheet } from '../more-sheet/more-sheet';
 import { Sidebar } from '../sidebar/sidebar';
@@ -122,5 +124,9 @@ export class Shell {
     // The inbox is followed for as long as a signed-in page is on screen.
     this.center.start();
     inject(DestroyRef).onDestroy(() => this.center.stop());
+
+    // Every amount is written with the symbol and the decimals of the API's catalog of currencies.
+    const currencies = inject(CurrencyCatalog);
+    effect(() => useCurrencies(currencies.list().map((currency) => ({ ...currency, minorUnits: Number(currency.minorUnits) }))));
   }
 }

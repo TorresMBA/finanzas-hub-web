@@ -1,17 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormField, form, required, submit } from '@angular/forms/signals';
 import { Router } from '@angular/router';
+import { CurrencyCatalog } from '../../core/currency/currency-catalog';
 import { errorMessage } from '../../core/errors/error-messages';
 import { TIME_ZONES, browserTimeZone } from '../../core/workspace/time-zones';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { BrandMark } from '../../shared/ui/brand-mark';
 import { Field } from '../../shared/ui/field';
-
-const CURRENCIES = [
-  { code: 'PEN', label: 'Sol peruano (S/)' },
-  { code: 'USD', label: 'Dólar estadounidense (US$)' },
-  { code: 'EUR', label: 'Euro (€)' },
-] as const;
 
 /** First visit to a new workspace: its owner chooses the currency of reports and the time zone. */
 @Component({
@@ -29,8 +24,8 @@ const CURRENCIES = [
           }
           <app-field label="Moneda principal" [state]="setupForm.baseCurrency()">
             <select class="input" [formField]="setupForm.baseCurrency">
-              @for (currency of currencies; track currency.code) {
-                <option [value]="currency.code">{{ currency.label }}</option>
+              @for (currency of currencies(); track currency.code) {
+                <option [value]="currency.code">{{ currency.name }} ({{ currency.symbol }})</option>
               }
             </select>
           </app-field>
@@ -93,7 +88,8 @@ export class Onboarding {
   private readonly router = inject(Router);
   protected readonly workspaces = inject(WorkspaceStore);
 
-  protected readonly currencies = CURRENCIES;
+  /** The currencies a workspace can report in: the API's catalog. */
+  protected readonly currencies = inject(CurrencyCatalog).list;
   protected readonly timeZones = TIME_ZONES;
   protected readonly model = signal({ baseCurrency: 'PEN', timeZone: browserTimeZone() });
   protected readonly setupForm = form(this.model, (path) => {

@@ -836,6 +836,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/currencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListCurrencies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/transactions": {
         parameters: {
             query?: never;
@@ -2001,6 +2017,16 @@ export interface components {
         };
         /** @enum {unknown} */
         ContributionType: "contribution" | "withdrawal";
+        ConversionResponse: {
+            baseCurrency: string;
+            /** Format: double */
+            baseAmount: number | string;
+            /** Format: double */
+            rate: number | string;
+            /** Format: date */
+            rateDate: string;
+            isManual: boolean;
+        };
         CreateBudgetRequest: {
             /** Format: uuid */
             categoryId: null | string;
@@ -2105,6 +2131,14 @@ export interface components {
             /** Format: date */
             rateDate: null | string;
         };
+        CurrencyResponse: {
+            code: string;
+            symbol: string;
+            name: string;
+            pluralName: string;
+            /** Format: int32 */
+            minorUnits: number | string;
+        };
         CurrencyTotalsResponse: {
             currency: string;
             /** Format: double */
@@ -2115,6 +2149,8 @@ export interface components {
             net: number | string;
             /** Format: int32 */
             count: number | string;
+            /** Format: double */
+            baseNet?: null | number | string;
         };
         DashboardAccountResponse: {
             /** Format: uuid */
@@ -2243,6 +2279,11 @@ export interface components {
             merchant?: null | string;
             note?: null | string;
             tags?: null | string[];
+            /** Format: double */
+            originalAmount?: null | number | string;
+            originalCurrency?: null | string;
+            /** Format: double */
+            fxRate?: null | number | string;
         };
         EntityTagHeaderValue: {
             tag?: components["schemas"]["StringSegment"];
@@ -2728,6 +2769,13 @@ export interface components {
         OperationKind: "income" | "expense" | "refund" | "transfer" | "adjustment" | "openingBalance";
         /** @enum {unknown} */
         OperationStatus: "pending" | "confirmed" | "voided";
+        OriginalPriceResponse: {
+            /** Format: double */
+            amount: number | string;
+            currency: string;
+            /** Format: double */
+            marketRate: null | number | string;
+        };
         /** @enum {unknown} */
         ParticipantRole: "owner" | "participant";
         PayCreditCardRequest: {
@@ -2758,6 +2806,11 @@ export interface components {
             merchant?: null | string;
             note?: null | string;
             tags?: null | string[];
+            /** Format: double */
+            originalAmount?: null | number | string;
+            originalCurrency?: null | string;
+            /** Format: double */
+            fxRate?: null | number | string;
         };
         PostTransferRequest: {
             /** Format: uuid */
@@ -2772,6 +2825,8 @@ export interface components {
             occurredOn: null | string;
             description?: null | string;
             note?: null | string;
+            /** Format: double */
+            fee?: null | number | string;
         };
         PreferencesResponse: {
             locale: string;
@@ -3005,7 +3060,7 @@ export interface components {
             created: number | string;
         };
         SetAccountFavoriteRequest: {
-            isFavorite?: boolean;
+            isFavorite: null | boolean;
         };
         SetCategoryTagsRequest: {
             tags: string[];
@@ -3208,6 +3263,8 @@ export interface components {
             transfer: null | components["schemas"]["TransferResponse"];
             /** @default false */
             fundedByGoal: boolean;
+            conversion?: null | components["schemas"]["ConversionResponse"];
+            originalPrice?: null | components["schemas"]["OriginalPriceResponse"];
         };
         /** @enum {unknown} */
         TransactionType: "income" | "expense" | null;
@@ -3229,6 +3286,10 @@ export interface components {
             amountIn: number | string;
             currencyIn: string;
             isCardPayment: boolean;
+            /** Format: double */
+            marketRate?: null | number | string;
+            /** Format: double */
+            fee?: null | number | string;
         };
         UnreadCountResponse: {
             /** Format: int32 */
@@ -6546,6 +6607,35 @@ export interface operations {
             };
         };
     };
+    ListCurrencies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrencyResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     ListTransactions: {
         parameters: {
             query?: {
@@ -6559,6 +6649,7 @@ export interface operations {
                 to?: string;
                 cursor?: string;
                 limit?: number | string;
+                currency?: string;
             };
             header?: never;
             path: {

@@ -1,5 +1,16 @@
 <app-page-header [eyebrow]="scopeLabel()" title="Transacciones" subtitle="Tus ingresos, gastos y transferencias. Solo tú los ves.">
-  <button class="button button--primary" type="button" (click)="openPost()"><app-icon name="add" [size]="18" />Nueva transacción</button>
+  <div class="header-actions">
+    @if (rateChips(); as chips) {
+      <a class="rates" routerLink="/accounts" aria-label="Tus tipos de cambio. Cámbialos en Cuentas">
+        <app-icon name="currency_exchange" [size]="17" />
+        @for (rate of chips.rates; track rate) {
+          <span>{{ rate }}</span>
+        }
+        <span class="since">· desde el {{ chips.since }}</span>
+      </a>
+    }
+    <button class="button button--primary" type="button" (click)="openPost()"><app-icon name="add" [size]="18" />Nueva transacción</button>
+  </div>
 </app-page-header>
 
 @if (failure(); as text) {
@@ -14,82 +25,68 @@
     <a class="button button--primary button--small" routerLink="/accounts">Ir a Cuentas</a>
   </app-empty-state>
 } @else {
-  <div class="layout">
-    <div class="main">
-      <div class="filters">
-        <div class="segmented" role="group" aria-label="Tipo de movimiento">
-          @for (option of tabs; track option.value) {
-            <button type="button" [attr.aria-pressed]="tab() === option.value" (click)="tab.set(option.value)">{{ option.label }}</button>
+  <div class="filters">
+    <div class="segmented" role="group" aria-label="Tipo de movimiento">
+      @for (option of tabs; track option.value) {
+        <button type="button" [attr.aria-pressed]="tab() === option.value" (click)="tab.set(option.value)">{{ option.label }}</button>
+      }
+    </div>
+    <label class="search-box">
+      <app-icon name="search" [size]="18" />
+      <input #searchInput type="search" placeholder="Buscar por descripción, comercio o nota" aria-label="Buscar movimientos" [value]="searchText()" (input)="search(searchInput.value)" />
+    </label>
+    @if (currencyTabs().length > 0) {
+      @if (manyCurrencies()) {
+        <select #currencyFilter class="input filter-select" aria-label="Moneda" (change)="currency.set(currencyFilter.value)">
+          <option value="" [selected]="currency() === ''">Todas las monedas</option>
+          @for (option of currencyTabs(); track option.code) {
+            <option [value]="option.code" [selected]="currency() === option.code">{{ option.label }}</option>
+          }
+        </select>
+      } @else {
+        <div class="segmented" role="group" aria-label="Moneda">
+          <button type="button" [attr.aria-pressed]="currency() === ''" (click)="currency.set('')">Todas</button>
+          @for (option of currencyTabs(); track option.code) {
+            <button type="button" [attr.aria-pressed]="currency() === option.code" (click)="currency.set(option.code)">{{ option.label }}</button>
           }
         </div>
-        <label class="search-box">
-          <app-icon name="search" [size]="18" />
-          <input #searchInput type="search" placeholder="Buscar por descripción, comercio o nota" aria-label="Buscar movimientos" [value]="searchText()" (input)="search(searchInput.value)" />
-        </label>
-        <select #accountFilter class="input account-filter" aria-label="Cuenta" (change)="account.set(accountFilter.value)">
-          <option value="" [selected]="account() === ''">Todas las cuentas</option>
-          @for (option of accountOptions().own; track option.id) {
+      }
+    }
+    <button type="button" class="chip-toggle more-filters" [attr.aria-expanded]="moreFiltersOpen()" aria-controls="more-filters" (click)="moreFiltersOpen.set(!moreFiltersOpen())">
+      <app-icon name="tune" [size]="18" />Más filtros
+      @if (moreFilters() > 0) {
+        <span class="count" [attr.aria-label]="moreFilters() + ' activos'">{{ moreFilters() }}</span>
+      }
+    </button>
+  </div>
+  <div class="filters more" id="more-filters" [hidden]="!moreFiltersOpen()">
+    <select #accountFilter class="input filter-select" aria-label="Cuenta" (change)="account.set(accountFilter.value)">
+      <option value="" [selected]="account() === ''">Todas las cuentas</option>
+      @for (option of accountOptions().own; track option.id) {
+        <option [value]="option.id" [selected]="account() === option.id">{{ option.name }}</option>
+      }
+      @if (accountOptions().managed.length > 0) {
+        <optgroup label="Metas e inversiones">
+          @for (option of accountOptions().managed; track option.id) {
             <option [value]="option.id" [selected]="account() === option.id">{{ option.name }}</option>
           }
-          @if (accountOptions().managed.length > 0) {
-            <optgroup label="Metas e inversiones">
-              @for (option of accountOptions().managed; track option.id) {
-                <option [value]="option.id" [selected]="account() === option.id">{{ option.name }}</option>
-              }
-            </optgroup>
-          }
-        </select>
-        <select #categoryFilter class="input account-filter" [attr.aria-label]="categoryFilterLabel()" (change)="category.set(categoryFilter.value)">
-          <option value="" [selected]="category() === ''">Todas las categorías</option>
-          @for (option of categoryOptions(); track option.id) {
-            <option [value]="option.id" [selected]="category() === option.id">{{ option.label }}</option>
-          }
-        </select>
-        <button type="button" class="chip-toggle" [attr.aria-pressed]="allDates()" (click)="allDates.set(!allDates())">Todas las fechas</button>
-        <button type="button" class="chip-toggle" [attr.aria-pressed]="showVoided()" (click)="showVoided.set(!showVoided())">Anuladas</button>
-      </div>
-
-      <!-- With several currencies the total in the base one comes first and each block says what it is, so the base
-           currency showing twice (its own movements, and everything converted to it) does not read as a repeated row. -->
-      @if (inBase(); as base) {
-        <p class="summary-caption">Total de todas las monedas, convertido a {{ base.currency }}</p>
-        <dl class="summary summary--base" [attr.aria-label]="'Resumen en ' + base.currency + ', todas las monedas'">
-          <div>
-            <dt>Ingresos</dt>
-            <dd class="is-income">{{ base.income | money: base.currency }}</dd>
-          </div>
-          <div>
-            <dt>Gastos</dt>
-            <dd>{{ base.expense | money: base.currency }}</dd>
-          </div>
-          <div>
-            <dt>Neto</dt>
-            <dd [class.is-income]="+base.net > 0" [class.is-negative]="+base.net < 0">{{ base.net | money: base.currency : { signed: true } }}</dd>
-          </div>
-        </dl>
-        @if (base.missingRates.length > 0) {
-          <p class="hint">Sin contar lo que está en {{ base.missingRates.join(', ') }}: falta su tipo de cambio. Defínelo en <a class="link" routerLink="/accounts">Cuentas</a>.</p>
-        }
+        </optgroup>
       }
+    </select>
+    <select #categoryFilter class="input filter-select" [attr.aria-label]="categoryFilterLabel()" (change)="category.set(categoryFilter.value)">
+      <option value="" [selected]="category() === ''">Todas las categorías</option>
+      @for (option of categoryOptions(); track option.id) {
+        <option [value]="option.id" [selected]="category() === option.id">{{ option.label }}</option>
+      }
+    </select>
+    <button type="button" class="chip-toggle" [attr.aria-pressed]="allDates()" (click)="allDates.set(!allDates())">Todas las fechas</button>
+    <button type="button" class="chip-toggle" [attr.aria-pressed]="showVoided()" (click)="showVoided.set(!showVoided())">Anuladas</button>
+  </div>
 
-      @for (total of totals(); track total.currency) {
-        @if (inBase()) {
-          <p class="summary-caption">Solo movimientos en {{ total.currency }}</p>
-        }
-        <dl class="summary" [attr.aria-label]="'Resumen en ' + total.currency">
-          <div>
-            <dt>Ingresos</dt>
-            <dd class="is-income">{{ total.income | money: total.currency }}</dd>
-          </div>
-          <div>
-            <dt>Gastos</dt>
-            <dd>{{ total.expense | money: total.currency }}</dd>
-          </div>
-          <div>
-            <dt>Neto</dt>
-            <dd [class.is-income]="+total.net > 0" [class.is-negative]="+total.net < 0">{{ total.net | money: total.currency : { signed: true } }}</dd>
-          </div>
-        </dl>
+  <div class="layout">
+    <div class="main">
+      @if (state() === 'ready' && (totals().length > 0 || currency() !== '')) {
+        <app-transactions-summary [totals]="totals()" [baseTotals]="baseTotals()" [rates]="rates()" [currency]="currency()" [scope]="scopeLabel()" (pick)="pickCurrency($event)" />
       }
 
       @if (state() === 'loading') {
@@ -115,11 +112,12 @@
           @for (day of days(); track day.date) {
             <h2 class="day">
               <span>{{ day.label }}</span>
-              <span class="day-net">{{ day.nets.join(' · ') }}</span>
+              <span class="day-net">{{ day.net }}</span>
             </h2>
             <ul>
               @for (item of day.items; track item.id) {
                 @let look = lookOf(item);
+                @let sub = subOf(item);
                 <li>
                   <button type="button" class="row" [class.is-voided]="item.status === 'voided'" [attr.aria-pressed]="selected()?.id === item.id" (click)="select(item)">
                     <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="36" />
@@ -132,12 +130,15 @@
                       }
                     </span>
                     <span class="status" [attr.data-status]="item.status">{{ statusLabels[item.status] }}</span>
-                    @if (item.transfer && account() === '') {
+                    <span class="figures">
                       <!-- Seen from no account in particular, a transfer is money that neither came nor went. -->
-                      <span class="amount is-neutral">{{ item.amount | money: item.currency }}</span>
-                    } @else {
-                      <span class="amount" [class.is-income]="+item.signedAmount > 0">{{ item.signedAmount | money: item.currency : { signed: true } }}</span>
-                    }
+                      <span class="amount" [class.is-neutral]="item.transfer && account() === ''" [class.is-income]="!(item.transfer && account() === '') && +item.signedAmount > 0">
+                        {{ amountOf(item) }}
+                      </span>
+                      @if (sub) {
+                        <small>{{ sub }}</small>
+                      }
+                    </span>
                   </button>
                 </li>
               }
@@ -150,20 +151,50 @@
       }
     </div>
 
-    @if (isDesktop() && selected(); as item) {
-      <aside class="card detail" aria-label="Detalle del movimiento">
-        <app-transaction-detail [transaction]="item" [busy]="busy()" (edit)="openEdit(item)" (confirmed)="confirm(item)" (voided)="voidTransaction(item, $event)" />
-      </aside>
-    }
+    <div class="side">
+      @if (isDesktop() && selected(); as item) {
+        <aside class="card detail" aria-label="Detalle del movimiento">
+          <app-transaction-detail
+            [transaction]="item"
+            [busy]="busy()"
+            [rates]="rates()"
+            (edit)="openEdit(item)"
+            (adjustRate)="openEdit(item, true)"
+            (confirmed)="confirm(item)"
+            (voided)="voidTransaction(item, $event)"
+          />
+        </aside>
+      }
+      @if (netWorth.value(); as summary) {
+        @if (summary.baseCurrency && summary.currencies.length > 1) {
+          <app-net-worth-card [summary]="summary" />
+        }
+      }
+    </div>
   </div>
 }
 
 @if (!isDesktop() && selected(); as item) {
   <app-dialog title="Movimiento" (closed)="closeDetail()">
-    <app-transaction-detail [transaction]="item" [busy]="busy()" (edit)="openEdit(item)" (confirmed)="confirm(item)" (voided)="voidTransaction(item, $event)" />
+    <app-transaction-detail
+      [transaction]="item"
+      [busy]="busy()"
+      [rates]="rates()"
+      (edit)="openEdit(item)"
+      (adjustRate)="openEdit(item, true)"
+      (confirmed)="confirm(item)"
+      (voided)="voidTransaction(item, $event)"
+    />
   </app-dialog>
 }
 
 @if (formTarget(); as target) {
-  <app-transaction-form [target]="target" [accounts]="accounts.value() ?? []" [categories]="categories.value() ?? []" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+  <app-transaction-form
+    [target]="target"
+    [accounts]="accounts.value() ?? []"
+    [categories]="categories.value() ?? []"
+    [rates]="rates()"
+    (saved)="onSaved($event)"
+    (closed)="formTarget.set(null)"
+  />
 }

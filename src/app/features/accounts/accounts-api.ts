@@ -16,12 +16,6 @@ export const ACCOUNT_TYPES: readonly { value: AccountType; label: string; icon: 
   { value: 'creditCard', label: 'Tarjeta', icon: 'credit_card', color: 'amber' },
 ];
 
-export const CURRENCIES: readonly { code: string; label: string; plural: string }[] = [
-  { code: 'PEN', label: 'Sol peruano (S/)', plural: 'soles' },
-  { code: 'USD', label: 'Dólar estadounidense (US$)', plural: 'dólares' },
-  { code: 'EUR', label: 'Euro (€)', plural: 'euros' },
-];
-
 export function accountType(type: AccountType) {
   // The fund of a goal and the account of an investment are opened by their sections, so they are not among the types a person can choose.
   if (type === 'goalFund') {
@@ -29,10 +23,6 @@ export function accountType(type: AccountType) {
   }
 
   return type === 'investment' ? INVESTMENT : (ACCOUNT_TYPES.find((candidate) => candidate.value === type) ?? ACCOUNT_TYPES[0]);
-}
-
-export function currencyName(code: string): string {
-  return CURRENCIES.find((candidate) => candidate.code === code)?.plural ?? code;
 }
 
 /** What paying a card sends. `sourceAmount` only when the paying account has another currency. */

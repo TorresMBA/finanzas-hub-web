@@ -2,22 +2,25 @@ import { DOCUMENT } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, linkedSignal, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Account, BaseTotals, Category, CurrencyTotals, Transaction } from '../../core/api/api-types';
+import { Account, AccountSummary, BaseTotals, Category, CurrencyTotals, ExchangeRate, Transaction } from '../../core/api/api-types';
 import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
 import { PeriodStore } from '../../core/period/period-store';
-import { formatDay, monthRange } from '../../shared/ui/dates';
+import { WorkspaceStore } from '../../core/workspace/workspace-store';
+import { formatDay, formatShortDate, monthRange } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Icon } from '../../shared/ui/icon';
 import { IconTile } from '../../shared/ui/icon-tile';
-import { MoneyPipe, formatMoney, sumAmounts } from '../../shared/ui/money';
+import { currencySymbol, formatMoney, formatRate, sumAmounts } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
+import { NetWorthCard } from './net-worth-card';
 import { TransactionDetail } from './transaction-detail';
 import { TransactionForm, TransactionFormTarget } from './transaction-form';
-import { MovementFilter, STATUS_LABELS, TransactionFilters, TransactionsApi, lookOf } from './transactions-api';
+import { MovementFilter, RateBook, STATUS_LABELS, TransactionFilters, TransactionsApi, lookOf } from './transactions-api';
+import { TransactionsSummary } from './transactions-summary';
 
 type Tab = 'all' | MovementFilter;
 
@@ -31,13 +34,29 @@ const TABS: readonly { value: Tab; label: string }[] = [
 const DESKTOP = '(min-width: 1100px)';
 const SEARCH_DELAY_MS = 300;
 
+/** Beyond this many currencies the filter is a list to open instead of a row of buttons. */
+const MAX_CURRENCY_TABS = 4;
+
 /**
  * The person's movements of the month selected in the top bar (or of every date), newest first. Totals come from the API for
  * everything the filter matches; this page adds nothing up except the net of each day it is showing.
  */
 @Component({
   selector: 'app-transactions',
-  imports: [Dialog, EmptyState, ErrorState, Icon, IconTile, MoneyPipe, PageHeader, RouterLink, Skeleton, TransactionDetail, TransactionForm],
+  imports: [
+    Dialog,
+    EmptyState,
+    ErrorState,
+    Icon,
+    IconTile,
+    NetWorthCard,
+    PageHeader,
+    RouterLink,
+    Skeleton,
+    TransactionDetail,
+    TransactionForm,
+    TransactionsSummary,
+  ],
   templateUrl: './transactions.html',
   styleUrl: './transactions.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -45,6 +64,7 @@ const SEARCH_DELAY_MS = 300;
 export class Transactions {
   private readonly api = inject(TransactionsApi);
   private readonly period = inject(PeriodStore);
+  private readonly workspaces = inject(WorkspaceStore);
   private readonly media = inject(DOCUMENT).defaultView?.matchMedia?.(DESKTOP);
 
   /** From the URL: the account whose movements to show, when arriving from its page. */
@@ -69,12 +89,46 @@ export class Transactions {
 
   protected readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
   protected readonly categories = httpResource<Category[]>(() => this.api.categoriesUrl());
+  private readonly exchangeRates = httpResource<ExchangeRate[]>(() => this.api.ratesUrl());
+  protected readonly netWorth = httpResource<AccountSummary>(() => this.api.summaryUrl());
+
+  /** The person's rates today, for what an amount is worth now. Empty while they load or when there are none. */
+  protected readonly rates = computed(() => new RateBook(this.workspaces.current()?.baseCurrency ?? null, this.exchangeRates.value() ?? []));
+
+  /** "1 US$ = S/ 3.740" for each rate, and the day of the latest, for the header. */
+  protected readonly rateChips = computed(() => {
+    const book = this.rates();
+    const rates = book.all.filter((rate) => rate.currency !== book.baseCurrency);
+    if (!book.baseCurrency || rates.length === 0) {
+      return null;
+    }
+
+    const latest = rates.map((rate) => rate.asOf).sort().at(-1)!;
+    return { rates: rates.map((rate) => formatRate(rate.rate, rate.currency, rate.baseCurrency)), since: formatShortDate(latest) };
+  });
 
   protected readonly tab = signal<Tab>('all');
   protected readonly account = linkedSignal(() => this.accountId() ?? '');
   protected readonly category = linkedSignal(() => this.categoryId() ?? '');
   protected readonly allDates = linkedSignal(() => this.range() === 'all');
   protected readonly showVoided = signal(false);
+  /** Movements on accounts of one currency; empty for all of them. */
+  protected readonly currency = signal('');
+  protected readonly moreFiltersOpen = signal(false);
+
+  /** The currencies of the person's accounts, the base one first. Only worth filtering by with more than one. */
+  protected readonly currencyTabs = computed(() => {
+    const base = this.workspaces.current()?.baseCurrency;
+    const codes = [...new Set((this.accounts.value() ?? []).map((account) => account.currency))].sort((a, b) =>
+      a === base ? -1 : b === base ? 1 : a.localeCompare(b),
+    );
+    return codes.length > 1 ? codes.map((code) => ({ code, label: `${currencySymbol(code)} ${code}` })) : [];
+  });
+
+  protected readonly manyCurrencies = computed(() => this.currencyTabs().length > MAX_CURRENCY_TABS);
+
+  /** How many of the filters folded under "Más filtros" are on, so they are not forgotten. */
+  protected readonly moreFilters = computed(() => [this.account() !== '', this.category() !== '', this.allDates(), this.showVoided()].filter(Boolean).length);
 
   /** The person's own accounts first; the funds of goals and the capital of investments apart, since other sections move them. */
   protected readonly accountOptions = computed(() => {
@@ -104,7 +158,7 @@ export class Transactions {
 
   protected readonly items = signal<readonly Transaction[]>([]);
   protected readonly totals = signal<readonly CurrencyTotals[]>([]);
-  private readonly baseTotals = signal<BaseTotals | null>(null);
+  protected readonly baseTotals = signal<BaseTotals | null>(null);
   protected readonly nextCursor = signal<string | null>(null);
   protected readonly state = signal<'loading' | 'error' | 'ready'>('loading');
   protected readonly loadingMore = signal(false);
@@ -134,26 +188,25 @@ export class Transactions {
       accountId: this.account(),
       categoryId: this.category(),
       text: this.appliedText(),
+      currency: this.currency(),
     };
   });
 
-  /**
-   * Everything in the base currency, when the per-currency summaries alone do not say it: there is more than one
-   * currency, or the only one is not the base.
-   */
-  protected readonly inBase = computed(() => {
-    const base = this.baseTotals();
-    const totals = this.totals();
-    return base && (totals.length > 1 || (totals.length === 1 && totals[0].currency !== base.currency)) ? base : null;
-  });
-
   protected readonly hasFilters = computed(
-    () => this.tab() !== 'all' || this.account() !== '' || this.category() !== '' || this.allDates() || this.showVoided() || this.appliedText() !== '',
+    () =>
+      this.tab() !== 'all' ||
+      this.account() !== '' ||
+      this.category() !== '' ||
+      this.allDates() ||
+      this.showVoided() ||
+      this.appliedText() !== '' ||
+      this.currency() !== '',
   );
 
   /**
-   * The page by day, each with the net of the income and expenses it shows, one figure per currency. An opening
-   * balance or an adjustment is neither, exactly as in the totals of the API.
+   * The page by day, each with the net of the income and expenses it shows: in the base currency, each amount at what
+   * it was worth that day, when every one of them can be; otherwise one figure per currency. An opening balance or an
+   * adjustment is neither, exactly as in the totals of the API.
    */
   protected readonly days = computed(() => {
     const byDay = new Map<string, Transaction[]>();
@@ -163,14 +216,7 @@ export class Transactions {
 
     return [...byDay].map(([date, items]) => {
       const counted = items.filter((item) => item.status !== 'voided' && (item.kind === 'income' || item.kind === 'expense'));
-      return {
-        date,
-        label: formatDay(date),
-        items,
-        nets: [...new Set(counted.map((item) => item.currency))]
-          .sort()
-          .map((currency) => formatMoney(sumAmounts(counted.filter((item) => item.currency === currency).map((item) => item.signedAmount)), currency, { signed: true })),
-      };
+      return { date, label: formatDay(date), items, net: this.netOf(counted) };
     });
   });
 
@@ -206,6 +252,7 @@ export class Transactions {
   protected clearFilters(): void {
     clearTimeout(this.searchTimer);
     this.tab.set('all');
+    this.currency.set('');
     this.account.set('');
     this.category.set('');
     this.allDates.set(false);
@@ -234,14 +281,55 @@ export class Transactions {
     if (filters) {
       void this.load(filters, null);
     }
+
+    // Saving, voiding or confirming moves balances: net worth follows.
+    if (this.netWorth.hasValue()) {
+      this.netWorth.reload();
+    }
   }
 
   protected openPost(): void {
     this.formTarget.set({ mode: 'post', accountId: this.account() || undefined });
   }
 
-  protected openEdit(transaction: Transaction): void {
-    this.formTarget.set({ mode: 'edit', transaction });
+  protected openEdit(transaction: Transaction, adjustRate = false): void {
+    this.formTarget.set({ mode: 'edit', transaction, adjustRate });
+  }
+
+  /** The amount of a row as it reads in the list. A transfer between currencies shows what left and what arrived. */
+  protected amountOf(item: Transaction): string {
+    const transfer = item.transfer;
+    if (transfer && transfer.currencyIn !== transfer.currencyOut && this.account() === '') {
+      return `${formatMoney(transfer.amountOut, transfer.currencyOut)} → ${formatMoney(transfer.amountIn, transfer.currencyIn)}`;
+    }
+
+    return transfer && this.account() === '' ? formatMoney(item.amount, item.currency) : formatMoney(item.signedAmount, item.currency, { signed: true });
+  }
+
+  /** A second line under the amount: the rate of a transfer between currencies, the original price, or what it is in the base currency. */
+  protected subOf(item: Transaction): string | null {
+    const transfer = item.transfer;
+    if (transfer && transfer.currencyIn !== transfer.currencyOut) {
+      return formatRate(Number(transfer.amountOut) / Number(transfer.amountIn), transfer.currencyIn, transfer.currencyOut);
+    }
+
+    if (item.originalPrice) {
+      const price = item.originalPrice;
+      return `${formatMoney(price.amount, price.currency)} · ${formatRate(Number(item.amount) / Number(price.amount), price.currency, item.currency)}`;
+    }
+
+    const conversion = item.conversion;
+    if (!conversion) {
+      return null;
+    }
+
+    return transfer
+      ? `≈ ${formatMoney(conversion.baseAmount, conversion.baseCurrency)}`
+      : `≈ ${formatMoney(Number(item.signedAmount) < 0 ? -Number(conversion.baseAmount) : conversion.baseAmount, conversion.baseCurrency, { signed: true })}`;
+  }
+
+  protected pickCurrency(code: string): void {
+    this.currency.set(this.currency() === code ? '' : code);
   }
 
   protected onSaved(message: string): void {
@@ -249,6 +337,29 @@ export class Transactions {
     this.failure.set(null);
     this.notice.set(message);
     this.reload();
+  }
+
+  /**
+   * The net of some income and expenses: "Neto S/ 120.00 · en PEN" when every amount has a value in the base
+   * currency; otherwise one figure per currency, which are never added together.
+   */
+  private netOf(counted: readonly Transaction[]): string {
+    const base = this.workspaces.current()?.baseCurrency;
+    const currencies = [...new Set(counted.map((item) => item.currency))].sort();
+    const inBase = counted.map((item) => {
+      if (item.currency === base) {
+        return item.signedAmount;
+      }
+
+      return item.conversion ? (Number(item.signedAmount) < 0 ? -Number(item.conversion.baseAmount) : item.conversion.baseAmount) : null;
+    });
+    if (base && currencies.length > 1 && this.currency() === '' && inBase.every((amount) => amount !== null)) {
+      return `Neto ${formatMoney(sumAmounts(inBase as string[]), base, { signed: true })} · en ${base}`;
+    }
+
+    return currencies
+      .map((currency) => formatMoney(sumAmounts(counted.filter((item) => item.currency === currency).map((item) => item.signedAmount)), currency, { signed: true }))
+      .join(' · ');
   }
 
   protected confirm(transaction: Transaction): Promise<void> {

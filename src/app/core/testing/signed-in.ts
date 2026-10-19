@@ -1,5 +1,6 @@
 import { Provider, computed, signal } from '@angular/core';
-import { Me, Workspace } from '../api/api-types';
+import { CurrencyInfo, Me, Workspace } from '../api/api-types';
+import { CurrencyCatalog } from '../currency/currency-catalog';
 import { LIVE_NOTIFICATIONS } from '../notifications/notification-center';
 import { SessionStore } from '../auth/session-store';
 import { WorkspaceStore } from '../workspace/workspace-store';
@@ -32,6 +33,13 @@ export const TEST_WORKSPACE: Workspace = {
   isPersonal: true,
   ownerName: null,
 };
+
+/** The catalog the API serves today. */
+export const TEST_CURRENCIES: readonly CurrencyInfo[] = [
+  { code: 'PEN', symbol: 'S/', name: 'Sol peruano', pluralName: 'soles', minorUnits: 2 },
+  { code: 'USD', symbol: 'US$', name: 'Dólar estadounidense', pluralName: 'dólares', minorUnits: 2 },
+  { code: 'EUR', symbol: '€', name: 'Euro', pluralName: 'euros', minorUnits: 2 },
+];
 
 /**
  * Providers that put a component test behind the guards: a signed-in person with one active workspace,
@@ -73,5 +81,6 @@ export function provideSession(user: Me | null = TEST_USER, workspaces: readonly
     { provide: SessionStore, useValue: session },
     { provide: LIVE_NOTIFICATIONS, useValue: false },
     { provide: WorkspaceStore, useValue: store },
+    { provide: CurrencyCatalog, useValue: { list: signal(TEST_CURRENCIES).asReadonly() } satisfies Partial<CurrencyCatalog> },
   ];
 }

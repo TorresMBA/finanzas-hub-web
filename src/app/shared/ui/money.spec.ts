@@ -1,5 +1,5 @@
 import { formatDay, formatShortDate, monthRange, todayIso } from './dates';
-import { formatMoney, parseAmount, sumAmounts } from './money';
+import { currencyLook, formatMoney, formatRate, parseAmount, sumAmounts, useCurrencies } from './money';
 import { isValidTag, parseTags } from './tags';
 
 describe('money', () => {
@@ -34,6 +34,22 @@ describe('money', () => {
 
   it.each(['', 'abc', '1.005', '1,234.50', '12.', '5 soles', '1e3'])('refuses %j instead of guessing an amount', (text) => {
     expect(parseAmount(text)).toBeNull();
+  });
+
+  it('follows the catalog of the API: a currency it adds is written with its symbol and its decimals', () => {
+    const before = ['PEN', 'USD', 'EUR'].map((code) => currencyLook(code)!);
+    useCurrencies([...before, { code: 'JPY', symbol: '¥', name: 'Yen', pluralName: 'yenes', minorUnits: 0 }]);
+    try {
+      expect(formatMoney(1500, 'JPY')).toBe('¥ 1,500');
+      expect(parseAmount('1500', 0)).toBe(1500);
+      expect(parseAmount('1500.5', 0)).toBeNull();
+    } finally {
+      useCurrencies(before);
+    }
+  });
+
+  it('writes a rate as banks quote it', () => {
+    expect(formatRate(3.745, 'USD', 'PEN')).toBe('1 US$ = S/ 3.745');
   });
 });
 

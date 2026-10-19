@@ -1,7 +1,7 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable, computed, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { OperationKind, OperationStatus, PostTransferRequest, Transaction, TransactionPage, TransactionType } from '../../core/api/api-types';
+import { ExchangeRate, OperationKind, OperationStatus, PostTransferRequest, Transaction, TransactionPage, TransactionType } from '../../core/api/api-types';
 import { IDEMPOTENCY_KEY } from '../../core/http/api-interceptors';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { TileColor } from '../../shared/ui/icon-tile';
@@ -43,6 +43,8 @@ export interface TransactionFilters {
   /** Matches the category and its subcategories. */
   readonly categoryId: string;
   readonly text: string;
+  /** Movements on an account of that currency, a transfer by either side; empty for every currency. */
+  readonly currency: string;
   /** Both null for every date. */
   readonly from: string | null;
   readonly to: string | null;
@@ -59,6 +61,43 @@ export interface TransactionBody {
   readonly merchant: string | null;
   readonly note: string | null;
   readonly tags: readonly string[];
+  /** The price in the currency something was sold in, with `originalCurrency`. Only a reference. */
+  readonly originalAmount?: number | null;
+  readonly originalCurrency?: string | null;
+  /** Units of the base currency per unit of the account's, when the person states the rate. */
+  readonly fxRate?: number | null;
+}
+
+/**
+ * The rates of the person towards the base currency, ready to convert: what one unit of a currency is worth in
+ * another, through the base one. Null where a rate is missing.
+ */
+export class RateBook {
+  constructor(
+    readonly baseCurrency: string | null,
+    private readonly rates: readonly ExchangeRate[],
+  ) {}
+
+  /** Units of the base currency per unit of `currency`. */
+  inBase(currency: string): number | null {
+    if (currency === this.baseCurrency) {
+      return 1;
+    }
+
+    const rate = this.rates.find((candidate) => candidate.currency === currency);
+    return rate ? Number(rate.rate) : null;
+  }
+
+  /** Units of `quote` that one unit of `currency` is worth today. */
+  cross(currency: string, quote: string): number | null {
+    const [valued, quoted] = [this.inBase(currency), this.inBase(quote)];
+    return valued !== null && quoted ? valued / quoted : null;
+  }
+
+  /** The rates there are, apart from the base currency, for the header. */
+  get all(): readonly ExchangeRate[] {
+    return this.rates;
+  }
 }
 
 /** The calls about the transactions of the signed-in person in the selected workspace. */
@@ -72,6 +111,8 @@ export class TransactionsApi {
   /** Undefined until a workspace is selected, which is how a resource knows to wait. */
   readonly accountsUrl = computed(() => (this.workspaces.current() ? `${this.base()}/accounts?includeArchived=true` : undefined));
   readonly categoriesUrl = computed(() => (this.workspaces.current() ? `${this.base()}/categories?includeArchived=true` : undefined));
+  readonly ratesUrl = computed(() => (this.workspaces.current() ? `${this.base()}/exchange-rates` : undefined));
+  readonly summaryUrl = computed(() => (this.workspaces.current() ? `${this.base()}/accounts/summary` : undefined));
 
   list(filters: TransactionFilters, cursor: string | null): Promise<TransactionPage> {
     let params = new HttpParams().set('limit', 50);
@@ -82,6 +123,7 @@ export class TransactionsApi {
     if (filters.accountId) params = params.set('accountId', filters.accountId);
     if (filters.categoryId) params = params.set('categoryId', filters.categoryId);
     if (filters.text) params = params.set('q', filters.text);
+    if (filters.currency) params = params.set('currency', filters.currency);
     if (cursor) params = params.set('cursor', cursor);
     return firstValueFrom(this.http.get<TransactionPage>(`${this.base()}/transactions`, { params }));
   }

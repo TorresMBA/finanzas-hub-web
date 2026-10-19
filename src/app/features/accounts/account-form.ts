@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { FormField, form, maxLength, required, submit, validate } from '@angular/forms/signals';
 import { Account, AccountType } from '../../core/api/api-types';
+import { CurrencyCatalog } from '../../core/currency/currency-catalog';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
@@ -8,7 +9,7 @@ import { todayIso } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { formatMoney, parseAmount } from '../../shared/ui/money';
-import { ACCOUNT_TYPES, AccountsApi, CURRENCIES } from './accounts-api';
+import { ACCOUNT_TYPES, AccountsApi } from './accounts-api';
 
 /** What the form is for: a new account, the details of an existing one, or stating its real balance. */
 export type AccountFormTarget =
@@ -90,8 +91,8 @@ function dayOfMonth(text: string): number | null {
             </div>
             <app-field label="Moneda" hint="No se puede cambiar después: todos sus movimientos estarán en esta moneda.">
               <select class="input" [formField]="accountForm.currency">
-                @for (currency of currencies; track currency.code) {
-                  <option [value]="currency.code">{{ currency.label }}</option>
+                @for (currency of currencies(); track currency.code) {
+                  <option [value]="currency.code">{{ currency.name }} ({{ currency.symbol }})</option>
                 }
               </select>
             </app-field>
@@ -164,7 +165,8 @@ export class AccountForm {
   readonly closed = output<void>();
 
   protected readonly types = ACCOUNT_TYPES;
-  protected readonly currencies = CURRENCIES;
+  /** The currencies an account can have: the API's catalog. */
+  protected readonly currencies = inject(CurrencyCatalog).list;
 
   protected readonly model = linkedSignal(() => initialModel(this.target(), this.defaultCurrency(), this.today()));
   protected readonly isCard = computed(() => this.model().type === 'creditCard');
