@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { FormField, form, required, submit, validate } from '@angular/forms/signals';
 import { Account } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
+import { AccountPicker, accountGroups } from '../../shared/ui/account-picker';
 import { todayIso } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
@@ -26,7 +27,7 @@ const AMOUNT_ERROR = { kind: 'amount', message: 'Un monto mayor que cero, con ha
  */
 @Component({
   selector: 'app-card-payment-form',
-  imports: [Dialog, Field, FormField],
+  imports: [AccountPicker, Dialog, Field, FormField],
   template: `
     <app-dialog title="Pagar tarjeta" (closed)="closed.emit()">
       <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
@@ -41,12 +42,7 @@ const AMOUNT_ERROR = { kind: 'amount', message: 'Un monto mayor que cero, con ha
           <div class="alert alert--info" role="status">Necesitas una cuenta de banco, efectivo o billetera para pagar desde ella.</div>
         } @else {
           <app-field label="Pagar desde" [state]="paymentForm.fromAccountId()">
-            <select class="input" [formField]="paymentForm.fromAccountId">
-              <option value="">Elige una cuenta</option>
-              @for (account of sources(); track account.id) {
-                <option [value]="account.id">{{ account.name }} · {{ balanceOf(account) }}</option>
-              }
-            </select>
+            <app-account-picker label="Pagar desde" [groups]="sourceGroups()" [formField]="paymentForm.fromAccountId" />
           </app-field>
           <div class="form-pair">
             <app-field [label]="'Monto del pago (' + card().currency + ')'" [state]="paymentForm.amount()">
@@ -94,9 +90,13 @@ export class CardPaymentForm {
   /** A card is paid with money, so another card is not offered. */
   protected readonly sources = computed(() => this.accounts().filter((account) => !account.isArchived && account.type !== 'creditCard' && !isManagedAccount(account.type)));
 
+  /** The card's currency first: paying from an account in it needs no exchange. */
+  protected readonly sourceGroups = computed(() => accountGroups(this.sources(), this.card().currency));
+
   protected readonly model = linkedSignal<PaymentModel>(() => {
     const owed = Number(this.card().creditCard?.used ?? 0);
-    const sources = this.sources();
+    // Not tracked: balances arriving while the dialog is open must not clear what was typed.
+    const sources = untracked(this.sources);
     return { fromAccountId: sources.length === 1 ? sources[0].id : '', amount: owed > 0 ? owed.toFixed(2) : '', sourceAmount: '', date: todayIso(this.today()) };
   });
 
@@ -112,10 +112,6 @@ export class CardPaymentForm {
 
   protected readonly failure = signal<string | null>(null);
   protected readonly busy = signal(false);
-
-  protected balanceOf(account: Account): string {
-    return formatMoney(account.balance, account.currency);
-  }
 
   protected save(): void {
     void submit(this.paymentForm, async () => {

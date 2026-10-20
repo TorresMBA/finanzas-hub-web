@@ -26,33 +26,44 @@ const LEISURE: Category = {
 const SALARY: Category = { ...LEISURE, id: 'c-salary', kind: 'income', name: 'Sueldo', subcategories: [] };
 
 describe('GoalMoneyForm', () => {
-  it('spends all of what was saved by default, from an account that holds money and under an expense category', async () => {
+  it('spends all of what was saved by default, from an account that holds money and under an expense category, with live balances', async () => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(withInterceptors([idempotencyKeyInterceptor, apiErrorInterceptor])), provideHttpClientTesting(), provideSession()],
     });
     await TestBed.inject(WorkspaceStore).ensureLoaded();
     const http = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(GoalMoneyForm);
-    fixture.componentRef.setInput('target', { goal: TRIP, kind: 'spend', accounts: [BCP, FUND], categories: [LEISURE, SALARY] });
+    fixture.componentRef.setInput('target', { goal: TRIP, kind: 'spend', categories: [LEISURE, SALARY] });
+    fixture.componentRef.setInput('accounts', [BCP, FUND]);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
 
-    // Only the bank is offered to pay, and only expense categories.
+    // Only the bank is offered to pay, already chosen with its balance, and only expense categories.
+    expect(element.querySelector('[role="combobox"] strong')?.textContent).toBe('BCP');
+    expect(element.querySelector('[role="combobox"] small')?.textContent).toBe('Saldo S/ 1,000.00');
     const selects = Array.from(element.querySelectorAll('select'));
-    expect(Array.from(selects[0].options).map((option) => option.text)).toEqual(['Elige una cuenta', 'BCP']);
-    expect(Array.from(selects[1].options).map((option) => option.text)).toEqual(['Elige una categoría', 'Suscripciones y ocio']);
-    expect(element.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!.value).toBe('1000.00');
+    expect(Array.from(selects[0].options).map((option) => option.text)).toEqual(['Elige una categoría', 'Suscripciones y ocio']);
+    const amount = element.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
+    expect(amount.value).toBe('1000.00');
 
-    selects[1].value = 'c-leisure';
-    selects[1].dispatchEvent(new Event('input'));
-    selects[1].dispatchEvent(new Event('change'));
+    // The balances arrive again while the dialog is open: the new one shows, and what was typed stays.
+    amount.value = '600';
+    amount.dispatchEvent(new Event('input'));
+    fixture.componentRef.setInput('accounts', [{ ...BCP, balance: 750 }, FUND]);
+    await fixture.whenStable();
+    expect(element.querySelector('[role="combobox"] small')?.textContent).toBe('Saldo S/ 750.00');
+    expect(amount.value).toBe('600');
+
+    selects[0].value = 'c-leisure';
+    selects[0].dispatchEvent(new Event('input'));
+    selects[0].dispatchEvent(new Event('change'));
     await fixture.whenStable();
     element.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
     await new Promise((resolve) => setTimeout(resolve));
     TestBed.tick();
 
     const request = http.expectOne(`${BASE}/goals/g-trip/spend`);
-    expect(request.request.body).toEqual({ amount: 1000, accountId: 'a-bcp', categoryId: 'c-leisure', description: null });
+    expect(request.request.body).toEqual({ amount: 600, accountId: 'a-bcp', categoryId: 'c-leisure', description: null });
     expect(request.request.headers.get('Idempotency-Key')).toBeTruthy();
     request.flush({ ...TRIP, saved: 0, mySaved: 0 });
     http.verify();

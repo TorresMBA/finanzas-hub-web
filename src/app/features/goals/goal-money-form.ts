@@ -1,19 +1,19 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { FormField, form, submit, validate } from '@angular/forms/signals';
 import { Account, Category, Goal } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
+import { AccountPicker, accountGroups } from '../../shared/ui/account-picker';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { formatMoney, parseAmount } from '../../shared/ui/money';
 import { GoalsApi } from './goals-api';
 import { isManagedAccount } from '../../core/api/managed-accounts';
 
-/** What the dialog needs: the goal, what to do with the money and the accounts (and, to spend, the categories) of the person. */
+/** What the dialog needs: the goal, what to do with the money and, to spend, the categories of the person. */
 export interface GoalMoneyTarget {
   readonly goal: Goal;
   readonly kind: 'contribute' | 'withdraw' | 'spend';
-  readonly accounts: readonly Account[];
   readonly categories?: readonly Category[];
 }
 
@@ -30,14 +30,14 @@ const ACTIONS: Readonly<Record<GoalMoneyTarget['kind'], string>> = { contribute:
  */
 @Component({
   selector: 'app-goal-money-form',
-  imports: [Dialog, Field, FormField],
+  imports: [AccountPicker, Dialog, Field, FormField],
   template: `
     <app-dialog [title]="titles[target().kind] + ' «' + target().goal.name + '»'" (closed)="closed.emit()">
       <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
         @if (failure(); as text) {
           <div class="alert" role="alert">{{ text }}</div>
         }
-        @if (accounts().length === 0) {
+        @if (usable().length === 0) {
           <p class="form-note">No tienes una cuenta en {{ target().goal.currency }} con la que mover este dinero. Créala en Cuentas.</p>
         } @else {
           <app-field [label]="'Monto (' + target().goal.currency + ')'" [hint]="hint()" [state]="moneyForm.amount()">
@@ -51,12 +51,7 @@ const ACTIONS: Readonly<Record<GoalMoneyTarget['kind'], string>> = { contribute:
             </div>
           }
           <app-field [label]="accountLabel()" [state]="moneyForm.accountId()">
-            <select class="input" [formField]="moneyForm.accountId">
-              <option value="">Elige una cuenta</option>
-              @for (account of accounts(); track account.id) {
-                <option [value]="account.id">{{ account.name }}</option>
-              }
-            </select>
+            <app-account-picker [label]="accountLabel()" [groups]="accountGroups()" [formField]="moneyForm.accountId" />
           </app-field>
           @if (target().kind === 'spend') {
             <app-field label="Categoría del gasto" [state]="moneyForm.categoryId()">
@@ -75,7 +70,7 @@ const ACTIONS: Readonly<Record<GoalMoneyTarget['kind'], string>> = { contribute:
         }
         <div class="form-actions">
           <button class="button" type="button" (click)="closed.emit()">Cancelar</button>
-          <button class="button button--primary" type="submit" [disabled]="busy() || accounts().length === 0">
+          <button class="button button--primary" type="submit" [disabled]="busy() || usable().length === 0">
             {{ busy() ? 'Guardando…' : actions[target().kind] }}
           </button>
         </div>
@@ -97,6 +92,8 @@ export class GoalMoneyForm {
   private readonly idempotencyKey = newIdempotencyKey();
 
   readonly target = input.required<GoalMoneyTarget>();
+  /** The person's accounts, bound live: a balance that changes while the dialog is open shows here. */
+  readonly accounts = input.required<readonly Account[]>();
 
   /** Emits the message to show once the money moved. */
   readonly saved = output<string>();
@@ -107,11 +104,12 @@ export class GoalMoneyForm {
   protected readonly actions = ACTIONS;
 
   /** The accounts that hold money in the currency of the goal: not a credit card, not the fund of a goal. */
-  protected readonly accounts = computed(() =>
-    this.target().accounts.filter(
+  protected readonly usable = computed(() =>
+    this.accounts().filter(
       (account) => !account.isArchived && account.currency === this.target().goal.currency && account.type !== 'creditCard' && !isManagedAccount(account.type),
     ),
   );
+  protected readonly accountGroups = computed(() => accountGroups(this.usable()));
 
   /** The expense categories in use, each followed by its subcategories. */
   protected readonly categoryOptions = computed(() =>
@@ -143,7 +141,8 @@ export class GoalMoneyForm {
   protected readonly model = linkedSignal(() => ({
     // To spend, all of what is theirs by default: that is what reaching a goal is usually for.
     amount: this.target().kind === 'spend' ? Number(this.target().goal.mySaved).toFixed(2) : '',
-    accountId: this.accounts().length === 1 ? this.accounts()[0].id : '',
+    // Not tracked: balances arriving while the dialog is open must not clear what was typed.
+    accountId: untracked(() => (this.usable().length === 1 ? this.usable()[0].id : '')),
     categoryId: '',
     description: '',
   }));

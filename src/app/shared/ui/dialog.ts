@@ -47,6 +47,39 @@ let nextId = 0;
     dialog::backdrop {
       background: var(--ov);
     }
+    /* It arrives from below on mobile, as a sheet does, and grows into place from tablet up. */
+    dialog[open] {
+      animation: sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+      @include m.tablet-up {
+        animation-name: card-in;
+      }
+    }
+    dialog[open]::backdrop {
+      animation: fade-in 220ms ease-out;
+    }
+    @keyframes sheet-in {
+      from {
+        transform: translateY(100%);
+      }
+    }
+    @keyframes card-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+      }
+    }
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      dialog[open],
+      dialog[open]::backdrop {
+        animation: none;
+      }
+    }
     header {
       display: flex;
       align-items: center;

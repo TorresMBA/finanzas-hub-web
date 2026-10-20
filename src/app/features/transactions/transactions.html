@@ -126,7 +126,9 @@
                     <app-icon-tile [icon]="look.icon" [color]="look.color" [size]="36" />
                     <span class="names">
                       <strong>{{ item.description }}</strong>
-                      @if (item.transfer; as transfer) {
+                      @if (item.status === 'voided' && (item.voidReason || item.note)) {
+                        <span>{{ item.voidReason ? 'Motivo: ' + item.voidReason : item.note }}</span>
+                      } @else if (item.transfer; as transfer) {
                         <span>{{ transfer.fromAccountName }} → {{ transfer.toAccountName }}</span>
                       } @else {
                         <span>{{ item.category ? item.category.name + ' · ' : '' }}{{ item.accountName }}</span>

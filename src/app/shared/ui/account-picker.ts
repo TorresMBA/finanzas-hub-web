@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRend
 import { FormValueControl } from '@angular/forms/signals';
 import { Icon } from './icon';
 import { IconTile, TileColor } from './icon-tile';
-import { Amount, MoneyPipe } from './money';
+import { Amount, MoneyPipe, baseFirst, currencyLook, formatMoney, sumAmounts } from './money';
 
 /** One account to choose: what the person recognises it by and what it holds. */
 export interface PickerOption {
@@ -23,6 +23,64 @@ export interface PickerGroup {
   /** Already written, since it is the group's business how to add its accounts up. */
   readonly total: string | null;
   readonly options: readonly PickerOption[];
+}
+
+/** What the picker needs of an account, as the API describes it. */
+export interface PickerAccount {
+  readonly id: string;
+  readonly name: string;
+  readonly type: string;
+  readonly currency: string;
+  readonly balance: Amount;
+}
+
+interface AccountLook {
+  readonly icon: string;
+  readonly color: TileColor;
+  readonly hint: string;
+}
+
+const OTHER_ACCOUNT: AccountLook = { icon: 'account_balance', color: 'neutral', hint: '' };
+
+/** How each kind of account looks in the picker. Goal funds and investments are not offered: their sections move them. */
+const ACCOUNT_LOOK: Readonly<Record<string, AccountLook>> = {
+  bank: { icon: 'account_balance', color: 'blue', hint: 'Cuenta bancaria' },
+  cash: { icon: 'payments', color: 'green', hint: 'Efectivo' },
+  wallet: { icon: 'account_balance_wallet', color: 'violet', hint: 'Billetera' },
+  creditCard: { icon: 'credit_card', color: 'amber', hint: 'Tarjeta de crédito' },
+};
+
+/**
+ * The accounts by currency, the base one first, each group with what it holds. `excluded` is shown but cannot be
+ * chosen, with `excludedHint` saying why: the origin of a transfer, which cannot also receive it.
+ */
+export function accountGroups(
+  accounts: readonly PickerAccount[],
+  baseCurrency: string | null = null,
+  excluded: string | null = null,
+  excludedHint = 'Cuenta de origen',
+): PickerGroup[] {
+  return baseFirst(accounts.map((account) => account.currency), baseCurrency).map((code) => {
+    const inCurrency = accounts.filter((account) => account.currency === code);
+    return {
+      label: `${currencyLook(code)?.pluralName ?? code} · ${code}`,
+      total: formatMoney(sumAmounts(inCurrency.map((account) => account.balance)), code),
+      options: inCurrency.map((account) => {
+        const look = ACCOUNT_LOOK[account.type] ?? OTHER_ACCOUNT;
+        const isExcluded = account.id === excluded;
+        return {
+          id: account.id,
+          name: account.name,
+          hint: isExcluded ? excludedHint : look.hint,
+          currency: account.currency,
+          balance: account.balance,
+          icon: look.icon,
+          color: look.color,
+          disabled: isExcluded,
+        };
+      }),
+    };
+  });
 }
 
 let nextId = 0;

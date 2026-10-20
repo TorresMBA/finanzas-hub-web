@@ -202,6 +202,7 @@ describe('Transactions', () => {
   it('lists the movements by day, with the net of the income and expenses of each currency', async () => {
     await open();
 
+    // An opening balance moves the account and the net worth, but it is not income of its day.
     expect(texts('.day')).toEqual(['Lunes, 12 de octubre+S/ 4,446.00 · −US$ 12.99', 'Jueves, 1 de octubre']);
     expect(texts('.row .names strong')).toEqual(['Wong', 'Sueldo', 'Netflix', 'Saldo inicial']);
     expect(texts('.row .names span')).toEqual(['Supermercado · BCP', 'Supermercado · BCP', 'Supermercado · BCP Dólares', 'BCP']);
@@ -251,6 +252,14 @@ describe('Transactions', () => {
     expect(texts('app-transactions-summary .badge')).toEqual(['Monto original']);
     expect(element.querySelector('app-transactions-summary table')).toBeNull();
     expect(texts('.kpis .note')).toEqual(['Moneda base', 'Moneda base', 'Moneda base']);
+  });
+
+  it('says in the row why a movement was voided, or its note when no reason was given', async () => {
+    const withReason = movement('t-dup', 'Wong duplicado', -54, '2026-10-12', { status: 'voided', voidReason: 'Registrado dos veces', note: 'Compra semanal' });
+    const withNote = movement('t-old', 'Taxi', -20, '2026-10-12', { status: 'voided', note: 'Lo pagó Juan' });
+    await open([withReason, withNote, WONG]);
+
+    expect(texts('.row .names span')).toEqual(['Motivo: Registrado dos veces', 'Lo pagó Juan', 'Supermercado · BCP']);
   });
 
   it('shows a transfer as money between two accounts, neither earned nor spent', async () => {

@@ -1,5 +1,6 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { onMovementSaved } from '../../core/movements/movements-feed';
 import { Account, CalendarItem, CalendarPeriod, Category, RecurringRule } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { PeriodStore } from '../../core/period/period-store';
@@ -66,7 +67,7 @@ export class Calendar {
   });
   protected readonly calendar = httpResource<CalendarPeriod>(() => this.api.calendarUrl(this.range()));
   protected readonly rules = httpResource<RecurringRule[]>(() => this.api.rulesUrl());
-  private readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
+  protected readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
   private readonly categories = httpResource<Category[]>(() => this.api.categoriesUrl());
 
   protected readonly filter = signal<Filter>('all');
@@ -169,14 +170,15 @@ export class Calendar {
   }
 
   protected openForm(): void {
-    const accounts = (this.accounts.value() ?? []).filter((account) => !isManagedAccount(account.type));
-    if (accounts.length === 0) {
+    if (!(this.accounts.value() ?? []).some((account) => !isManagedAccount(account.type))) {
       this.notice.set(null);
       this.failure.set('Crea primero una cuenta: un movimiento programado necesita saber de dónde sale o a dónde llega el dinero.');
       return;
     }
 
-    this.formTarget.set({ accounts, categories: this.categories.value() ?? [], date: this.selectedDay() });
+    this.formTarget.set({ categories: this.categories.value() ?? [], date: this.selectedDay() });
+    // The balances may have changed since the page loaded: the dialog shows them as they are now.
+    this.accounts.reload();
   }
 
   protected onSaved(message: string): void {
@@ -197,6 +199,11 @@ export class Calendar {
   protected changeStatus(rule: RecurringRule, change: 'pause' | 'resume' | 'end'): Promise<void> {
     const done = { pause: 'en pausa', resume: 'reanudada', end: 'terminada: ya no espera más fechas' }[change];
     return this.run(`«${rule.description}» ${done}.`, () => this.api.changeStatus(rule.id, change));
+  }
+
+  constructor() {
+    // A movement registered from the quick button shows on its day.
+    onMovementSaved(() => this.reload());
   }
 
   protected reload(): void {

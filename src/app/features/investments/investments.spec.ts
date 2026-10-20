@@ -88,4 +88,23 @@ describe('Investments', () => {
     // What a broker shows next to the units: 1 000 invested in 2, now worth 1 200.
     expect(facts()).toEqual(expect.arrayContaining(['Precio promedio S/ 500.00', 'Precio actual S/ 600.00']));
   });
+
+  it('shows the history newest first, buys and new prices mixed by when they were registered', async () => {
+    http.expectOne(`${BASE}/investments/summary`).flush({ ...SUMMARY, holdings: [ETF] });
+    http.expectOne(`${BASE}/accounts`).flush([]);
+    await settle();
+    // On the 10th a buy, then a new price, then another buy; the price of the 3rd was written down after all of them.
+    const buy = (id: string, amount: number) => ({ id, kind: 'contribution', occurredOn: '2026-10-10', amount, capital: amount, realized: 0, quantity: 1, accountName: 'BCP' });
+    http.expectOne(`${BASE}/holdings/h-etf`).flush({
+      holding: ETF, accountId: 'b',
+      movements: [buy('0199d0a0-0003-7000-8000-000000000000', 300), buy('0199d0a0-0001-7000-8000-000000000000', 100)],
+      valuations: [
+        { id: '0199d0a0-0004-7000-8000-000000000000', onDate: '2026-10-03', value: 900, unitPrice: 450 },
+        { id: '0199d0a0-0002-7000-8000-000000000000', onDate: '2026-10-10', value: 1200, unitPrice: 600 },
+      ],
+    });
+    await fixture.whenStable();
+
+    expect(texts('.history li strong')).toEqual(['S/ 300.00', 'S/ 1,200.00', 'S/ 100.00', 'S/ 900.00']);
+  });
 });

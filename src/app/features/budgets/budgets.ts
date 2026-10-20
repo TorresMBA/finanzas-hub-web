@@ -1,5 +1,6 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { onMovementSaved } from '../../core/movements/movements-feed';
 import { RouterLink } from '@angular/router';
 import { Budget, BudgetMonth, Category, CategoryTotals } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
@@ -161,6 +162,14 @@ export class Budgets {
     }
 
     this.formTarget.set({ mode: 'create', categories, currency: this.currency() });
+  }
+
+  constructor() {
+    // An expense registered from the quick button counts against its budget.
+    onMovementSaved(() => {
+      this.budgets.reload();
+      this.totals.reload();
+    });
   }
 
   protected openAdjust(budget: Budget): void {

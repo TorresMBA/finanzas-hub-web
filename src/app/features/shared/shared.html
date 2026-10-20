@@ -97,7 +97,8 @@
           [me]="me()"
           [busy]="busy()"
           [workspaceMembers]="list()?.members ?? []"
-          (settle)="settle(data, $event)"
+          (settle)="settle(data, $event.debt, $event.item)"
+          (linkExpense)="linkExpense(data, $event)"
           (remind)="remind(data, $event)"
           (cancelExpense)="cancelExpense(data, $event)"
           (voidSettlement)="voidSettlement(data, $event)"
@@ -213,8 +214,11 @@
   <app-group-form [target]="target" (saved)="onGroupSaved($event)" (closed)="groupForm.set(null)" />
 }
 @if (expenseForm(); as target) {
-  <app-expense-form [target]="target" (saved)="onSaved($event)" (closed)="expenseForm.set(null)" />
+  <app-expense-form [target]="target" [accounts]="accounts.value() ?? []" (saved)="onSaved($event)" (closed)="expenseForm.set(null)" />
 }
 @if (settlementForm(); as target) {
-  <app-settlement-form [target]="target" (saved)="onSaved($event)" (closed)="settlementForm.set(null)" />
+  <app-settlement-form [target]="target" [accounts]="accounts.value() ?? []" (saved)="onSaved($event)" (closed)="settlementForm.set(null)" />
+}
+@if (expenseAccountForm(); as target) {
+  <app-expense-account-form [target]="target" [accounts]="accounts.value() ?? []" (saved)="onSaved($event)" (closed)="expenseAccountForm.set(null)" />
 }

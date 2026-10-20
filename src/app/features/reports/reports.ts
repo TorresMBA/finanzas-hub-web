@@ -1,5 +1,6 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { onMovementSaved } from '../../core/movements/movements-feed';
 import { RouterLink } from '@angular/router';
 import { ReportFormat, ReportPeriodKind, ReportSummary } from '../../core/api/api-types';
 import { SessionStore } from '../../core/auth/session-store';
@@ -119,6 +120,11 @@ export class Reports {
   });
   private readonly query = computed(() => `period=${this.kind()}&anchor=${this.period.isoMonth()}`);
   protected readonly report = httpResource<ReportSummary>(() => (this.base() ? `${this.base()}/summary?${this.query()}` : undefined));
+
+  constructor() {
+    // A movement registered from the quick button counts in the report.
+    onMovementSaved(() => this.report.reload());
+  }
 
   protected exportUrl(format: ReportFormat): string {
     return `${this.base()}/export?${this.query()}&format=${format}`;

@@ -1,4 +1,5 @@
 @use 'look';
+@use 'mixins' as m;
 
 :host {
   display: flex;
@@ -271,8 +272,92 @@
     border-bottom-color: transparent;
   }
 
-  > .cancel {
+  .expense-actions {
     margin: 0 20px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+}
+
+// A debt opens into the expenses it is made of, each one payable on its own.
+.debt-detail {
+  > summary:hover {
+    background: var(--sf2);
+  }
+
+  &[open] > summary {
+    border-bottom-color: transparent;
+  }
+}
+
+.chevron {
+  vertical-align: middle;
+  transition: transform 0.15s ease;
+}
+
+.breakdown {
+  margin: 0 20px 14px;
+  padding: 2px 12px;
+  border-radius: 12px;
+  background: var(--sf2);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    font-size: 13px;
+
+    & + li {
+      border-top: 1px solid var(--bd);
+    }
+  }
+
+  .names {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .meter {
+    width: 100%;
+  }
+}
+
+.breakdown-title {
+  font-weight: 700;
+  @include m.truncate;
+}
+
+.breakdown-amount {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.soft--small {
+  flex: none;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+// On a phone each expense takes two lines: what it was above, how much and its button below.
+@include m.mobile {
+  .breakdown li {
+    flex-wrap: wrap;
+
+    .names {
+      flex-basis: 100%;
+    }
+  }
+
+  .breakdown-amount {
+    flex: 1;
+    align-items: flex-start;
   }
 }
 

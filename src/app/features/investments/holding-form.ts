@@ -7,6 +7,7 @@ import {
   linkedSignal,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { FormField, form, submit, validate } from '@angular/forms/signals';
 import { Account, HoldingSummary, InvestmentType } from '../../core/api/api-types';
@@ -14,6 +15,7 @@ import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
+import { AccountPicker, accountGroups } from '../../shared/ui/account-picker';
 import { formatShortDate, toIsoDate } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
@@ -23,12 +25,8 @@ import { InvestmentsApi, TYPES, TYPE_LOOK, actionsFor, hasUnits } from './invest
 
 /** What the dialog does: register an investment, or put money in, take it out or write down what one is worth. */
 export type HoldingFormTarget =
-  | { readonly mode: 'open'; readonly accounts: readonly Account[] }
-  | {
-      readonly mode: 'contribute' | 'withdraw' | 'value';
-      readonly holding: HoldingSummary;
-      readonly accounts: readonly Account[];
-    };
+  | { readonly mode: 'open' }
+  | { readonly mode: 'contribute' | 'withdraw' | 'value'; readonly holding: HoldingSummary };
 
 /** How each type is explained when choosing it, and how its fields are called, as a bank or a broker would. */
 const GUIDE: Readonly<
@@ -141,7 +139,7 @@ function moveMessage(mode: 'contribute' | 'withdraw', holding: HoldingSummary, t
  */
 @Component({
   selector: 'app-holding-form',
-  imports: [Dialog, Field, FormField, IconTile],
+  imports: [AccountPicker, Dialog, Field, FormField, IconTile],
   template: `
     <app-dialog [title]="title()" (closed)="closed.emit()">
       @if (step() === 'type') {
@@ -276,7 +274,7 @@ function moveMessage(mode: 'contribute' | 'withdraw', holding: HoldingSummary, t
                 />
               </app-field>
             }
-          } @else if (accounts().length === 0) {
+          } @else if (usable().length === 0) {
             <p class="form-note">
               No tienes una cuenta {{ currencyNote() }}con la que mover este dinero. Créala en
               Cuentas.
@@ -394,29 +392,24 @@ function moveMessage(mode: 'contribute' | 'withdraw', holding: HoldingSummary, t
               <legend>
                 {{ target().mode === 'withdraw' ? 'A dónde va el dinero' : 'Con qué pagas' }}
               </legend>
-              <div class="form-pair">
-                <app-field
-                  [label]="target().mode === 'withdraw' ? 'Hacia la cuenta' : 'Desde la cuenta'"
-                  [state]="holdingForm.accountId()"
-                >
-                  <select class="input" [formField]="holdingForm.accountId">
-                    <option value="">Elige una cuenta</option>
-                    @for (account of accounts(); track account.id) {
-                      <option [value]="account.id">
-                        {{ account.name }} · {{ balanceOf(account) }}
-                      </option>
-                    }
-                  </select>
-                </app-field>
-                <app-field label="Fecha" [state]="holdingForm.date()">
-                  <input
-                    class="input"
-                    type="date"
-                    [max]="todayIso"
-                    [formField]="holdingForm.date"
-                  />
-                </app-field>
-              </div>
+              <app-field
+                [label]="accountLabel()"
+                [state]="holdingForm.accountId()"
+              >
+                <app-account-picker
+                  [label]="accountLabel()"
+                  [groups]="accountGroups()"
+                  [formField]="holdingForm.accountId"
+                />
+              </app-field>
+              <app-field label="Fecha" [state]="holdingForm.date()">
+                <input
+                  class="input"
+                  type="date"
+                  [max]="todayIso"
+                  [formField]="holdingForm.date"
+                />
+              </app-field>
               @if (shortOfMoney()) {
                 <p class="warning" role="status">
                   Esa cuenta tiene {{ balanceOf(account()!) }}: quedará en negativo.
@@ -449,7 +442,7 @@ function moveMessage(mode: 'contribute' | 'withdraw', holding: HoldingSummary, t
             <button
               class="button button--primary"
               type="submit"
-              [disabled]="busy() || (target().mode !== 'value' && accounts().length === 0)"
+              [disabled]="busy() || (target().mode !== 'value' && usable().length === 0)"
             >
               {{ busy() ? 'Guardando…' : action() }}
             </button>
@@ -610,6 +603,8 @@ export class HoldingForm {
   private readonly idempotencyKey = newIdempotencyKey();
 
   readonly target = input.required<HoldingFormTarget>();
+  /** The person's accounts, bound live: a balance that changes while the dialog is open shows here. */
+  readonly accounts = input.required<readonly Account[]>();
 
   /** Emits the message to show once it is saved. */
   readonly saved = output<string>();
@@ -644,8 +639,9 @@ export class HoldingForm {
     rate: '',
     days: '',
     date: this.todayIso,
-    // With a single account it could be, it is already chosen.
-    accountId: this.accounts().length === 1 ? this.accounts()[0].id : '',
+    // With a single account it could be, it is already chosen. Not tracked: balances arriving while the dialog is
+    // open must not clear what was typed.
+    accountId: untracked(() => (this.usable().length === 1 ? this.usable()[0].id : '')),
   }));
 
   protected readonly type = computed(() => this.holding()?.type ?? this.model().type);
@@ -669,9 +665,9 @@ export class HoldingForm {
   });
 
   /** Accounts that hold money: not a card, not a goal or another investment; in the currency of the investment once it has one. */
-  protected readonly accounts = computed(() => {
+  protected readonly usable = computed(() => {
     const currency = this.holding()?.currency;
-    return this.target().accounts.filter(
+    return this.accounts().filter(
       (account) =>
         !account.isArchived &&
         account.type !== 'creditCard' &&
@@ -680,8 +676,13 @@ export class HoldingForm {
     );
   });
 
+  protected readonly accountGroups = computed(() => accountGroups(this.usable()));
+  protected readonly accountLabel = computed(() =>
+    this.target().mode === 'withdraw' ? 'Hacia la cuenta' : 'Desde la cuenta',
+  );
+
   protected readonly account = computed(
-    () => this.accounts().find((account) => account.id === this.model().accountId) ?? null,
+    () => this.usable().find((account) => account.id === this.model().accountId) ?? null,
   );
   protected readonly currency = computed(
     () => this.holding()?.currency ?? this.account()?.currency ?? '',

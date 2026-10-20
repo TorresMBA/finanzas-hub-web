@@ -1,20 +1,19 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { FormField, form, maxLength, required, submit, validate } from '@angular/forms/signals';
-import { Account, AccountType, Category, Transaction, TransactionType } from '../../core/api/api-types';
+import { Account, Category, Transaction, TransactionType } from '../../core/api/api-types';
 import { CurrencyCatalog } from '../../core/currency/currency-catalog';
 import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
-import { AccountPicker, PickerGroup } from '../../shared/ui/account-picker';
+import { AccountPicker, accountGroups } from '../../shared/ui/account-picker';
 import { sameDayNextMonth, todayIso } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { Disclosure } from '../../shared/ui/disclosure';
 import { Field } from '../../shared/ui/field';
 import { FxBreakdown, FxRow } from '../../shared/ui/fx-breakdown';
 import { Icon } from '../../shared/ui/icon';
-import { TileColor } from '../../shared/ui/icon-tile';
-import { baseFirst, currencyDecimals, currencyLook, currencySymbol, formatMoney, formatRate, parseAmount, sumAmounts } from '../../shared/ui/money';
+import { currencyDecimals, currencySymbol, formatMoney, formatRate, parseAmount } from '../../shared/ui/money';
 import { MoneyInput } from '../../shared/ui/money-input';
 import { Switch } from '../../shared/ui/switch';
 import { TagInput } from '../../shared/ui/tag-input';
@@ -65,22 +64,6 @@ const TYPES: readonly { value: FormType; label: string }[] = [
   { value: 'income', label: 'Ingreso' },
   { value: 'transfer', label: 'Transferencia' },
 ];
-
-interface AccountLook {
-  readonly icon: string;
-  readonly color: TileColor;
-  readonly hint: string;
-}
-
-const OTHER_ACCOUNT: AccountLook = { icon: 'account_balance', color: 'neutral', hint: '' };
-
-/** How each kind of account looks in the picker. Goal funds and investments are not offered: their sections move them. */
-const ACCOUNT_LOOK: Readonly<Partial<Record<AccountType, AccountLook>>> = {
-  bank: { icon: 'account_balance', color: 'blue', hint: 'Cuenta bancaria' },
-  cash: { icon: 'payments', color: 'green', hint: 'Efectivo' },
-  wallet: { icon: 'account_balance_wallet', color: 'violet', hint: 'Billetera' },
-  creditCard: { icon: 'credit_card', color: 'amber', hint: 'Tarjeta de crédito' },
-};
 
 const MONTH = new Intl.DateTimeFormat('es-PE', { month: 'long' });
 
@@ -485,9 +468,9 @@ export class TransactionForm {
     return this.accounts().filter((account) => !isManagedAccount(account.type) && (!account.isArchived || account.id === current));
   });
 
-  protected readonly originGroups = computed(() => this.groupsOf(null));
+  protected readonly originGroups = computed(() => accountGroups(this.ownAccounts(), this.baseCurrency()));
   /** The origin of a transfer cannot also receive it. */
-  protected readonly destinationGroups = computed(() => this.groupsOf(this.model().accountId));
+  protected readonly destinationGroups = computed(() => accountGroups(this.ownAccounts(), this.baseCurrency(), this.model().accountId));
 
   /** The currency of the receiving account when it is not the one that leaves: then both amounts are asked. */
   protected readonly destinationCurrency = computed(() => {
@@ -702,35 +685,6 @@ export class TransactionForm {
     } catch {
       return `${done}, pero no se pudo programar su repetición. Prográmalo desde el Calendario.`;
     }
-  }
-
-  /** The accounts by currency, the base one first, each group with what it holds. */
-  private groupsOf(excluded: string | null): PickerGroup[] {
-    const accounts = this.ownAccounts();
-    const base = this.baseCurrency();
-    const currencies = baseFirst(accounts.map((account) => account.currency), base);
-    return currencies.map((code) => {
-      const inCurrency = accounts.filter((account) => account.currency === code);
-      const name = currencyLook(code)?.pluralName ?? code;
-      return {
-        label: `${name} · ${code}`,
-        total: formatMoney(sumAmounts(inCurrency.map((account) => account.balance)), code),
-        options: inCurrency.map((account) => {
-          const look = ACCOUNT_LOOK[account.type] ?? OTHER_ACCOUNT;
-          const isOrigin = account.id === excluded;
-          return {
-            id: account.id,
-            name: account.name,
-            hint: isOrigin ? 'Cuenta de origen' : look.hint,
-            currency: account.currency,
-            balance: account.balance,
-            icon: look.icon,
-            color: look.color,
-            disabled: isOrigin,
-          };
-        }),
-      };
-    });
   }
 
   private currencyOf(accountId: string): string {

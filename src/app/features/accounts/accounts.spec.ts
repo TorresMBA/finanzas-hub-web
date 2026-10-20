@@ -379,12 +379,22 @@ describe('Accounts', () => {
     const form = 'app-card-payment-form';
 
     expect(element.querySelector(`${form} .form-note`)?.textContent).toContain('S/ 3,600.00');
-    // Another card is not offered, and the amount starts at what is owed.
-    expect(texts(`${form} option`)).toEqual(['Elige una cuenta', 'BCP Sueldo · S/ 946.10', 'BCP Dólares · US$ 820.00']);
+    // Another card is not offered; each account shows what it holds, those in the card's currency first.
+    const picker = element.querySelector<HTMLButtonElement>(`${form} [role="combobox"]`)!;
+    picker.click();
+    await settle();
+    expect(texts(`${form} [role="option"] strong`)).toEqual(['BCP Sueldo', 'BCP Dólares']);
+    expect(texts(`${form} [role="option"] .balance`)).toEqual(['S/ 946.10', 'US$ 820.00']);
+    picker.click();
+    await settle();
     await submit(form);
     expect(texts(`${form} [role="alert"]`)).toEqual(['Elige la cuenta desde la que pagas.']);
 
-    await type('Pagar desde', 'a-usd', form);
+    picker.click();
+    await settle();
+    element.querySelectorAll<HTMLElement>(`${form} [role="option"]`)[1].click();
+    await settle();
+    expect(picker.textContent).toContain('Saldo US$ 820.00');
     await type('Monto del pago', '375', form);
     await submit(form);
     expect(texts(`${form} [role="alert"]`)).toEqual(['Un monto mayor que cero, con hasta dos decimales.']);

@@ -1,8 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, linkedSignal, resource, signal } from '@angular/core';
-import { Account, Category, SharedDebt, SharedExpense, SharedGroupDetail, SharedSettlement } from '../../core/api/api-types';
-import { isManagedAccount } from '../../core/api/managed-accounts';
+import { Account, Category, SharedDebt, SharedDebtItem, SharedExpense, SharedGroupDetail, SharedSettlement } from '../../core/api/api-types';
 import { SessionStore } from '../../core/auth/session-store';
 import { errorMessage } from '../../core/errors/error-messages';
 import { NotificationCenter } from '../../core/notifications/notification-center';
@@ -16,6 +15,7 @@ import { formatMoney, sumAmounts } from '../../shared/ui/money';
 import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 import { Sign, chipOf, figuresOf, initials, live, signOf, signed, toneOf } from './balances';
+import { ExpenseAccountForm, ExpenseAccountFormTarget } from './expense-account-form';
 import { ExpenseForm, ExpenseFormTarget } from './expense-form';
 import { GroupForm, GroupFormTarget } from './group-form';
 import { GroupView } from './group-view';
@@ -44,7 +44,7 @@ function peopleNote(count: number, none: string, one: string, many: string): str
  */
 @Component({
   selector: 'app-shared',
-  imports: [Dialog, EmptyState, ErrorState, ExpenseForm, GroupForm, GroupView, Icon, NgTemplateOutlet, PageHeader, SettlementForm, Skeleton],
+  imports: [Dialog, EmptyState, ErrorState, ExpenseAccountForm, ExpenseForm, GroupForm, GroupView, Icon, NgTemplateOutlet, PageHeader, SettlementForm, Skeleton],
   templateUrl: './shared.html',
   styleUrl: './shared.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,7 +60,7 @@ export class Shared {
     params: () => this.api.groupsUrl(),
     loader: ({ params }) => this.api.board(params),
   });
-  private readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
+  protected readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
   private readonly categories = httpResource<Category[]>(() => this.api.categoriesUrl());
 
   /** From the URL: the group to open on arrival, as a result of the global search does. */
@@ -72,6 +72,7 @@ export class Shared {
   protected readonly groupForm = signal<GroupFormTarget | null>(null);
   protected readonly expenseForm = signal<ExpenseFormTarget | null>(null);
   protected readonly settlementForm = signal<SettlementFormTarget | null>(null);
+  protected readonly expenseAccountForm = signal<ExpenseAccountFormTarget | null>(null);
   protected readonly choosingGroup = signal(false);
 
   protected readonly failure = signal<string | null>(null);
@@ -262,11 +263,12 @@ export class Shared {
 
   protected openExpenseForm(detail: SharedGroupDetail): void {
     this.choosingGroup.set(false);
-    this.expenseForm.set({ detail, accounts: this.usableAccounts(detail.group.currency), categories: this.categories.value() ?? [] });
+    this.expenseForm.set({ detail, categories: this.categories.value() ?? [] });
+    this.refreshBalances();
   }
 
-  /** Pays or collects a debt between the person and another member. */
-  protected settle(detail: SharedGroupDetail, debt: SharedDebt): void {
+  /** Pays or collects a debt between the person and another member: all of it, or one of the expenses it is made of. */
+  protected settle(detail: SharedGroupDetail, debt: SharedDebt, item: SharedDebtItem | null = null): void {
     const iPay = debt.fromUserId === this.me();
     this.settlementForm.set({
       groupId: detail.group.id,
@@ -275,11 +277,23 @@ export class Shared {
       toUserId: debt.toUserId,
       otherName: iPay ? debt.toName : debt.fromName,
       iPay,
-      amount: Number(debt.amount),
+      amount: Number(item ? item.pending : debt.amount),
       settlementId: null,
-      accounts: this.accounts.value() ?? [],
+      expense: item ? { id: item.expenseId, description: item.description } : null,
       categories: this.categories.value() ?? [],
     });
+    this.refreshBalances();
+  }
+
+  /** Puts an expense the person paid in one of their accounts, when they did not when registering it. */
+  protected linkExpense(detail: SharedGroupDetail, expense: SharedExpense): void {
+    this.expenseAccountForm.set({
+      groupId: detail.group.id,
+      currency: detail.group.currency,
+      expense,
+      categories: this.categories.value() ?? [],
+    });
+    this.refreshBalances();
   }
 
   /** Puts a payment that already exists in one of the accounts of the person. */
@@ -294,9 +308,9 @@ export class Shared {
       iPay,
       amount: Number(settlement.amount),
       settlementId: settlement.id,
-      accounts: this.accounts.value() ?? [],
       categories: this.categories.value() ?? [],
     });
+    this.refreshBalances();
   }
 
   protected onGroupSaved(saved: { groupId: string; message: string }): void {
@@ -308,6 +322,7 @@ export class Shared {
     this.groupForm.set(null);
     this.expenseForm.set(null);
     this.settlementForm.set(null);
+    this.expenseAccountForm.set(null);
     this.failure.set(null);
     this.notice.set(message);
     this.reload();
@@ -369,9 +384,9 @@ export class Shared {
       .sort((a, b) => b.weight - a.weight || a.name.localeCompare(b.name));
   }
 
-  /** The accounts an expense of the group can be registered in: in its currency, and not the fund of a goal. */
-  private usableAccounts(currency: string): Account[] {
-    return (this.accounts.value() ?? []).filter((account) => !account.isArchived && account.currency === currency && !isManagedAccount(account.type));
+  /** The balances may have changed since the page loaded: a dialog that offers accounts shows them as they are now. */
+  private refreshBalances(): void {
+    this.accounts.reload();
   }
 
   private async run(success: string, action: () => Promise<unknown>): Promise<void> {

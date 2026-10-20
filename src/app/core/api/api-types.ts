@@ -57,6 +57,7 @@ export type SharedGroups = Schemas['SharedGroupsResponse'];
 export type SharedGroupSummary = Schemas['SharedGroupSummaryResponse'];
 export type SharedGroupDetail = Schemas['SharedGroupDetailResponse'];
 export type SharedDebt = Schemas['SharedDebtResponse'];
+export type SharedDebtItem = Schemas['SharedDebtItemResponse'];
 export type SharedExpense = Schemas['SharedExpenseResponse'];
 export type SharedSettlement = Schemas['SharedSettlementResponse'];
 export type SharedMember = Schemas['SharedMemberResponse'];

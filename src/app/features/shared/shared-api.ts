@@ -124,7 +124,7 @@ export class SharedApi {
 
   recordSettlement(
     groupId: string,
-    request: { fromUserId: string; toUserId: string; amount: number; accountId: string | null; categoryId: string | null },
+    request: { fromUserId: string; toUserId: string; amount: number; accountId: string | null; categoryId: string | null; expenseId?: string | null },
     key: string,
   ): Promise<SharedGroupDetail> {
     return firstValueFrom(this.http.post<SharedGroupDetail>(`${this.base()}/shared-groups/${groupId}/settlements`, request, this.withKey(key)));
@@ -134,6 +134,13 @@ export class SharedApi {
   linkAccount(groupId: string, settlementId: string, accountId: string, categoryId: string | null, key: string): Promise<SharedGroupDetail> {
     return firstValueFrom(
       this.http.post<SharedGroupDetail>(`${this.base()}/shared-groups/${groupId}/settlements/${settlementId}/link-account`, { accountId, categoryId }, this.withKey(key)),
+    );
+  }
+
+  /** Puts an expense the person paid in one of their accounts, when they did not when registering it. */
+  linkExpenseAccount(groupId: string, expenseId: string, accountId: string, categoryId: string, key: string): Promise<SharedGroupDetail> {
+    return firstValueFrom(
+      this.http.post<SharedGroupDetail>(`${this.base()}/shared-groups/${groupId}/expenses/${expenseId}/link-account`, { accountId, categoryId }, this.withKey(key)),
     );
   }
 

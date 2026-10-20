@@ -3,6 +3,7 @@ import { FormField, form, submit, validate } from '@angular/forms/signals';
 import { Account, Category } from '../../core/api/api-types';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
+import { AccountPicker, accountGroups } from '../../shared/ui/account-picker';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { formatMoney, parseAmount } from '../../shared/ui/money';
@@ -24,7 +25,8 @@ export interface SettlementFormTarget {
   readonly amount: number;
   /** Set when the payment exists and only the account is missing. */
   readonly settlementId: string | null;
-  readonly accounts: readonly Account[];
+  /** The one expense a new payment is for; then `amount` is what is still owed of it. Null pays the oldest first. */
+  readonly expense?: { readonly id: string; readonly description: string } | null;
   readonly categories: readonly Category[];
 }
 
@@ -32,7 +34,7 @@ const REQUIRED = { kind: 'required', message: 'Este dato es necesario.' };
 
 @Component({
   selector: 'app-settlement-form',
-  imports: [Dialog, Field, FormField],
+  imports: [AccountPicker, Dialog, Field, FormField],
   template: `
     <app-dialog [title]="title()" (closed)="closed.emit()">
       <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
@@ -40,7 +42,7 @@ const REQUIRED = { kind: 'required', message: 'Este dato es necesario.' };
           <div class="alert" role="alert">{{ text }}</div>
         }
         @if (isNew()) {
-          <app-field [label]="'Monto (' + target().currency + ')'" [hint]="'Se deben ' + owed() + '.'" [state]="paymentForm.amount()">
+          <app-field [label]="'Monto (' + target().currency + ')'" [hint]="owedHint()" [state]="paymentForm.amount()">
             <input class="input" type="text" inputmode="decimal" [formField]="paymentForm.amount" />
           </app-field>
           <label class="form-check">
@@ -55,12 +57,7 @@ const REQUIRED = { kind: 'required', message: 'Este dato es necesario.' };
         }
         @if (model().toLedger) {
           <app-field label="Cuenta" [state]="paymentForm.accountId()">
-            <select class="input" [formField]="paymentForm.accountId">
-              <option value="">Elige una cuenta</option>
-              @for (account of accounts(); track account.id) {
-                <option [value]="account.id">{{ account.name }}</option>
-              }
-            </select>
+<app-account-picker label="Cuenta" [groups]="accountGroups()" [formField]="paymentForm.accountId" />
           </app-field>
           <app-field
             label="Categoría"
@@ -91,6 +88,8 @@ export class SettlementForm {
   private readonly idempotencyKey = newIdempotencyKey();
 
   readonly target = input.required<SettlementFormTarget>();
+  /** The person's accounts, bound live: a balance that changes while the dialog is open shows here. */
+  readonly accounts = input.required<readonly Account[]>();
 
   /** Emits the message to show once it is saved. */
   readonly saved = output<string>();
@@ -98,15 +97,28 @@ export class SettlementForm {
 
   protected readonly isNew = computed(() => this.target().settlementId === null);
   protected readonly owed = computed(() => formatMoney(this.target().amount, this.target().currency));
+  protected readonly owedHint = computed(() => {
+    const expense = this.target().expense;
+    return expense ? `De «${expense.description}» quedan ${this.owed()}.` : `Se deben ${this.owed()}.`;
+  });
   protected readonly title = computed(() => {
-    const { iPay, otherName } = this.target();
-    return this.isNew() ? (iPay ? `Pagar a ${otherName}` : `Registrar cobro de ${otherName}`) : 'Registrar en mi cuenta';
+    const { iPay, otherName, expense } = this.target();
+    if (!this.isNew()) {
+      return 'Registrar en mi cuenta';
+    }
+
+    if (expense) {
+      return iPay ? `Pagar «${expense.description}» a ${otherName}` : `Cobrar «${expense.description}» de ${otherName}`;
+    }
+
+    return iPay ? `Pagar a ${otherName}` : `Registrar cobro de ${otherName}`;
   });
 
   /** The accounts that can take it: in the currency of the group and not the fund of a goal. */
-  protected readonly accounts = computed(() =>
-    this.target().accounts.filter((account) => !account.isArchived && account.currency === this.target().currency && !isManagedAccount(account.type)),
+  protected readonly usable = computed(() =>
+    this.accounts().filter((account) => !account.isArchived && account.currency === this.target().currency && !isManagedAccount(account.type)),
   );
+  protected readonly accountGroups = computed(() => accountGroups(this.usable()));
   protected readonly categoryOptions = computed(() =>
     this.target()
       .categories.filter((category) => !category.isArchived)
@@ -155,9 +167,15 @@ export class SettlementForm {
         }
 
         const amount = parseAmount(model.amount) ?? 0;
-        await this.api.recordSettlement(target.groupId, { fromUserId: target.fromUserId, toUserId: target.toUserId, amount, accountId, categoryId }, this.idempotencyKey);
+        const expense = target.expense ?? null;
+        await this.api.recordSettlement(
+          target.groupId,
+          { fromUserId: target.fromUserId, toUserId: target.toUserId, amount, accountId, categoryId, expenseId: expense?.id ?? null },
+          this.idempotencyKey,
+        );
         const money = formatMoney(amount, target.currency);
-        this.saved.emit(target.iPay ? `Pagaste ${money} a ${target.otherName}.` : `Cobro de ${money} de ${target.otherName} registrado.`);
+        const of = expense ? ` de «${expense.description}»` : '';
+        this.saved.emit(target.iPay ? `Pagaste ${money}${of} a ${target.otherName}.` : `Cobro de ${money}${of} de ${target.otherName} registrado.`);
       } catch (error) {
         this.failure.set(errorMessage(error));
       } finally {

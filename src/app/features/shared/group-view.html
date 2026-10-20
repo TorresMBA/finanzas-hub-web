@@ -42,23 +42,57 @@
       </header>
       <ul aria-label="Deudas">
         @for (row of debts(); track row.debt.fromUserId + row.debt.toUserId) {
-          <li class="row debt">
+          <!-- The buttons live inside the summary: they stop the click so it does not open or close the row. -->
+          <ng-template #debtLine>
             <span class="debt-who">
               <span class="avatar" [attr.data-tone]="row.from.tone" aria-hidden="true">{{ row.from.initials }}</span>
               <app-icon class="arrow" name="arrow_forward" [size]="18" />
               <span class="avatar" [attr.data-tone]="row.to.tone" aria-hidden="true">{{ row.to.initials }}</span>
               <span class="names">
                 <strong>{{ row.text }}</strong>
-                <span class="lead">{{ row.note }}</span>
+                <span class="lead">
+                  {{ row.note }}
+                  @if (row.breakdown.length > 0) {
+                    <app-icon class="chevron" name="expand_more" [size]="16" />
+                  }
+                </span>
               </span>
             </span>
             <strong class="debt-amount tabular" [attr.data-sign]="row.iPay ? 'neg' : 'pos'">{{ row.debt.amount | money: cur }}</strong>
             <span class="debt-actions">
-              <button type="button" class="soft" (click)="settle.emit(row.debt)"><app-icon name="check" [size]="17" />{{ row.iPay ? 'Registrar pago' : 'Marcar recibido' }}</button>
+              <button type="button" class="soft" (click)="$event.preventDefault(); settle.emit({ debt: row.debt, item: null })">
+                <app-icon name="check" [size]="17" />{{ row.all }}
+              </button>
               @if (!row.iPay) {
-                <button type="button" class="link" [disabled]="busy()" (click)="remind.emit(row.debt)">Recordar</button>
+                <button type="button" class="link" [disabled]="busy()" (click)="$event.preventDefault(); remind.emit(row.debt)">Recordar</button>
               }
             </span>
+          </ng-template>
+          <li>
+            @if (row.breakdown.length > 0) {
+              <details class="debt-detail">
+                <summary class="row debt"><ng-container [ngTemplateOutlet]="debtLine" /></summary>
+                <ul class="breakdown" [attr.aria-label]="'Gastos de ' + row.text">
+                  @for (part of row.breakdown; track part.item.expenseId) {
+                    <li>
+                      <span class="names">
+                        <span class="breakdown-title">{{ part.item.description }}</span>
+                        <span class="lead">{{ part.day }}</span>
+                      </span>
+                      <span class="breakdown-amount">
+                        <strong class="tabular">{{ part.amount }}</strong>
+                        @if (part.partial) {
+                          <span class="meter" [style.--meter]="part.meter"></span>
+                        }
+                      </span>
+                      <button type="button" class="soft soft--small" (click)="settle.emit({ debt: row.debt, item: part.item })">{{ part.action }}</button>
+                    </li>
+                  }
+                </ul>
+              </details>
+            } @else {
+              <div class="row debt"><ng-container [ngTemplateOutlet]="debtLine" /></div>
+            }
           </li>
         } @empty {
           <li class="even">
@@ -101,8 +135,8 @@
       <header class="panel-head panel-head--row">
         <h3 id="activity-title">Actividad</h3>
         <div class="segmented" role="group" aria-label="Qué actividad ver">
-          @for (option of activityFilters; track option.value) {
-            <button type="button" [attr.aria-pressed]="activityFilter() === option.value" (click)="activityFilter.set(option.value)">{{ option.label }}</button>
+          @for (option of activityFilters(); track option.value) {
+            <button type="button" [attr.aria-pressed]="shownFilter() === option.value" (click)="activityFilter.set(option.value)">{{ option.label }}</button>
           }
         </div>
       </header>
@@ -118,7 +152,12 @@
                     <span class="square"><app-icon name="receipt_long" [size]="19" /></span>
                     <span class="names">
                       <strong class="item-title">{{ row.expense.description }}</strong>
-                      <span class="lead">{{ row.note }}</span>
+                      <span class="lead">
+                        {{ row.note }}
+                        @if (row.expense.canLinkAccount) {
+                          · <button type="button" class="link" (click)="$event.preventDefault(); linkExpense.emit(row.expense)">Registrar en mi cuenta</button>
+                        }
+                      </span>
                     </span>
                     <span class="item-side">
                       <strong class="tabular">{{ row.expense.totalAmount | money: cur }}</strong>
@@ -150,8 +189,15 @@
                       </li>
                     }
                   </ul>
-                  @if (row.expense.canCancel && row.expense.status === 'pending') {
-                    <button type="button" class="link danger cancel" [disabled]="busy()" (click)="cancelExpense.emit(row.expense)">Cancelar este gasto</button>
+                  @if (row.expense.canLinkAccount || (row.expense.canCancel && row.expense.status === 'pending')) {
+                    <div class="expense-actions">
+                      @if (row.expense.canLinkAccount) {
+                        <button type="button" class="link" (click)="linkExpense.emit(row.expense)">Registrar en mi cuenta</button>
+                      }
+                      @if (row.expense.canCancel && row.expense.status === 'pending') {
+                        <button type="button" class="link danger" [disabled]="busy()" (click)="cancelExpense.emit(row.expense)">Cancelar este gasto</button>
+                      }
+                    </div>
                   }
                 </details>
               </li>
@@ -180,7 +226,7 @@
         </ul>
       } @empty {
         <p class="lead none">
-          {{ activityFilter() === 'payments' ? 'Todavía no pagaste ni te pagaron.' : activityFilter() === 'expenses' ? 'Todavía no hay gastos tuyos en este grupo.' : 'Todavía no hay gastos ni pagos tuyos en este grupo.' }}
+          {{ shownFilter() === 'payments' ? 'Todavía no pagaste ni te pagaron.' : shownFilter() === 'expenses' ? 'Todavía no hay gastos tuyos en este grupo.' : 'Todavía no hay gastos ni pagos tuyos en este grupo.' }}
         </p>
       }
       <p class="footnote">

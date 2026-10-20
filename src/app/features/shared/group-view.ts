@@ -1,5 +1,6 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
-import { SharedDebt, SharedExpense, SharedGroupDetail, SharedSettlement } from '../../core/api/api-types';
+import { SharedDebt, SharedDebtItem, SharedExpense, SharedGroupDetail, SharedSettlement } from '../../core/api/api-types';
 import { TODAY } from '../../core/period/period-store';
 import { formatShortDate, toIsoDate } from '../../shared/ui/dates';
 import { Icon } from '../../shared/ui/icon';
@@ -8,7 +9,13 @@ import { Sign, chipOf, figuresOf, initials, live, signOf, signed, toneOf } from 
 import { GROUP_ICONS, STATUS_LOOK } from './shared-api';
 
 type Tab = 'balances' | 'activity' | 'members';
-type ActivityFilter = 'all' | 'expenses' | 'payments';
+type ActivityFilter = 'all' | 'expenses' | 'payments' | 'unlinked';
+
+/** A debt to pay or collect: all of it, or one of the expenses it is made of. */
+export interface SettleRequest {
+  readonly debt: SharedDebt;
+  readonly item: SharedDebtItem | null;
+}
 
 /** What the balance of the person asking means, under its figure. */
 const BALANCE_NOTES: Readonly<Record<Sign, string>> = { pos: 'Te deben', neg: 'Debes', even: 'A mano' };
@@ -44,7 +51,7 @@ function expenseItem(expense: SharedExpense, me: string, currency: string) {
   return {
     expense,
     cancelled: expense.status === 'cancelled',
-    note: `${payer} · tu parte ${formatMoney(Number(expense.myShare), currency)}`,
+    note: `${payer} · tu parte ${formatMoney(Number(expense.myShare), currency)}${expense.canLinkAccount ? ' · Sin registrar en tu cuenta' : ''}`,
     effect: effectOf(expense, me, currency),
     shares: expense.shares.map((part) => {
       const isPayer = part.userId === expense.paidByUserId;
@@ -81,7 +88,7 @@ function paymentItem(settlement: SharedSettlement, me: string, currency: string)
  */
 @Component({
   selector: 'app-group-view',
-  imports: [Icon, MoneyPipe],
+  imports: [Icon, MoneyPipe, NgTemplateOutlet],
   templateUrl: './group-view.html',
   styleUrl: './group-view.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -95,9 +102,11 @@ export class GroupView {
   /** The members of the workspace, to add to the group. */
   readonly workspaceMembers = input<readonly { userId: string; displayName: string }[]>([]);
 
-  readonly settle = output<SharedDebt>();
+  readonly settle = output<SettleRequest>();
   readonly remind = output<SharedDebt>();
   readonly cancelExpense = output<SharedExpense>();
+  /** Asks to put an expense the person paid in one of their accounts. */
+  readonly linkExpense = output<SharedExpense>();
   readonly voidSettlement = output<SharedSettlement>();
   readonly linkAccount = output<SharedSettlement>();
   readonly addMember = output<{ userId: string; name: string }>();
@@ -106,7 +115,17 @@ export class GroupView {
   /** The glyph chosen for the group. Only who created it sees the choice. */
   readonly changeIcon = output<string>();
 
-  protected readonly activityFilters = ACTIVITY_FILTERS;
+  /** The filters of the activity; "Sin registrar" only while some expense of the person is not in their accounts. */
+  protected readonly activityFilters = computed(() => {
+    const unlinked = this.detail().expenses.filter((expense) => expense.canLinkAccount).length;
+    return unlinked > 0 ? [...ACTIVITY_FILTERS, { value: 'unlinked' as const, label: `Sin registrar · ${unlinked}` }] : ACTIVITY_FILTERS;
+  });
+
+  /** The filter in use: once the last expense is registered, "Sin registrar" goes and everything shows again. */
+  protected readonly shownFilter = computed<ActivityFilter>(() => {
+    const filter = this.activityFilter();
+    return this.activityFilters().some((option) => option.value === filter) ? filter : 'all';
+  });
   protected readonly groupIcons = GROUP_ICONS;
   protected readonly initials = initials;
 
@@ -141,15 +160,41 @@ export class GroupView {
   /** What the person asking has to pay or collect in the group, with each person. */
   protected readonly debts = computed(() => {
     const me = this.me();
+    const currency = this.currency();
     return this.detail().debts.map((debt) => {
       const iPay = debt.fromUserId === me;
+      const items = debt.items;
+      // One expense needs no breakdown: paying all of it is paying that one.
+      let note = iPay ? 'Pendiente de tu parte' : 'Pendiente de cobro';
+      if (items.length === 1) {
+        note = `Por «${items[0].description}»`;
+      } else if (items.length > 1) {
+        note = `${items.length} gastos pendientes`;
+      }
+
       return {
         debt,
         iPay,
         from: { initials: initials(debt.fromName), tone: toneOf(debt.fromUserId, me) },
         to: { initials: initials(debt.toName), tone: toneOf(debt.toUserId, me) },
         text: iPay ? `Tú le pagas a ${debt.toName}` : `${debt.fromName} te paga`,
-        note: iPay ? 'Pendiente de tu parte' : 'Pendiente de cobro',
+        note,
+        all: iPay ? (items.length > 1 ? 'Pagar todo' : 'Registrar pago') : items.length > 1 ? 'Cobrar todo' : 'Marcar recibido',
+        breakdown:
+          items.length > 1
+            ? items.map((item) => ({
+                item,
+                day: formatShortDate(item.occurredOn),
+                // "S/ 30.00 de S/ 50.00" once part of it was repaid.
+                amount:
+                  Number(item.pending) < Number(item.amount)
+                    ? `${formatMoney(item.pending, currency)} de ${formatMoney(item.amount, currency)}`
+                    : formatMoney(item.pending, currency),
+                partial: Number(item.pending) < Number(item.amount),
+                meter: (1 - Number(item.pending) / Number(item.amount)) * 100,
+                action: iPay ? 'Pagar este' : 'Cobrar este',
+              }))
+            : [],
       };
     });
   });
@@ -197,21 +242,23 @@ export class GroupView {
     const detail = this.detail();
     const me = this.me();
     const currency = this.currency();
-    const filter = this.activityFilter();
+    const filter = this.shownFilter();
     const today = toIsoDate(this.today());
-    const items: { key: string; day: string; expense?: ReturnType<typeof expenseItem>; payment?: ReturnType<typeof paymentItem> }[] = [];
+    const items: { key: string; day: string; at: string; expense?: ReturnType<typeof expenseItem>; payment?: ReturnType<typeof paymentItem> }[] = [];
     if (filter !== 'payments') {
-      for (const expense of detail.expenses) {
-        items.push({ key: `e-${expense.id}`, day: expense.occurredOn, expense: expenseItem(expense, me, currency) });
+      for (const expense of detail.expenses.filter((candidate) => filter !== 'unlinked' || candidate.canLinkAccount)) {
+        items.push({ key: `e-${expense.id}`, day: expense.occurredOn, at: expense.createdAt, expense: expenseItem(expense, me, currency) });
       }
     }
-    if (filter !== 'expenses') {
+    if (filter === 'all' || filter === 'payments') {
       for (const settlement of detail.settlements.filter((settlement) => this.showVoided() || !settlement.isVoided)) {
-        items.push({ key: `p-${settlement.id}`, day: settlement.occurredOn, payment: paymentItem(settlement, me, currency) });
+        items.push({ key: `p-${settlement.id}`, day: settlement.occurredOn, at: settlement.createdAt, payment: paymentItem(settlement, me, currency) });
       }
     }
+    // Newest first: by day, and within a day by when each was registered, expenses and payments mixed.
+    const newestFirst = [...items].sort((a, b) => b.day.localeCompare(a.day) || Date.parse(b.at) - Date.parse(a.at));
     const byDay = new Map<string, typeof items>();
-    for (const item of [...items].sort((a, b) => b.day.localeCompare(a.day))) {
+    for (const item of newestFirst) {
       byDay.set(item.day, [...(byDay.get(item.day) ?? []), item]);
     }
     return [...byDay.entries()].map(([day, dayItems]) => ({

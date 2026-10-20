@@ -1,6 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { onMovementSaved } from '../../core/movements/movements-feed';
 import { RouterLink } from '@angular/router';
 import { Dashboard as DashboardData, DashboardAccount, DashboardMovement } from '../../core/api/api-types';
 import { SessionStore } from '../../core/auth/session-store';
@@ -321,6 +322,11 @@ export class Dashboard {
     }
     return left > 0 ? { tone: 'good', icon: 'trending_up', text: `${when} te quedaron ${formatMoney(left, currency, { hidden: this.amountsHidden() })} de lo que ingresaste.` } : null;
   });
+
+  constructor() {
+    // A movement registered from the quick button changes the balances, the month and the latest movements.
+    onMovementSaved(() => this.dashboard.reload());
+  }
 
   protected move(id: KpiId, step: -1 | 1): void {
     const order = [...this.order()];

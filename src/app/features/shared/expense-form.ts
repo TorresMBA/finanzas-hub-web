@@ -5,15 +5,16 @@ import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
 import { todayIso } from '../../shared/ui/dates';
+import { isManagedAccount } from '../../core/api/managed-accounts';
+import { AccountPicker, accountGroups } from '../../shared/ui/account-picker';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { formatMoney, parseAmount } from '../../shared/ui/money';
 import { SPLIT_TYPES, SharedApi, previewSplit } from './shared-api';
 
-/** What the dialog needs: the group, and the accounts and categories of the person in case they paid. */
+/** What the dialog needs: the group, and the categories of the person in case they paid. */
 export interface ExpenseFormTarget {
   readonly detail: SharedGroupDetail;
-  readonly accounts: readonly Account[];
   readonly categories: readonly Category[];
 }
 
@@ -25,7 +26,7 @@ const REQUIRED = { kind: 'required', message: 'Este dato es necesario.' };
  */
 @Component({
   selector: 'app-expense-form',
-  imports: [Dialog, Field, FormField],
+  imports: [AccountPicker, Dialog, Field, FormField],
   template: `
     <app-dialog title="Nuevo gasto compartido" (closed)="closed.emit()">
       <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
@@ -81,21 +82,15 @@ const REQUIRED = { kind: 'required', message: 'Este dato es necesario.' };
           <p class="form-note is-negative" role="status">{{ text }}</p>
         }
 
-        @if (iPaid() && target().accounts.length > 0) {
+        @if (iPaid() && usable().length > 0) {
           <label class="form-check">
             <input type="checkbox" [formField]="expenseForm.toLedger" />
             <span>Registrar también el gasto completo en una de mis cuentas. Lo que te devuelvan lo irá restando.</span>
           </label>
           @if (model().toLedger) {
-            <div class="form-pair">
-              <app-field label="Cuenta" [state]="expenseForm.accountId()">
-                <select class="input" [formField]="expenseForm.accountId">
-                  <option value="">Elige una cuenta</option>
-                  @for (account of target().accounts; track account.id) {
-                    <option [value]="account.id">{{ account.name }}</option>
-                  }
-                </select>
-              </app-field>
+            <app-field label="Cuenta" [state]="expenseForm.accountId()">
+              <app-account-picker label="Cuenta" [groups]="accountGroups()" [formField]="expenseForm.accountId" />
+            </app-field>
               <app-field label="Categoría" [state]="expenseForm.categoryId()">
                 <select class="input" [formField]="expenseForm.categoryId">
                   <option value="">Elige una categoría</option>
@@ -104,7 +99,6 @@ const REQUIRED = { kind: 'required', message: 'Este dato es necesario.' };
                   }
                 </select>
               </app-field>
-            </div>
           }
         }
         <div class="form-actions">
@@ -149,6 +143,14 @@ export class ExpenseForm {
   private readonly idempotencyKey = newIdempotencyKey();
 
   readonly target = input.required<ExpenseFormTarget>();
+  /** The person's accounts, bound live: a balance that changes while the dialog is open shows here. */
+  readonly accounts = input.required<readonly Account[]>();
+
+  /** The accounts the expense can go in: in the currency of the group and not the fund of a goal. */
+  protected readonly usable = computed(() =>
+    this.accounts().filter((account) => !account.isArchived && account.currency === this.target().detail.group.currency && !isManagedAccount(account.type)),
+  );
+  protected readonly accountGroups = computed(() => accountGroups(this.usable()));
 
   /** Emits the message to show once the expense is registered. */
   readonly saved = output<string>();

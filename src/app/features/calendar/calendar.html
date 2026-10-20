@@ -171,5 +171,5 @@
 }
 
 @if (formTarget(); as target) {
-  <app-schedule-form [target]="target" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+  <app-schedule-form [target]="target" [accounts]="accounts.value() ?? []" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
 }

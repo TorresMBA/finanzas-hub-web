@@ -47,7 +47,7 @@ export class Goals {
   protected readonly formatShortDate = formatShortDate;
 
   protected readonly goals = httpResource<GoalList>(() => this.api.goalsUrl());
-  private readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
+  protected readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
   private readonly categories = httpResource<Category[]>(() => this.api.categoriesUrl());
 
   protected readonly filter = signal<Filter>('active');
@@ -138,7 +138,9 @@ export class Goals {
   }
 
   protected openMoney(goal: Goal, kind: GoalMoneyTarget['kind']): void {
-    this.moneyTarget.set({ goal, kind, accounts: this.accounts.value() ?? [], categories: this.categories.value() ?? [] });
+    this.moneyTarget.set({ goal, kind, categories: this.categories.value() ?? [] });
+    // The balances may have changed since the page loaded: the dialog shows them as they are now.
+    this.accounts.reload();
   }
 
   protected onSaved(message: string): void {

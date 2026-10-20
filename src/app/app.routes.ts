@@ -1,5 +1,6 @@
 import { Route, Routes } from '@angular/router';
 import { appGuard, onboardingGuard } from './core/auth/guards';
+import { QUICK_OUTLET, QUICK_TRANSACTION_PATH } from './core/movements/movements-feed';
 import { AUTH_ROUTES } from './features/auth/auth.routes';
 import { NAV_ITEMS } from './layout/navigation';
 import { Shell } from './layout/shell/shell';
@@ -38,6 +39,13 @@ const sections: Routes = NAV_ITEMS.map((item): Route => {
       };
 });
 
+/** The quick button of the frame: a new movement over whatever page is open. */
+export const QUICK_TRANSACTION_ROUTE: Route = {
+  path: QUICK_TRANSACTION_PATH,
+  outlet: QUICK_OUTLET,
+  loadComponent: () => import('./features/transactions/quick-transaction').then((m) => m.QuickTransaction),
+};
+
 export const routes: Routes = [
   ...AUTH_ROUTES,
   {
@@ -46,6 +54,11 @@ export const routes: Routes = [
     canActivate: [onboardingGuard],
     loadComponent: () => import('./features/onboarding/onboarding').then((m) => m.Onboarding),
   },
-  { path: '', component: Shell, canActivate: [appGuard], children: sections },
+  {
+    path: '',
+    component: Shell,
+    canActivate: [appGuard],
+    children: [...sections, QUICK_TRANSACTION_ROUTE],
+  },
   { path: '**', redirectTo: '' },
 ];

@@ -1,5 +1,6 @@
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
+import { onMovementSaved } from '../../core/movements/movements-feed';
 import { RouterLink } from '@angular/router';
 import { Account, AccountSummary, NetWorth, Transaction, TransactionPage } from '../../core/api/api-types';
 import { isManagedAccount } from '../../core/api/managed-accounts';
@@ -189,6 +190,11 @@ export class Accounts {
 
   protected restore(account: Account): Promise<void> {
     return this.run(`«${account.name}» restaurada.`, () => this.api.restore(account.id));
+  }
+
+  constructor() {
+    // A movement registered from the quick button changes the balances.
+    onMovementSaved(() => this.reload());
   }
 
   protected reload(): void {

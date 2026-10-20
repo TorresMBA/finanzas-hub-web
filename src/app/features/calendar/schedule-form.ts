@@ -1,15 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { FormField, form, submit, validate } from '@angular/forms/signals';
 import { Account, Category } from '../../core/api/api-types';
+import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
+import { AccountPicker, accountGroups } from '../../shared/ui/account-picker';
 import { Dialog } from '../../shared/ui/dialog';
 import { Field } from '../../shared/ui/field';
 import { parseAmount } from '../../shared/ui/money';
 import { CalendarApi, FREQUENCY_LABELS, REMINDER_OPTIONS } from './calendar-api';
 
-/** What the dialog needs: where the money can come from or go to, how to classify it, and the day it opens on. */
+/** What the dialog needs: how to classify the money and the day it opens on. */
 export interface ScheduleFormTarget {
-  readonly accounts: readonly Account[];
   readonly categories: readonly Category[];
   readonly date: string;
 }
@@ -22,7 +23,7 @@ const REQUIRED = { kind: 'required', message: 'Este dato es necesario.' };
  */
 @Component({
   selector: 'app-schedule-form',
-  imports: [Dialog, Field, FormField],
+  imports: [AccountPicker, Dialog, Field, FormField],
   template: `
     <app-dialog title="Programar movimiento" (closed)="closed.emit()">
       <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
@@ -44,24 +45,17 @@ const REQUIRED = { kind: 'required', message: 'Este dato es necesario.' };
             <input class="input" type="date" [formField]="scheduleForm.date" />
           </app-field>
         </div>
-        <div class="form-pair">
-          <app-field label="Cuenta" [state]="scheduleForm.accountId()">
-            <select class="input" [formField]="scheduleForm.accountId">
-              <option value="">Elige una cuenta</option>
-              @for (account of target().accounts; track account.id) {
-                <option [value]="account.id">{{ account.name }}</option>
-              }
-            </select>
-          </app-field>
-          <app-field label="Categoría" [state]="scheduleForm.categoryId()">
-            <select class="input" [formField]="scheduleForm.categoryId">
-              <option value="">Elige una categoría</option>
-              @for (option of categoryOptions(); track option.id) {
-                <option [value]="option.id">{{ option.label }}</option>
-              }
-            </select>
-          </app-field>
-        </div>
+        <app-field label="Cuenta" [state]="scheduleForm.accountId()">
+          <app-account-picker label="Cuenta" [groups]="accountGroups()" [formField]="scheduleForm.accountId" />
+        </app-field>
+        <app-field label="Categoría" [state]="scheduleForm.categoryId()">
+          <select class="input" [formField]="scheduleForm.categoryId">
+            <option value="">Elige una categoría</option>
+            @for (option of categoryOptions(); track option.id) {
+              <option [value]="option.id">{{ option.label }}</option>
+            }
+          </select>
+        </app-field>
         <div class="form-pair">
           <app-field label="Se repite">
             <select class="input" [formField]="scheduleForm.frequency">
@@ -95,6 +89,8 @@ export class ScheduleForm {
   private readonly api = inject(CalendarApi);
 
   readonly target = input.required<ScheduleFormTarget>();
+  /** The person's accounts, bound live: a balance that changes while the dialog is open shows here. */
+  readonly accounts = input.required<readonly Account[]>();
 
   /** Emits the message to show once the movement is scheduled. */
   readonly saved = output<string>();
@@ -108,7 +104,8 @@ export class ScheduleForm {
     description: '',
     amount: '',
     date: this.target().date,
-    accountId: this.target().accounts.length === 1 ? this.target().accounts[0].id : '',
+    // Not tracked: balances arriving while the dialog is open must not clear what was typed.
+    accountId: untracked(() => (this.usable().length === 1 ? this.usable()[0].id : '')),
     categoryId: '',
     frequency: 'monthly' as 'once' | 'monthly' | 'yearly',
     reminder: '1',
@@ -122,7 +119,11 @@ export class ScheduleForm {
     validate(path.categoryId, ({ value }) => (value() ? undefined : REQUIRED));
   });
 
-  protected readonly currency = computed(() => this.target().accounts.find((account) => account.id === this.model().accountId)?.currency ?? '');
+  /** Where the money can come from or go to: the fund of a goal or an investment moves only from its own section. */
+  protected readonly usable = computed(() => this.accounts().filter((account) => !isManagedAccount(account.type)));
+  protected readonly accountGroups = computed(() => accountGroups(this.usable()));
+
+  protected readonly currency = computed(() => this.usable().find((account) => account.id === this.model().accountId)?.currency ?? '');
 
   /** The categories of the chosen kind, each followed by its subcategories. */
   protected readonly categoryOptions = computed(() =>

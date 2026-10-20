@@ -133,5 +133,5 @@
 }
 
 @if (formTarget(); as target) {
-  <app-holding-form [target]="target" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
+  <app-holding-form [target]="target" [accounts]="accounts.value() ?? []" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
 }

@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { Account, AccountSummary, BaseTotals, Category, Conversion, CurrencyTotals, ExchangeRate, Transaction } from '../../core/api/api-types';
 import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
+import { onMovementSaved } from '../../core/movements/movements-feed';
 import { PeriodStore } from '../../core/period/period-store';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { formatDay, formatShortDate, monthRange } from '../../shared/ui/dates';
@@ -230,6 +231,9 @@ export class Transactions {
   });
 
   constructor() {
+    // A movement registered from the quick button of the frame joins the list.
+    onMovementSaved(() => this.reload());
+
     effect(() => {
       const filters = this.filters();
       if (filters) {

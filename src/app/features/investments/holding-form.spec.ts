@@ -37,7 +37,8 @@ describe('HoldingForm', () => {
     await TestBed.inject(WorkspaceStore).ensureLoaded();
     const http = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(HoldingForm);
-    fixture.componentRef.setInput('target', { mode: 'open', accounts: [SCOTIA] });
+    fixture.componentRef.setInput('target', { mode: 'open' });
+    fixture.componentRef.setInput('accounts', [SCOTIA]);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
     const type = (text: string, value: string) => {

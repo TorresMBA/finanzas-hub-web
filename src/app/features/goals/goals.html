@@ -200,5 +200,5 @@
   <app-goal-form [target]="target" (saved)="onSaved($event)" (closed)="formTarget.set(null)" />
 }
 @if (moneyTarget(); as target) {
-  <app-goal-money-form [target]="target" (saved)="onSaved($event)" (closed)="moneyTarget.set(null)" />
+  <app-goal-money-form [target]="target" [accounts]="accounts.value() ?? []" (saved)="onSaved($event)" (closed)="moneyTarget.set(null)" />
 }

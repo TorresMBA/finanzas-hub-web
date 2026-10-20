@@ -292,6 +292,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/shared-groups/{groupId}/expenses/{expenseId}/link-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["LinkSharedExpenseAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/shared-groups/{groupId}/expenses/{expenseId}/cancel": {
         parameters: {
             query?: never;
@@ -2639,6 +2655,12 @@ export interface components {
             /** Format: uuid */
             categoryId?: null | string;
         };
+        LinkSharedExpenseAccountRequest: {
+            /** Format: uuid */
+            accountId: null | string;
+            /** Format: uuid */
+            categoryId: null | string;
+        };
         LoginRequest: {
             email: string;
             password: string;
@@ -2860,6 +2882,8 @@ export interface components {
             accountId?: null | string;
             /** Format: uuid */
             categoryId?: null | string;
+            /** Format: uuid */
+            expenseId?: null | string;
         };
         RecordValuationRequest: {
             /** Format: date */
@@ -3071,6 +3095,17 @@ export interface components {
             /** Format: date */
             asOf?: null | string;
         };
+        SharedDebtItemResponse: {
+            /** Format: uuid */
+            expenseId: string;
+            description: string;
+            /** Format: date */
+            occurredOn: string;
+            /** Format: double */
+            amount: number | string;
+            /** Format: double */
+            pending: number | string;
+        };
         SharedDebtResponse: {
             /** Format: uuid */
             fromUserId: string;
@@ -3080,6 +3115,7 @@ export interface components {
             toName: string;
             /** Format: double */
             amount: number | string;
+            items: components["schemas"]["SharedDebtItemResponse"][];
         };
         SharedExpenseResponse: {
             /** Format: uuid */
@@ -3100,6 +3136,9 @@ export interface components {
             myPending: number | string;
             shares: components["schemas"]["SharedShareResponse"][];
             canCancel: boolean;
+            canLinkAccount: boolean;
+            /** Format: date-time */
+            createdAt: string;
         };
         /** @enum {unknown} */
         SharedExpenseStatus: "pending" | "partiallyPaid" | "settled" | "cancelled";
@@ -3165,6 +3204,8 @@ export interface components {
             isVoided: boolean;
             canVoid: boolean;
             canLinkAccount: boolean;
+            /** Format: date-time */
+            createdAt: string;
         };
         SharedShareResponse: {
             /** Format: uuid */
@@ -4633,6 +4674,90 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    LinkSharedExpenseAccount: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+                groupId: string;
+                expenseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkSharedExpenseAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedGroupDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

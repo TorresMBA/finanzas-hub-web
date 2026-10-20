@@ -105,7 +105,7 @@ export class Investments {
   protected readonly shortDate = formatShortDate;
 
   protected readonly summary = httpResource<InvestmentSummary>(() => this.api.summaryUrl(null));
-  private readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
+  protected readonly accounts = httpResource<Account[]>(() => this.api.accountsUrl());
 
   protected readonly filter = signal<Filter>('all');
   private readonly chosenId = signal<string | null>(null);
@@ -156,7 +156,8 @@ export class Investments {
       amount: valuation.value,
       valuation: true,
     }));
-    return [...movements, ...valuations].sort((a, b) => b.date.localeCompare(a.date));
+    // Within a day, by when each was registered: the ids are time ordered (UUID v7), so buys and new values mix as they happened.
+    return [...movements, ...valuations].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   });
 
   protected readonly kpis = computed(() => {
@@ -259,10 +260,11 @@ export class Investments {
   }
 
   protected open(mode: 'open' | 'contribute' | 'withdraw' | 'value'): void {
-    const accounts = this.accounts.value() ?? [];
     const holding = this.selected();
     this.notice.set(null);
-    this.formTarget.set(mode === 'open' || !holding ? { mode: 'open', accounts } : { mode, holding, accounts });
+    this.formTarget.set(mode === 'open' || !holding ? { mode: 'open' } : { mode, holding });
+    // The balances may have changed since the page loaded: the dialog shows them as they are now.
+    this.accounts.reload();
   }
 
   protected onSaved(message: string): void {
