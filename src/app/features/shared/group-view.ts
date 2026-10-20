@@ -164,12 +164,18 @@ export class GroupView {
     return this.detail().debts.map((debt) => {
       const iPay = debt.fromUserId === me;
       const items = debt.items;
+      const several = items.length > 1;
       // One expense needs no breakdown: paying all of it is paying that one.
       let note = iPay ? 'Pendiente de tu parte' : 'Pendiente de cobro';
       if (items.length === 1) {
         note = `Por «${items[0].description}»`;
-      } else if (items.length > 1) {
+      } else if (several) {
         note = `${items.length} gastos pendientes`;
+      }
+
+      let all = several ? 'Cobrar todo' : 'Marcar recibido';
+      if (iPay) {
+        all = several ? 'Pagar todo' : 'Registrar pago';
       }
 
       return {
@@ -179,22 +185,21 @@ export class GroupView {
         to: { initials: initials(debt.toName), tone: toneOf(debt.toUserId, me) },
         text: iPay ? `Tú le pagas a ${debt.toName}` : `${debt.fromName} te paga`,
         note,
-        all: iPay ? (items.length > 1 ? 'Pagar todo' : 'Registrar pago') : items.length > 1 ? 'Cobrar todo' : 'Marcar recibido',
-        breakdown:
-          items.length > 1
-            ? items.map((item) => ({
+        all,
+        breakdown: several
+          ? items.map((item) => {
+              const partial = Number(item.pending) < Number(item.amount);
+              return {
                 item,
                 day: formatShortDate(item.occurredOn),
                 // "S/ 30.00 de S/ 50.00" once part of it was repaid.
-                amount:
-                  Number(item.pending) < Number(item.amount)
-                    ? `${formatMoney(item.pending, currency)} de ${formatMoney(item.amount, currency)}`
-                    : formatMoney(item.pending, currency),
-                partial: Number(item.pending) < Number(item.amount),
+                amount: partial ? `${formatMoney(item.pending, currency)} de ${formatMoney(item.amount, currency)}` : formatMoney(item.pending, currency),
+                partial,
                 meter: (1 - Number(item.pending) / Number(item.amount)) * 100,
                 action: iPay ? 'Pagar este' : 'Cobrar este',
-              }))
-            : [],
+              };
+            })
+          : [],
       };
     });
   });
