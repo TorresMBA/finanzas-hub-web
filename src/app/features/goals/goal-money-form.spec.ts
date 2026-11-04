@@ -13,17 +13,18 @@ const TRIP: Goal = {
   id: 'g-trip', name: 'Viaje Cusco', targetAmount: 1000, currency: 'PEN', targetDate: null, status: 'active', isShared: false, isOwner: true,
   saved: 1000, mySaved: 1000, remaining: 0, percent: 100, requiredMonthly: null, averageMonthly: 500, health: 'completed', participants: [],
   myFundAccountId: 'a-fund',
+  canDelete: false,
 };
 const BCP: Account = {
   id: 'a-bcp', name: 'BCP', type: 'bank', currency: 'PEN', institution: null, balance: 1000, includeInNetWorth: true, creditCard: null, isArchived: false,
   createdAt: '2026-10-01T10:00:00Z',
-  isFavorite: false,
+  isFavorite: false, canDelete: false,
 };
 const FUND: Account = { ...BCP, id: 'a-fund', name: 'Meta: Viaje Cusco', type: 'goalFund' };
 const LEISURE: Category = {
-  id: 'c-leisure', kind: 'expense', name: 'Suscripciones y ocio', icon: 'movie', color: 'violet', isArchived: false, tags: [], subcategories: [],
+  id: 'c-leisure', kind: 'expense', name: 'Suscripciones y ocio', icon: 'movie', color: 'violet', isArchived: false, tags: [], subcategories: [], canDelete: false,
 };
-const SALARY: Category = { ...LEISURE, id: 'c-salary', kind: 'income', name: 'Sueldo', subcategories: [] };
+const SALARY: Category = { ...LEISURE, id: 'c-salary', kind: 'income', name: 'Sueldo', subcategories: [], canDelete: false };
 
 describe('GoalMoneyForm', () => {
   it('spends all of what was saved by default, from an account that holds money and under an expense category, with live balances', async () => {

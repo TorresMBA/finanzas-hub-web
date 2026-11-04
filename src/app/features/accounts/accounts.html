@@ -201,7 +201,20 @@
               <button class="button button--small" type="button" (click)="open({ mode: 'adjust', account: account })">
                 {{ account.creditCard ? 'Ajustar deuda' : 'Ajustar saldo' }}
               </button>
-              <button class="button button--small" type="button" [disabled]="busy()" (click)="archive(account)">Archivar</button>
+              @if (account.canDelete) {
+                @if (deleting() === account.id) {
+                  <button class="button button--small button--danger" type="button" [disabled]="busy()" (click)="remove(account)">Sí, eliminar</button>
+                  <button class="button button--small" type="button" (click)="deleting.set(null)">No</button>
+                } @else {
+                  <button class="button button--small" type="button" title="Nunca tuvo movimientos: se borra para siempre" (click)="deleting.set(account.id)">
+                    Eliminar
+                  </button>
+                }
+              } @else {
+                <button class="button button--small" type="button" [disabled]="busy()" title="Tiene movimientos o algo la usa: se archiva y su historia queda" (click)="archive(account)">
+                  Archivar
+                </button>
+              }
             }
           }
         </div>

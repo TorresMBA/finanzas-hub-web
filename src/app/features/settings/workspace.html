@@ -8,8 +8,8 @@
 <section class="card panel" aria-labelledby="mine-heading">
   <h2 id="mine-heading">Tus espacios</h2>
   <p class="lead">
-    Tus cuentas, movimientos y presupuestos son tuyos y se ven igual en cualquier espacio. Un espacio compartido añade miembros, metas y gastos
-    compartidos: esos son los del espacio abierto, que cambias aquí o en la barra superior.
+    Tus cuentas, movimientos y presupuestos personales se ven igual en tu espacio personal y en los que compartes con otras personas, que solo
+    añaden miembros, metas y gastos compartidos. Un negocio u otro espacio tiene sus propias cuentas, aparte de las personales.
   </p>
   <ul aria-label="Tus espacios">
     @for (item of workspaces.workspaces(); track item.id) {
@@ -18,6 +18,8 @@
           <strong>{{ label(item) }}</strong>
           @if (item.isPersonal) {
             <span class="badge badge--info">Personal</span>
+          } @else if (item.kind !== 'personal') {
+            <span class="badge badge--info">{{ kindLabels[item.kind] }}</span>
           }
           <span>{{ roleLabels[item.role] }} · {{ item.memberCount }} {{ +item.memberCount === 1 ? 'miembro' : 'miembros' }}</span>
         </div>
@@ -73,6 +75,15 @@
   }
 </section>
 
+@if (!workspaces.allowsCollaboration()) {
+  <section class="card panel">
+    <h2>Solo tuyo</h2>
+    <p class="lead">
+      Este espacio es de tipo {{ workspace() ? kindLabels[workspace()!.kind] : '' }}: tiene sus propias cuentas y solo tú lo ves. No admite
+      miembros, metas ni gastos compartidos.
+    </p>
+  </section>
+} @else {
 <section class="card panel" aria-labelledby="members-heading">
   <h2 id="members-heading">Miembros</h2>
   <p class="lead">
@@ -184,14 +195,48 @@
     }
   </section>
 }
+}
+
+@if (isOwner() && !workspace()?.isPersonal) {
+  <section class="card panel" aria-labelledby="delete-heading">
+    <h2 id="delete-heading">Eliminar este espacio</h2>
+    @if (deletion.isLoading()) {
+      <app-skeleton />
+    } @else if (deletion.error()) {
+      <app-error-state (retry)="deletion.reload()" />
+    } @else if (deletion.value()?.canDelete) {
+      <p class="lead">Nunca se registró nada aquí: se elimina para siempre, con sus categorías sugeridas y sus invitaciones.</p>
+      @if (confirmingDelete()) {
+        <div class="actions">
+          <button class="button button--small button--danger" type="button" [disabled]="busy()" (click)="deleteWorkspace(workspace()!)">Sí, eliminar</button>
+          <button class="button button--small" type="button" (click)="confirmingDelete.set(false)">No</button>
+        </div>
+      } @else {
+        <button class="button button--danger" type="button" [disabled]="busy()" (click)="confirmingDelete.set(true)">Eliminar espacio</button>
+      }
+    } @else {
+      <p class="lead">{{ deletionReason() }} Lo que ya se registró queda como historia.</p>
+    }
+  </section>
+}
 
 <section class="card panel">
   <h2>Otro espacio</h2>
-  <p class="lead">Por ejemplo, uno para tu hogar y otro para un viaje. Cada espacio tiene sus propios miembros y sus propios datos.</p>
-  <form class="row" (submit)="$event.preventDefault(); createWorkspace()" novalidate>
-    <app-field label="Nombre del espacio nuevo" [state]="newWorkspaceForm.name()">
-      <input class="input" type="text" [formField]="newWorkspaceForm.name" />
-    </app-field>
+  <p class="lead">Un negocio para llevar sus cuentas aparte, o un espacio para compartir con tu hogar o un viaje. El tipo no se cambia después.</p>
+  <form class="form-stack" (submit)="$event.preventDefault(); createWorkspace()" novalidate>
+    <div class="row">
+      <app-field label="Nombre del espacio nuevo" [state]="newWorkspaceForm.name()">
+        <input class="input" type="text" [formField]="newWorkspaceForm.name" />
+      </app-field>
+      <app-field label="Tipo" [state]="newWorkspaceForm.kind()">
+        <select class="input" [formField]="newWorkspaceForm.kind">
+          @for (kind of kinds; track kind) {
+            <option [value]="kind">{{ kind === 'personal' ? 'Compartido (Personal)' : kindLabels[kind] }}</option>
+          }
+        </select>
+      </app-field>
+    </div>
+    <p class="lead">{{ kindHint() }}</p>
     <button class="button" type="submit" [disabled]="busy()">Crear espacio</button>
   </form>
 </section>

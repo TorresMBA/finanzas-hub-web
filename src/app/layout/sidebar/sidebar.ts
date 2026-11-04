@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { Icon } from '../../shared/ui/icon';
 import { BrandMark } from '../../shared/ui/brand-mark';
-import { NAV_GROUPS } from '../navigation';
+import { NAV_GROUPS, sectionsFor } from '../navigation';
 
 /** Full sidebar on desktop; the same list collapses to an icon rail on tablet. Hidden on mobile. */
 @Component({
@@ -13,5 +14,9 @@ import { NAV_GROUPS } from '../navigation';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Sidebar {
-  protected readonly groups = NAV_GROUPS;
+  private readonly workspaces = inject(WorkspaceStore);
+
+  protected readonly groups = computed(() =>
+    NAV_GROUPS.map((group) => ({ ...group, items: sectionsFor(group.items, this.workspaces.allowsCollaboration()) })),
+  );
 }

@@ -187,6 +187,15 @@ export class Categories {
     return this.run(`«${item.name}» archivada. Ya no se ofrece al clasificar.`, () => this.api.archive(item.id));
   }
 
+  /** The category or subcategory the person is being asked to confirm they want deleted. */
+  protected readonly deleting = signal<string | null>(null);
+
+  /** Only offered while nothing ever used it (ADR-024). A category goes with its subcategories. */
+  protected remove(item: Category | Subcategory): Promise<void> {
+    this.deleting.set(null);
+    return this.run(`«${item.name}» eliminada.`, () => this.api.delete(item.id));
+  }
+
   protected restore(item: Category | Subcategory): Promise<void> {
     return this.run(`«${item.name}» restaurada.`, () => this.api.restore(item.id));
   }
@@ -271,14 +280,18 @@ export class Categories {
     });
   }
 
+  /** The tag the list is filtered by: the one the tag bar acts on. */
+  protected readonly filteredTag = computed(() => this.tagCloud().find((candidate) => candidate.name === this.tagFilter()) ?? null);
+
+  /** Deletes the tag when no movement carries it (ADR-024); otherwise archives it. Either way the categories stop suggesting it. */
   protected archiveTag(): Promise<void> {
-    const tag = this.tagCloud().find((candidate) => candidate.name === this.tagFilter());
+    const tag = this.filteredTag();
     if (!tag) {
       return Promise.resolve();
     }
 
-    return this.run(`Etiqueta #${tag.name} archivada.`, async () => {
-      await this.api.archiveTag(tag.id);
+    return this.run(tag.canDelete ? `Etiqueta #${tag.name} eliminada.` : `Etiqueta #${tag.name} archivada.`, async () => {
+      await (tag.canDelete ? this.api.deleteTag(tag.id) : this.api.archiveTag(tag.id));
       this.tagFilter.set(null);
       this.confirmingTagArchive.set(false);
     });

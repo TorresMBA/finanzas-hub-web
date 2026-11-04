@@ -88,6 +88,11 @@ export class AccountsApi {
     return firstValueFrom(this.http.post<Account>(`${this.base()}/accounts/${accountId}/archive`, null));
   }
 
+  /** Only an account nothing ever moved and nothing points at; one with history is archived. */
+  delete(accountId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base()}/accounts/${accountId}`));
+  }
+
   restore(accountId: string): Promise<Account> {
     return firstValueFrom(this.http.post<Account>(`${this.base()}/accounts/${accountId}/restore`, null));
   }

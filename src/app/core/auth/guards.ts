@@ -53,3 +53,10 @@ export const guestGuard: CanActivateFn = async (route) => {
   const returnUrl = route.queryParamMap.get('returnUrl');
   return returnUrl?.startsWith('/') && !returnUrl.startsWith('//') ? router.parseUrl(returnUrl) : router.createUrlTree(['/']);
 };
+
+/** Goals and shared expenses: only in a Personal workspace. Someone who types the address in a business goes to its home page. */
+export const collaborationGuard: CanActivateFn = async (_route, state) => {
+  const router = inject(Router);
+  const workspaces = inject(WorkspaceStore);
+  return (await requireSession(state.url)) ?? (workspaces.allowsCollaboration() ? true : router.createUrlTree(['/']));
+};

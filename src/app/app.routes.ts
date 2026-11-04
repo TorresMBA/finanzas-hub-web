@@ -1,5 +1,5 @@
 import { Route, Routes } from '@angular/router';
-import { appGuard, onboardingGuard } from './core/auth/guards';
+import { appGuard, collaborationGuard, onboardingGuard } from './core/auth/guards';
 import { QUICK_OUTLET, QUICK_TRANSACTION_PATH } from './core/movements/movements-feed';
 import { AUTH_ROUTES } from './features/auth/auth.routes';
 import { NAV_ITEMS } from './layout/navigation';
@@ -29,7 +29,7 @@ const BUILT: Readonly<Record<string, Pick<Route, 'loadChildren'>>> = {
 const sections: Routes = NAV_ITEMS.map((item): Route => {
   const path = item.path.slice(1);
   return BUILT[item.id]
-    ? { path, ...BUILT[item.id] }
+    ? { path, ...(item.collaborative ? { canActivate: [collaborationGuard] } : {}), ...BUILT[item.id] }
     : {
         path,
         pathMatch: item.path === '/' ? 'full' : 'prefix',

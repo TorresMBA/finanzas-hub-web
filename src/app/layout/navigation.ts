@@ -9,6 +9,8 @@ export interface NavItem {
   /** Material Symbols name. */
   readonly icon: string;
   readonly description: string;
+  /** Only in a Personal workspace: a business or another of its kind has no goals or shared expenses (ADR-023). */
+  readonly collaborative?: boolean;
   /** Roadmap phase that delivers the section; shown while its page is still a placeholder. */
   readonly phase: number;
 }
@@ -32,14 +34,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: 'Planificación',
     items: [
       { id: 'budgets', path: '/budgets', label: 'Presupuestos', shortLabel: 'Presup.', icon: 'donut_large', phase: 5, description: 'Cuánto puedes gastar por categoría y a qué ritmo vas este mes.' },
-      { id: 'goals', path: '/goals', label: 'Metas', shortLabel: 'Metas', icon: 'flag', phase: 8, description: 'Ahorra con propósito: sigue tu avance y ajusta tus aportes a tiempo.' },
+      { id: 'goals', path: '/goals', label: 'Metas', shortLabel: 'Metas', icon: 'flag', phase: 8, collaborative: true, description: 'Ahorra con propósito: sigue tu avance y ajusta tus aportes a tiempo.' },
       { id: 'calendar', path: '/calendar', label: 'Calendario', shortLabel: 'Calendario', icon: 'calendar_month', phase: 7, description: 'Ingresos, pagos recurrentes y vencimientos del mes en un vistazo.' },
     ],
   },
   {
     label: 'Compartir y analizar',
     items: [
-      { id: 'shared', path: '/shared', label: 'Gastos compartidos', shortLabel: 'Compartidos', icon: 'group', phase: 9, description: 'Divide gastos y liquida deudas sin fricción.' },
+      { id: 'shared', path: '/shared', label: 'Gastos compartidos', shortLabel: 'Compartidos', icon: 'group', phase: 9, collaborative: true, description: 'Divide gastos y liquida deudas sin fricción.' },
       { id: 'investments', path: '/investments', label: 'Inversiones', shortLabel: 'Inversión', icon: 'trending_up', phase: 13, description: 'Tus fondos, depósitos y acciones con su rendimiento real.' },
       { id: 'reports', path: '/reports', label: 'Reportes', shortLabel: 'Reportes', icon: 'bar_chart', phase: 12, description: 'Entiende en qué se va tu dinero y cómo evoluciona tu ahorro.' },
       { id: 'categories', path: '/categories', label: 'Categorías', shortLabel: 'Categorías', icon: 'sell', phase: 2, description: 'Tu taxonomía financiera: categorías, subcategorías y tags.' },
@@ -63,3 +65,8 @@ const MOBILE_TAB_IDS = ['home', 'transactions', 'budgets'];
 export const MOBILE_TABS: readonly NavItem[] = NAV_ITEMS.filter((item) => MOBILE_TAB_IDS.includes(item.id));
 
 export const MOBILE_MORE: readonly NavItem[] = NAV_ITEMS.filter((item) => !MOBILE_TAB_IDS.includes(item.id));
+
+/** The sections a workspace offers: without goals and shared expenses where it admits no one else. */
+export function sectionsFor<T extends NavItem>(items: readonly T[], allowsCollaboration: boolean): readonly T[] {
+  return allowsCollaboration ? items : items.filter((item) => !item.collaborative);
+}

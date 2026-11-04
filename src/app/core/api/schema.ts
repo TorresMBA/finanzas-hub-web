@@ -142,7 +142,7 @@ export interface paths {
         get: operations["GetWorkspace"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["DeleteWorkspace"];
         options?: never;
         head?: never;
         patch: operations["UpdateWorkspace"];
@@ -180,6 +180,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspaceId}/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetWorkspaceDeletion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/shared-groups": {
         parameters: {
             query?: never;
@@ -206,7 +222,7 @@ export interface paths {
         get: operations["GetSharedGroup"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["DeleteSharedGroup"];
         options?: never;
         head?: never;
         patch?: never;
@@ -463,6 +479,22 @@ export interface paths {
         put?: never;
         post: operations["EndRecurringRule"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/recurring-rules/{ruleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["DeleteRecurringRule"];
         options?: never;
         head?: never;
         patch?: never;
@@ -766,7 +798,7 @@ export interface paths {
         get: operations["GetAccount"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["DeleteAccount"];
         options?: never;
         head?: never;
         patch: operations["UpdateAccount"];
@@ -958,6 +990,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["PostTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/book-transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PostBookTransfer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1422,7 +1470,7 @@ export interface paths {
         get: operations["GetGoal"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["DeleteGoal"];
         options?: never;
         head?: never;
         patch: operations["UpdateGoal"];
@@ -1582,7 +1630,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["DeleteCategory"];
         options?: never;
         head?: never;
         patch: operations["UpdateCategory"];
@@ -1694,7 +1742,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["DeleteTag"];
         options?: never;
         head?: never;
         patch: operations["RenameTag"];
@@ -1789,6 +1837,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             isFavorite: boolean;
+            /** @default false */
+            canDelete: boolean;
         };
         AccountSummaryResponse: {
             baseCurrency: null | string;
@@ -1991,6 +2041,7 @@ export interface components {
             isArchived: boolean;
             tags: string[];
             subcategories: components["schemas"]["SubcategoryResponse"][];
+            canDelete: boolean;
         };
         CategoryTotalResponse: {
             /** Format: uuid */
@@ -2111,6 +2162,7 @@ export interface components {
         };
         CreateWorkspaceRequest: {
             name: string;
+            kind?: components["schemas"]["WorkspaceKind"];
         };
         CreditCardRequest: {
             /** Format: double */
@@ -2402,6 +2454,7 @@ export interface components {
             participants: components["schemas"]["GoalParticipantResponse"][];
             /** Format: uuid */
             myFundAccountId: null | string;
+            canDelete: boolean;
         };
         GoalSpendRequest: {
             /** Format: double */
@@ -2811,6 +2864,22 @@ export interface components {
             occurredOn: null | string;
             note?: null | string;
         };
+        PostBookTransferRequest: {
+            /** Format: uuid */
+            fromAccountId: null | string;
+            /** Format: uuid */
+            toWorkspaceId: null | string;
+            /** Format: uuid */
+            toAccountId: null | string;
+            /** Format: double */
+            amount: null | number | string;
+            /** Format: double */
+            destinationAmount?: null | number | string;
+            /** Format: date */
+            occurredOn: null | string;
+            description?: null | string;
+            note?: null | string;
+        };
         /** @enum {unknown} */
         PostingMode: "automatic" | "confirm";
         PostTransactionRequest: {
@@ -2919,6 +2988,7 @@ export interface components {
             pauseReason: null | string;
             /** Format: date */
             nextDate: null | string;
+            canDelete: boolean;
         };
         RegisterRequest: {
             email: string;
@@ -3151,6 +3221,7 @@ export interface components {
             settlements: components["schemas"]["SharedSettlementResponse"][];
             /** Format: int32 */
             voidsLeftToday: number | string;
+            canDelete: boolean;
         };
         SharedGroupsResponse: {
             groups: components["schemas"]["SharedGroupSummaryResponse"][];
@@ -3253,6 +3324,7 @@ export interface components {
             id: string;
             name: string;
             isArchived: boolean;
+            canDelete: boolean;
         };
         TagResponse: {
             /** Format: uuid */
@@ -3260,6 +3332,7 @@ export interface components {
             name: string;
             /** Format: int32 */
             categoryCount: number | string;
+            canDelete: boolean;
         };
         /** @enum {unknown} */
         ThemePreference: "dark" | "light";
@@ -3331,6 +3404,8 @@ export interface components {
             marketRate?: null | number | string;
             /** Format: double */
             fee?: null | number | string;
+            /** Format: uuid */
+            otherBookId?: null | string;
         };
         UnreadCountResponse: {
             /** Format: int32 */
@@ -3424,6 +3499,12 @@ export interface components {
             channel: components["schemas"]["WhatsAppChannelResponse"];
             developmentCode: null | string;
         };
+        WorkspaceDeletionResponse: {
+            canDelete: boolean;
+            reason: null | string;
+        };
+        /** @enum {unknown} */
+        WorkspaceKind: "personal" | "business" | "other";
         WorkspaceResponse: {
             /** Format: uuid */
             id: string;
@@ -3435,6 +3516,7 @@ export interface components {
             /** Format: int32 */
             memberCount: number | string;
             isPersonal: boolean;
+            kind: components["schemas"]["WorkspaceKind"];
             ownerName?: null | string;
         };
         /** @enum {unknown} */
@@ -4030,6 +4112,71 @@ export interface operations {
             };
         };
     };
+    DeleteWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     UpdateWorkspace: {
         parameters: {
             query?: never;
@@ -4241,6 +4388,46 @@ export interface operations {
             };
         };
     };
+    GetWorkspaceDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceDeletionResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     ListSharedGroups: {
         parameters: {
             query?: never;
@@ -4375,6 +4562,72 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteSharedGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5425,6 +5678,63 @@ export interface operations {
             };
         };
     };
+    DeleteRecurringRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     ConfirmOccurrence: {
         parameters: {
             query?: never;
@@ -6367,6 +6677,63 @@ export interface operations {
             };
         };
     };
+    DeleteAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     UpdateAccount: {
         parameters: {
             query?: never;
@@ -7205,6 +7572,79 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PostTransferRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PostBookTransfer: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostBookTransferRequest"];
             };
         };
         responses: {
@@ -9025,6 +9465,72 @@ export interface operations {
             };
         };
     };
+    DeleteGoal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                goalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     UpdateGoal: {
         parameters: {
             query?: never;
@@ -9723,6 +10229,63 @@ export interface operations {
             };
         };
     };
+    DeleteCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     UpdateCategory: {
         parameters: {
             query?: never;
@@ -10101,6 +10664,63 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DeleteTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

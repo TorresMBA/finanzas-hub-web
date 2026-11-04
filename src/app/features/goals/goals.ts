@@ -57,7 +57,7 @@ export class Goals {
   private readonly chosenId = linkedSignal<string | null>(() => this.open() ?? null);
   protected readonly formTarget = signal<GoalFormTarget | null>(null);
   protected readonly moneyTarget = signal<GoalMoneyTarget | null>(null);
-  protected readonly confirming = signal<'archive' | 'cancel' | 'leave' | null>(null);
+  protected readonly confirming = signal<'archive' | 'cancel' | 'leave' | 'delete' | null>(null);
   /** The contribution whose voiding waits for a second click. */
   protected readonly voiding = signal<string | null>(null);
   protected readonly inviting = signal(false);
@@ -173,6 +173,10 @@ export class Goals {
     if (what === 'leave') {
       const me = goal.participants.find((participant) => participant.isMe)!;
       return this.run(`Saliste de «${goal.name}».`, () => this.api.removeParticipant(goal.id, me.userId));
+    }
+
+    if (what === 'delete') {
+      return this.run(`«${goal.name}» eliminada.`, () => this.api.delete(goal.id));
     }
 
     return this.run(

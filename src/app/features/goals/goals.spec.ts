@@ -31,6 +31,7 @@ const TRIP: Goal = {
     { userId: TEST_USER.id, displayName: 'Juan', role: 'participant', saved: 0, isMe: true },
   ],
   myFundAccountId: null,
+  canDelete: false,
 };
 const LIST: GoalList = { goals: [TRIP], members: [], baseCurrency: 'PEN' };
 const DETAIL: GoalDetail = {

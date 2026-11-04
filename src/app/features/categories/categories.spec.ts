@@ -23,17 +23,18 @@ const HOUSING: Category = {
   isArchived: false,
   tags: ['fijo', 'hogar'],
   subcategories: [
-    { id: 's-rent', name: 'Alquiler', isArchived: false },
-    { id: 's-old', name: 'Cochera', isArchived: true },
+    { id: 's-rent', name: 'Alquiler', isArchived: false, canDelete: false },
+    { id: 's-old', name: 'Cochera', isArchived: true, canDelete: false },
   ],
+  canDelete: false,
 };
-const EDUCATION: Category = { id: 'c-education', kind: 'expense', name: 'Educación', icon: 'school', color: 'blue', isArchived: false, tags: ['deducible'], subcategories: [] };
-const SALARY: Category = { id: 'c-salary', kind: 'income', name: 'Sueldo', icon: 'payments', color: 'green', isArchived: false, tags: ['fijo'], subcategories: [] };
-const OLD: Category = { id: 'c-old', kind: 'expense', name: 'Gimnasio', icon: 'fitness_center', color: 'red', isArchived: true, tags: [], subcategories: [] };
+const EDUCATION: Category = { id: 'c-education', kind: 'expense', name: 'Educación', icon: 'school', color: 'blue', isArchived: false, tags: ['deducible'], subcategories: [], canDelete: false };
+const SALARY: Category = { id: 'c-salary', kind: 'income', name: 'Sueldo', icon: 'payments', color: 'green', isArchived: false, tags: ['fijo'], subcategories: [], canDelete: false };
+const OLD: Category = { id: 'c-old', kind: 'expense', name: 'Gimnasio', icon: 'fitness_center', color: 'red', isArchived: true, tags: [], subcategories: [], canDelete: false };
 const TAGS: Tag[] = [
-  { id: 't-deducible', name: 'deducible', categoryCount: 1 },
-  { id: 't-fijo', name: 'fijo', categoryCount: 2 },
-  { id: 't-hogar', name: 'hogar', categoryCount: 1 },
+  { id: 't-deducible', name: 'deducible', categoryCount: 1, canDelete: false },
+  { id: 't-fijo', name: 'fijo', categoryCount: 2, canDelete: false },
+  { id: 't-hogar', name: 'hogar', categoryCount: 1, canDelete: false },
 ];
 
 describe('Categories', () => {

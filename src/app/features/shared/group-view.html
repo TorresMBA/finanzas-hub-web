@@ -290,7 +290,19 @@
               }
             </select>
           </label>
-          <button type="button" class="link muted" [disabled]="busy()" (click)="archive.emit()">Archivar grupo</button>
+          @if (data.canDelete) {
+            @if (confirmingDelete()) {
+              <span class="muted">Se elimina para siempre.</span>
+              <button type="button" class="link danger" [disabled]="busy()" (click)="deleteGroup.emit()">Sí, eliminar</button>
+              <button type="button" class="link muted" (click)="confirmingDelete.set(false)">No</button>
+            } @else {
+              <button type="button" class="link muted" [disabled]="busy()" (click)="confirmingDelete.set(true)">Eliminar grupo</button>
+            }
+          } @else {
+            <button type="button" class="link muted" [disabled]="busy()" title="Tiene gastos o pagos: se archiva y su historia queda" (click)="archive.emit()">
+              Archivar grupo
+            </button>
+          }
         </div>
       }
     </section>

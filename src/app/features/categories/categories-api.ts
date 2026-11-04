@@ -91,4 +91,14 @@ export class CategoriesApi {
   archiveTag(tagId: string): Promise<void> {
     return firstValueFrom(this.http.post<void>(`${this.base()}/tags/${tagId}/archive`, null));
   }
+
+  /** Only a tag no movement carries; one in use is archived. */
+  deleteTag(tagId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base()}/tags/${tagId}`));
+  }
+
+  /** Only a category nothing ever used, nor its subcategories, which go with it; one that was used is archived. */
+  delete(categoryId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base()}/categories/${categoryId}`));
+  }
 }

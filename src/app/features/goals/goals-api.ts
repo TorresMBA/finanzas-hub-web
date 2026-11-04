@@ -69,4 +69,9 @@ export class GoalsApi {
   close(goalId: string, how: 'archive' | 'cancel'): Promise<Goal> {
     return firstValueFrom(this.http.post<Goal>(`${this.base()}/goals/${goalId}/${how}`, null));
   }
+
+  /** Only a goal nobody ever put money in; one with history is archived or cancelled. */
+  delete(goalId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base()}/goals/${goalId}`));
+  }
 }

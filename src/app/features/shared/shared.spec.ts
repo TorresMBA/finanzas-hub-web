@@ -36,6 +36,7 @@ const DETAIL: SharedGroupDetail = {
     },
   ],
   voidsLeftToday: 3,
+  canDelete: false,
   expenses: [
     {
       id: 'e-1', description: 'Cena', totalAmount: 300, paidByUserId: 'u-brian', paidByName: 'Brian', occurredOn: '2026-10-12', splitType: 'equal', status: 'pending',
@@ -141,6 +142,44 @@ describe('Shared', () => {
     expect(texts('[aria-label="Miembros"] .member-side strong')).toEqual(['Le debes S/ 100.00', 'Debes S/ 100.00', 'Te debe S/ 30.00']);
     expect(buttons(element)).toContain('Salir');
     expect(buttons(element)).not.toContain('Archivar grupo');
+  });
+
+  it('offers to delete a group only while nothing was ever registered in it, and archiving otherwise', async () => {
+    const empty: SharedGroupDetail = { ...DETAIL, isAdmin: true, canDelete: true, debts: [], expenses: [], settlements: [] };
+    http.expectOne(`${BASE}/shared-groups`).flush(LIST);
+    http.expectOne(`${BASE}/accounts`).flush([]);
+    http.expectOne(`${BASE}/categories?kind=expense`).flush([]);
+    await new Promise((resolve) => setTimeout(resolve));
+    TestBed.tick();
+    http.expectOne(`${BASE}/shared-groups/g-depa`).flush(empty);
+    await fixture.whenStable();
+
+    const button = (label: string) =>
+      Array.from(element.querySelectorAll('button')).find((node) => node.textContent?.replace(/\s+/g, ' ').trim() === label);
+    const click = async (label: string) => {
+      button(label)!.click();
+      await fixture.whenStable();
+    };
+    (Array.from(element.querySelectorAll('nav[aria-label="Grupos"] .pick')).find((node) => node.textContent?.includes('Depa')) as HTMLButtonElement).click();
+    await fixture.whenStable();
+    await click('Miembros');
+    expect(button('Archivar grupo')).toBeUndefined();
+
+    await click('Eliminar grupo');
+    await click('Sí, eliminar');
+    const request = http.expectOne(`${BASE}/shared-groups/g-depa`);
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null);
+    // The page asks again for what is left: the list, now empty, and the balances of the accounts.
+    for (let round = 0; round < 3; round++) {
+      await new Promise((resolve) => setTimeout(resolve));
+      TestBed.tick();
+      for (const pending of http.match(() => true)) {
+        pending.flush(pending.request.url.endsWith('/shared-groups') ? { ...LIST, groups: [] } : []);
+      }
+    }
+    await fixture.whenStable();
+    expect(element.textContent).toContain('«Depa» eliminado.');
   });
 
   it('shows the activity newest first, expenses and payments mixed by when they were registered', async () => {

@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output } from '@angular/core';
 import { Conversion, OriginalPrice, Transaction, Transfer } from '../../core/api/api-types';
+import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { formatDay, formatShortDate } from '../../shared/ui/dates';
 import { FxBreakdown, FxRow } from '../../shared/ui/fx-breakdown';
 import { IconTile } from '../../shared/ui/icon-tile';
@@ -271,6 +272,7 @@ function conversionStory(item: Transaction, conversion: Conversion, today: numbe
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransactionDetail {
+  protected readonly workspaces = inject(WorkspaceStore);
   readonly transaction = input.required<Transaction>();
   readonly busy = input(false);
   /** The person's rates today, for what an amount in another currency is worth now. */
@@ -334,6 +336,7 @@ export class TransactionDetail {
       { label: 'Cuenta', value: transfer ? null : item.accountName },
       { label: 'Desde', value: transfer?.fromAccountName },
       { label: 'Hacia', value: transfer?.toAccountName },
+      { label: 'Otro libro', value: transfer?.otherBookId ? this.workspaces.bookLabel(transfer.otherBookId) : null },
       { label: 'Llega', value: arrives },
       { label: 'Estado', value: STATUS_LABELS[item.status] },
       { label: 'Pagado con', value: item.fundedByGoal ? 'El ahorro de una meta' : null },

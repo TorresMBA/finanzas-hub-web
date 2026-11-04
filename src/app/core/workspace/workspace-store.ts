@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { Workspace } from '../api/api-types';
+import { Workspace, WorkspaceKind } from '../api/api-types';
 import { SessionStore } from '../auth/session-store';
 
 const STORAGE_KEY = 'ph.workspace';
@@ -11,9 +11,33 @@ const STORAGE_KEY = 'ph.workspace';
  * The workspaces of the signed-in person and the one the application is showing. Every workspace request
  * carries the selected id in its URL, so two tabs can show two workspaces without interfering.
  */
-/** How a workspace is called in a list: with its owner when it is someone else's, since everyone has a "Personal". */
+/** What each kind is called on screen (ADR-023). */
+export const WORKSPACE_KIND_LABELS: Readonly<Record<WorkspaceKind, string>> = { personal: 'Personal', business: 'Negocio', other: 'Otros' };
+
+/**
+ * How a workspace is called in a list: with its owner when it is someone else's, since everyone has a "Personal",
+ * and with its kind when it keeps its own books, so a business is never mistaken for the personal ones.
+ */
 export function workspaceLabel(workspace: Workspace): string {
-  return workspace.role === 'owner' || !workspace.ownerName ? workspace.name : `${workspace.name} · de ${workspace.ownerName}`;
+  const name = workspace.role === 'owner' || !workspace.ownerName ? workspace.name : `${workspace.name} · de ${workspace.ownerName}`;
+  return workspace.kind === 'personal' ? name : `${name} · ${WORKSPACE_KIND_LABELS[workspace.kind]}`;
+}
+
+/** See {@link WorkspaceStore.otherBooks}. */
+export function otherBooksOf(workspaces: readonly Workspace[], open: Workspace | null): readonly Workspace[] {
+  if (!open) {
+    return [];
+  }
+
+  return workspaces.filter((workspace) =>
+    workspace.kind === 'personal' ? workspace.isPersonal && open.kind !== 'personal' : workspace.role === 'owner' && workspace.id !== open.id,
+  );
+}
+
+/** See {@link WorkspaceStore.bookLabel}. */
+export function bookLabelIn(workspaces: readonly Workspace[], workspaceId: string): string {
+  const workspace = workspaces.find((candidate) => candidate.id === workspaceId);
+  return workspace ? workspaceLabel(workspace) : 'otro libro';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -61,6 +85,20 @@ export class WorkspaceStore {
 
   readonly needsOnboarding = computed(() => this.pendingSetup() !== null);
 
+  /**
+   * The workspaces whose books are the person's other than those open (ADR-023): the personal one when a business or
+   * another is open, and each business or other they own. Money moves to them with a transfer between books.
+   */
+  readonly otherBooks = computed(() => otherBooksOf(this.list(), this.current()));
+
+  /** How a workspace whose book holds the other side of a transfer is called; one the person no longer has is just "otro libro". */
+  bookLabel(workspaceId: string): string {
+    return bookLabelIn(this.list(), workspaceId);
+  }
+
+  /** Only a Personal workspace has other members, goals and shared expenses. */
+  readonly allowsCollaboration = computed(() => this.current()?.kind === 'personal');
+
   readonly canAdminister = computed(() => {
     const role = this.current()?.role;
     return role === 'admin' || role === 'owner';
@@ -94,8 +132,9 @@ export class WorkspaceStore {
     this.loading = null;
   }
 
-  async create(name: string): Promise<Workspace> {
-    const workspace = await firstValueFrom(this.http.post<Workspace>('/api/v1/workspaces', { name }));
+  /** Business and Other start with books of their own, empty; Personal shows the personal ones of whoever opens it. */
+  async create(name: string, kind: WorkspaceKind): Promise<Workspace> {
+    const workspace = await firstValueFrom(this.http.post<Workspace>('/api/v1/workspaces', { name, kind }));
     await this.refresh();
     this.select(workspace.id);
     return workspace;

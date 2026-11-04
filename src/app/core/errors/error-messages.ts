@@ -180,6 +180,7 @@ const MESSAGES: Readonly<Record<string, string>> = {
   'ledger.transfer.amount_mismatch': 'Entre dos cuentas de la misma moneda llega lo mismo que sale.',
   'ledger.transfer.destination_amount_required': 'Las cuentas tienen monedas distintas: indica cuánto llega a la cuenta de destino.',
   'ledger.transfer.different_owners': 'Las dos cuentas de una transferencia deben ser tuyas.',
+  'ledger.transfer.same_book': 'Las dos cuentas están en el mismo libro: elige «Este libro» para transferir entre ellas.',
   'ledger.card.terms_required': 'Una tarjeta necesita su línea de crédito y su día de pago.',
   'ledger.card.not_a_card': 'Eso solo se puede hacer con una tarjeta de crédito.',
   'ledger.card.limit_invalid': 'La línea de crédito debe ser mayor que cero.',
@@ -218,9 +219,25 @@ const MESSAGES: Readonly<Record<string, string>> = {
   'idempotency.key_reused': 'Esta operación ya se envió con otros datos. Cierra el formulario y vuelve a abrirlo.',
   'idempotency.in_progress': 'La operación se está procesando. Espera un momento.',
   concurrency_conflict: 'Alguien más cambió esto mientras lo editabas. Recarga e inténtalo de nuevo.',
+  reference_conflict: 'Algo cambió mientras tanto: se empezó a usar o ya no existe. Recarga e inténtalo de nuevo.',
+  'workspaces.kind_not_shareable': 'Solo un espacio Personal admite otras personas, metas y gastos compartidos.',
+  'workspaces.workspace.personal': 'Tu espacio personal guarda tus finanzas: no se puede eliminar.',
+  'workspaces.workspace.has_members': 'Hay otras personas en este espacio. Quítalas antes de eliminarlo.',
+  'workspaces.workspace.not_empty': 'Este espacio ya tiene cuentas, movimientos u otros datos: no se puede eliminar.',
+  'shared.group.in_use': 'El grupo ya tiene gastos o pagos: archívalo en lugar de eliminarlo.',
+  'goals.in_use': 'La meta ya recibió dinero: archívala o cancélala en lugar de eliminarla.',
+  'ledger.account.in_use': 'La cuenta tiene movimientos o algo la usa (un programado o una importación): archívala.',
+  'categories.in_use': 'Movimientos, presupuestos, programados o reglas usan esta categoría: archívala.',
+  'categories.tag.in_use': 'Hay movimientos con esta etiqueta: archívala en lugar de eliminarla.',
+  'scheduling.rule.in_use': 'El programado ya registró movimientos: termínalo en lugar de eliminarlo.',
 };
 
 const FALLBACK = 'No se pudo completar la operación. Inténtalo de nuevo.';
+
+/** The wording for a code the API answered in a body rather than as an error, such as why something cannot be deleted. */
+export function messageForCode(code: string): string {
+  return MESSAGES[code] ?? FALLBACK;
+}
 
 export function errorMessage(error: unknown): string {
   return error instanceof ApiError ? (MESSAGES[error.code] ?? FALLBACK) : FALLBACK;

@@ -1,3 +1,4 @@
+import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, linkedSignal, output, signal, untracked } from '@angular/core';
 import { FormField, form, maxLength, required, submit, validate } from '@angular/forms/signals';
 import { Account, Category, Transaction, TransactionType } from '../../core/api/api-types';
@@ -6,6 +7,7 @@ import { isManagedAccount } from '../../core/api/managed-accounts';
 import { errorMessage } from '../../core/errors/error-messages';
 import { newIdempotencyKey } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
+import { WorkspaceStore, workspaceLabel } from '../../core/workspace/workspace-store';
 import { AccountPicker, accountGroups } from '../../shared/ui/account-picker';
 import { sameDayNextMonth, todayIso } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
@@ -45,6 +47,8 @@ interface TransactionFormModel {
   categoryId: string;
   /** The account of the income or expense; the origin of a transfer. */
   accountId: string;
+  /** The workspace whose book receives a transfer; empty for the book open. */
+  toBookId: string;
   toAccountId: string;
   /** What arrives, when the destination of a transfer has another currency. */
   destinationAmount: string;
@@ -112,7 +116,13 @@ function costOf(cost: number, over: number, currency: string): FxRow {
         </div>
 
         @if (isTransfer()) {
-          <p class="form-note">Mueve dinero entre dos cuentas tuyas. No es ingreso ni gasto, y tu patrimonio no cambia (salvo lo que cueste el cambio de moneda).</p>
+          <p class="form-note">
+            @if (toOtherBook()) {
+              Mueve dinero a una cuenta de otro de tus libros. En ninguno de los dos es ingreso ni gasto, y anularla en uno la anula en el otro.
+            } @else {
+              Mueve dinero entre dos cuentas tuyas. No es ingreso ni gasto, y tu patrimonio no cambia (salvo lo que cueste el cambio de moneda).
+            }
+          </p>
           <app-field label="Descripción (opcional)" [state]="transactionForm.description()">
             <input class="input" type="text" placeholder="Transferencia" [formField]="transactionForm.description" />
           </app-field>
@@ -128,8 +138,26 @@ function costOf(cost: number, over: number, currency: string): FxRow {
             </app-field>
           </div>
           <span class="arrow" aria-hidden="true"><app-icon name="arrow_downward" [size]="17" /></span>
+          @if (otherBooks().length > 0) {
+            <app-field label="Libro que recibe">
+              <select class="input" aria-label="Libro que recibe" [value]="model().toBookId" (change)="chooseBook($any($event.target).value)">
+                <option value="">Este libro</option>
+                @for (book of otherBooks(); track book.id) {
+                  <option [value]="book.id">{{ bookLabel(book) }}</option>
+                }
+              </select>
+            </app-field>
+          }
           <app-field label="Hacia" [state]="transactionForm.toAccountId()">
-            <app-account-picker label="Hacia" placeholder="Elige la cuenta que recibe" [groups]="destinationGroups()" [formField]="transactionForm.toAccountId" />
+            @if (toOtherBook() && bookAccounts.isLoading()) {
+              <p class="note">Cargando las cuentas de ese libro…</p>
+            } @else if (toOtherBook() && bookAccounts.error()) {
+              <p class="note">No se pudieron cargar las cuentas de ese libro. <button type="button" class="link" (click)="bookAccounts.reload()">Reintentar</button></p>
+            } @else if (toOtherBook() && destinationAccounts().length === 0) {
+              <p class="note">Ese libro aún no tiene cuentas. Crea una allí primero.</p>
+            } @else {
+              <app-account-picker label="Hacia" placeholder="Elige la cuenta que recibe" [groups]="destinationGroups()" [formField]="transactionForm.toAccountId" />
+            }
           </app-field>
           @if (destinationCurrency(); as arriving) {
             <app-field label="Monto que recibes" hint="Escribe lo que realmente llegó, como figura en tu banco." [state]="transactionForm.destinationAmount()">
@@ -139,13 +167,15 @@ function costOf(cost: number, over: number, currency: string): FxRow {
               <app-fx-breakdown [rows]="rows" note="El costo del cambio ya está en los montos: tu patrimonio baja por él, pero no es un gasto." />
             }
           }
-          <app-field
-            label="Comisión cobrada (opcional)"
-            hint="Si tu banco cobró una comisión aparte, se registra como gasto en «Comisiones» de la cuenta de origen."
-            [state]="transactionForm.fee()"
-          >
-            <app-money-input label="Comisión cobrada" [currency]="currency() || baseCurrency()" [formField]="transactionForm.fee" />
-          </app-field>
+          @if (!toOtherBook()) {
+            <app-field
+              label="Comisión cobrada (opcional)"
+              hint="Si tu banco cobró una comisión aparte, se registra como gasto en «Comisiones» de la cuenta de origen."
+              [state]="transactionForm.fee()"
+            >
+              <app-money-input label="Comisión cobrada" [currency]="currency() || baseCurrency()" [formField]="transactionForm.fee" />
+            </app-field>
+          }
           <app-field label="Nota (opcional)" [state]="transactionForm.note()">
             <input class="input" type="text" [formField]="transactionForm.note" />
           </app-field>
@@ -344,6 +374,7 @@ export class TransactionForm {
   private readonly api = inject(TransactionsApi);
   private readonly today = inject(TODAY);
   private readonly catalog = inject(CurrencyCatalog);
+  private readonly workspaces = inject(WorkspaceStore);
 
   // One key for the life of this dialog: a second click or a retry repeats the request instead of the effect.
   private readonly idempotencyKey = newIdempotencyKey();
@@ -416,10 +447,10 @@ export class TransactionForm {
         return { kind: 'required', message: 'Elige la cuenta que recibe.' };
       }
 
-      return value() === this.model().accountId ? { kind: 'sameAccount', message: 'Elige una cuenta distinta de la de origen.' } : undefined;
+      return !this.toOtherBook() && value() === this.model().accountId ? { kind: 'sameAccount', message: 'Elige una cuenta distinta de la de origen.' } : undefined;
     });
     validate(path.destinationAmount, ({ value }) => (this.destinationCurrency() ? amountError(value(), this.destinationCurrency()!) : undefined));
-    validate(path.fee, ({ value }) => (this.isTransfer() && value().trim() !== '' ? amountError(value(), this.currency()) : undefined));
+    validate(path.fee, ({ value }) => (this.isTransfer() && !this.toOtherBook() && value().trim() !== '' ? amountError(value(), this.currency()) : undefined));
     validate(path.tags, ({ value }) => {
       const tags = parseTags(value());
       if (tags.length > 10) {
@@ -469,12 +500,29 @@ export class TransactionForm {
   });
 
   protected readonly originGroups = computed(() => accountGroups(this.ownAccounts(), this.baseCurrency()));
-  /** The origin of a transfer cannot also receive it. */
-  protected readonly destinationGroups = computed(() => accountGroups(this.ownAccounts(), this.baseCurrency(), this.model().accountId));
+
+  /** The other books of the person a transfer can go to (ADR-023): the personal one, or a business or another of theirs. */
+  protected readonly otherBooks = this.workspaces.otherBooks;
+  protected readonly bookLabel = workspaceLabel;
+  /** Its own signal, so the accounts of that book are asked for once per book and not on every keystroke of the form. */
+  private readonly toBookId = computed(() => (this.isTransfer() ? this.model().toBookId : ''));
+  protected readonly toOtherBook = computed(() => this.toBookId() !== '');
+  protected readonly bookAccounts = httpResource<Account[]>(() => (this.toBookId() ? this.api.accountsOfUrl(this.toBookId()) : undefined));
+
+  /** Where a transfer can arrive: an account of this book other than the origin, or one of the book chosen. */
+  protected readonly destinationAccounts = computed(() =>
+    this.toOtherBook() ? (this.bookAccounts.value() ?? []).filter((account) => !account.isArchived && !isManagedAccount(account.type)) : this.ownAccounts(),
+  );
+  protected readonly destinationGroups = computed(() =>
+    this.toOtherBook()
+      ? accountGroups(this.destinationAccounts(), this.baseCurrency())
+      : accountGroups(this.destinationAccounts(), this.baseCurrency(), this.model().accountId),
+  );
 
   /** The currency of the receiving account when it is not the one that leaves: then both amounts are asked. */
   protected readonly destinationCurrency = computed(() => {
-    const arriving = this.isTransfer() ? this.currencyOf(this.model().toAccountId) : '';
+    const toAccountId = this.model().toAccountId;
+    const arriving = this.isTransfer() ? (this.destinationAccounts().find((account) => account.id === toAccountId)?.currency ?? '') : '';
     return arriving !== '' && this.currency() !== '' && arriving !== this.currency() ? arriving : null;
   });
 
@@ -604,6 +652,11 @@ export class TransactionForm {
     }
   }
 
+  /** Another book has other accounts, so changing it asks for the destination again. */
+  protected chooseBook(toBookId: string): void {
+    this.model.update((model) => ({ ...model, toBookId, toAccountId: '', destinationAmount: '', fee: '' }));
+  }
+
   /** The account's own currency goes back to a plain amount; another one asks for what was charged. */
   protected choosePriceCurrency(code: string): void {
     this.model.update((model) => ({ ...model, priceCurrency: code === this.currency() ? '' : code, charged: '' }));
@@ -632,6 +685,25 @@ export class TransactionForm {
     const target = this.target();
     const value = this.model();
     const note = value.note.trim() || null;
+    if (value.type === 'transfer' && value.toBookId !== '') {
+      const decimals = currencyDecimals(this.currency());
+      const transfer = await this.api.transferToBook(
+        {
+          fromAccountId: value.accountId,
+          toWorkspaceId: value.toBookId,
+          toAccountId: value.toAccountId,
+          amount: parseAmount(value.amount, decimals) ?? 0,
+          destinationAmount: this.destinationCurrency() ? parseAmount(value.destinationAmount, currencyDecimals(this.destinationCurrency()!)) : null,
+          occurredOn: value.date,
+          description: value.description.trim() || null,
+          note,
+        },
+        this.idempotencyKey,
+      );
+      const book = this.otherBooks().find((candidate) => candidate.id === value.toBookId);
+      return `Transferencia de ${formatMoney(transfer.amount, transfer.currency)} a «${book ? workspaceLabel(book) : 'otro libro'}» registrada.`;
+    }
+
     if (value.type === 'transfer') {
       const decimals = currencyDecimals(this.currency());
       const transfer = await this.api.transfer(
@@ -693,7 +765,7 @@ export class TransactionForm {
 
   private initialModel(): TransactionFormModel {
     const target = this.target();
-    const blank = { toAccountId: '', destinationAmount: '', fee: '', priceCurrency: '', charged: '', fxRate: '' };
+    const blank = { toBookId: '', toAccountId: '', destinationAmount: '', fee: '', priceCurrency: '', charged: '', fxRate: '' };
     if (target.mode === 'edit') {
       const transaction = target.transaction;
       const price = transaction.originalPrice;

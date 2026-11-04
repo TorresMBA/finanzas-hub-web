@@ -1,7 +1,16 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable, computed, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { ExchangeRate, OperationKind, OperationStatus, PostTransferRequest, Transaction, TransactionPage, TransactionType } from '../../core/api/api-types';
+import {
+  ExchangeRate,
+  OperationKind,
+  OperationStatus,
+  PostBookTransferRequest,
+  PostTransferRequest,
+  Transaction,
+  TransactionPage,
+  TransactionType,
+} from '../../core/api/api-types';
 import { IDEMPOTENCY_KEY } from '../../core/http/api-interceptors';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { TileColor } from '../../shared/ui/icon-tile';
@@ -154,6 +163,16 @@ export class TransactionsApi {
   /** Moves money between two accounts of the person. It comes back as a movement like any other. */
   transfer(body: PostTransferRequest, key: string): Promise<Transaction> {
     return firstValueFrom(this.http.post<Transaction>(`${this.base()}/transfers`, body, { context: new HttpContext().set(IDEMPOTENCY_KEY, key) }));
+  }
+
+  /** Moves money to an account of another book of the person. Each book keeps its own leg; this one comes back. */
+  transferToBook(body: PostBookTransferRequest, key: string): Promise<Transaction> {
+    return firstValueFrom(this.http.post<Transaction>(`${this.base()}/book-transfers`, body, { context: new HttpContext().set(IDEMPOTENCY_KEY, key) }));
+  }
+
+  /** The accounts of another book of the person, to choose where a transfer between books arrives. */
+  accountsOfUrl(workspaceId: string): string {
+    return `/api/v1/workspaces/${workspaceId}/accounts`;
   }
 
   edit(transactionId: string, body: TransactionBody): Promise<Transaction> {

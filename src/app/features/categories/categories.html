@@ -59,12 +59,19 @@
                 <button type="button" class="link" (click)="tagRename.set(null)">Cancelar</button>
               </form>
             } @else if (confirmingTagArchive()) {
-              <span class="confirm">Se quitará de todas tus categorías.</span>
-              <button type="button" class="link danger" [disabled]="busy()" (click)="archiveTag()">Sí, archivar</button>
+              @if (filteredTag()?.canDelete) {
+                <span class="confirm">Ningún movimiento la usa: se borra para siempre y se quita de tus categorías.</span>
+                <button type="button" class="link danger" [disabled]="busy()" (click)="archiveTag()">Sí, eliminar</button>
+              } @else {
+                <span class="confirm">Se quitará de todas tus categorías.</span>
+                <button type="button" class="link danger" [disabled]="busy()" (click)="archiveTag()">Sí, archivar</button>
+              }
               <button type="button" class="link" (click)="confirmingTagArchive.set(false)">Cancelar</button>
             } @else {
               <button type="button" class="link" (click)="tagRename.set(tag)">Renombrar</button>
-              <button type="button" class="link danger" (click)="confirmingTagArchive.set(true)">Archivar etiqueta</button>
+              <button type="button" class="link danger" (click)="confirmingTagArchive.set(true)">
+                {{ filteredTag()?.canDelete ? 'Eliminar etiqueta' : 'Archivar etiqueta' }}
+              </button>
               <button type="button" class="link" (click)="filterByTag(tag)">Quitar filtro</button>
             }
           </div>
@@ -105,9 +112,18 @@
                     <button type="button" class="icon-button" [attr.aria-label]="'Editar ' + category.name" (click)="openEdit(category)">
                       <app-icon name="edit" />
                     </button>
-                    <button type="button" class="icon-button" [attr.aria-label]="'Archivar ' + category.name" [disabled]="busy()" (click)="archive(category)">
-                      <app-icon name="archive" />
-                    </button>
+                    @if (deleting() === category.id) {
+                      <button type="button" class="link danger" [disabled]="busy()" (click)="remove(category)">Sí, eliminar</button>
+                      <button type="button" class="link" (click)="deleting.set(null)">No</button>
+                    } @else if (category.canDelete) {
+                      <button type="button" class="icon-button" [attr.aria-label]="'Eliminar ' + category.name" [disabled]="busy()" (click)="deleting.set(category.id)">
+                        <app-icon name="delete" />
+                      </button>
+                    } @else {
+                      <button type="button" class="icon-button" [attr.aria-label]="'Archivar ' + category.name" [disabled]="busy()" (click)="archive(category)">
+                        <app-icon name="archive" />
+                      </button>
+                    }
                   }
                 </div>
               </div>
@@ -136,9 +152,18 @@
                             <app-icon name="drive_file_move" [size]="18" />
                           </button>
                         }
-                        <button type="button" class="icon-button" [attr.aria-label]="'Archivar ' + subcategory.name" [disabled]="busy()" (click)="archive(subcategory)">
-                          <app-icon name="archive" [size]="18" />
-                        </button>
+                        @if (deleting() === subcategory.id) {
+                          <button type="button" class="link danger" [disabled]="busy()" (click)="remove(subcategory)">Sí, eliminar</button>
+                          <button type="button" class="link" (click)="deleting.set(null)">No</button>
+                        } @else if (subcategory.canDelete) {
+                          <button type="button" class="icon-button" [attr.aria-label]="'Eliminar ' + subcategory.name" [disabled]="busy()" (click)="deleting.set(subcategory.id)">
+                            <app-icon name="delete" [size]="18" />
+                          </button>
+                        } @else {
+                          <button type="button" class="icon-button" [attr.aria-label]="'Archivar ' + subcategory.name" [disabled]="busy()" (click)="archive(subcategory)">
+                            <app-icon name="archive" [size]="18" />
+                          </button>
+                        }
                       }
                     </li>
                     @if (moving(); as move) {

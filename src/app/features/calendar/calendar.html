@@ -100,7 +100,15 @@
                   } @else {
                     <button type="button" class="link" [disabled]="busy()" (click)="changeStatus(rule, 'resume')">Reanudar</button>
                   }
-                  <button type="button" class="link" [disabled]="busy()" (click)="changeStatus(rule, 'end')">Terminar</button>
+                  @if (deleting() === rule.id) {
+                    <button type="button" class="link danger" [disabled]="busy()" (click)="remove(rule)">Sí, eliminar</button>
+                    <button type="button" class="link" (click)="deleting.set(null)">No</button>
+                  } @else if (rule.canDelete) {
+                    <!-- It never registered anything: there is no history to keep, so it goes instead of ending. -->
+                    <button type="button" class="link danger" [disabled]="busy()" (click)="deleting.set(rule.id)">Eliminar</button>
+                  } @else {
+                    <button type="button" class="link" [disabled]="busy()" (click)="changeStatus(rule, 'end')">Terminar</button>
+                  }
                 </span>
               </li>
             }

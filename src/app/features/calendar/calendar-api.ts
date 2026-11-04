@@ -50,6 +50,11 @@ export class CalendarApi {
     return firstValueFrom(this.http.post<RecurringRule>(`${this.base()}/recurring-rules/${ruleId}/${change}`, null));
   }
 
+  /** Only a rule that never registered a movement; one that did is ended. */
+  delete(ruleId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base()}/recurring-rules/${ruleId}`));
+  }
+
   /** Registers a date of a rule in the ledger. */
   confirm(ruleId: string, date: string): Promise<void> {
     return firstValueFrom(this.http.post<void>(`${this.base()}/recurring-rules/${ruleId}/occurrences/${date}/confirm`, {}));

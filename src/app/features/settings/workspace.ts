@@ -3,17 +3,24 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import { FormField, email, form, maxLength, required, submit } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { Invitation, Member, Workspace, WorkspaceRole } from '../../core/api/api-types';
-import { errorMessage } from '../../core/errors/error-messages';
+import { Invitation, Member, Workspace, WorkspaceDeletion, WorkspaceKind, WorkspaceRole } from '../../core/api/api-types';
+import { errorMessage, messageForCode } from '../../core/errors/error-messages';
 import { timeZonesWith } from '../../core/workspace/time-zones';
 import { SessionStore } from '../../core/auth/session-store';
-import { WorkspaceStore, workspaceLabel } from '../../core/workspace/workspace-store';
+import { WORKSPACE_KIND_LABELS, WorkspaceStore, workspaceLabel } from '../../core/workspace/workspace-store';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Field } from '../../shared/ui/field';
 import { Skeleton } from '../../shared/ui/skeleton';
 
 const ROLE_LABELS: Readonly<Record<WorkspaceRole, string>> = { owner: 'Propietario', admin: 'Administrador', member: 'Miembro' };
+
+/** What choosing each kind means, said before the workspace is created: the kind does not change afterwards. */
+const KIND_HINTS: Readonly<Record<WorkspaceKind, string>> = {
+  business: 'Empieza vacío, con sus propias cuentas, movimientos, presupuestos y categorías de negocio. Solo tú lo ves y no admite miembros.',
+  other: 'Empieza vacío, con sus propias cuentas y movimientos, separados de los personales. Solo tú lo ves y no admite miembros.',
+  personal: 'Para compartir con otras personas metas y gastos. No tiene cuentas propias: cada miembro ve las suyas personales.',
+};
 
 /** The workspace itself: its name, who belongs to it and who has been invited. Never anyone's finances. */
 @Component({
@@ -36,10 +43,21 @@ export class SettingsWorkspace {
   protected readonly timeZones = computed(() => timeZonesWith(this.workspace()?.timeZone));
 
   private readonly base = computed(() => `/api/v1/workspaces/${this.workspace()?.id}`);
-  protected readonly members = httpResource<Member[]>(() => (this.workspace() ? `${this.base()}/members` : undefined));
-  protected readonly invitations = httpResource<Invitation[]>(() =>
-    this.workspace() && this.workspaces.canAdminister() ? `${this.base()}/invitations` : undefined,
+  protected readonly members = httpResource<Member[]>(() =>
+    this.workspace() && this.workspaces.allowsCollaboration() ? `${this.base()}/members` : undefined,
   );
+  protected readonly invitations = httpResource<Invitation[]>(() =>
+    this.workspace() && this.workspaces.allowsCollaboration() && this.workspaces.canAdminister() ? `${this.base()}/invitations` : undefined,
+  );
+  /** Whether the owner can delete the open workspace now (ADR-024). The personal one never goes, so it is not asked. */
+  protected readonly deletion = httpResource<WorkspaceDeletion>(() =>
+    this.workspace() && this.isOwner() && !this.workspace()!.isPersonal ? `${this.base()}/deletion` : undefined,
+  );
+  protected readonly deletionReason = computed(() => {
+    const reason = this.deletion.value()?.reason;
+    return reason ? messageForCode(reason) : null;
+  });
+  protected readonly confirmingDelete = signal(false);
 
   protected readonly failure = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
@@ -65,11 +83,14 @@ export class SettingsWorkspace {
     email(path.email, { message: 'El correo no es válido.' });
   });
 
-  protected readonly newWorkspaceModel = signal({ name: '' });
+  protected readonly kindLabels = WORKSPACE_KIND_LABELS;
+  protected readonly kinds: readonly WorkspaceKind[] = ['business', 'other', 'personal'];
+  protected readonly newWorkspaceModel = signal({ name: '', kind: 'business' as WorkspaceKind });
   protected readonly newWorkspaceForm = form(this.newWorkspaceModel, (path) => {
     required(path.name, { message: 'Escribe un nombre.' });
     maxLength(path.name, 80, { message: 'Máximo 80 caracteres.' });
   });
+  protected readonly kindHint = computed(() => KIND_HINTS[this.newWorkspaceModel().kind]);
 
   constructor() {
     // The form follows the selected workspace: switching it in the top bar reloads these fields.
@@ -165,11 +186,26 @@ export class SettingsWorkspace {
     });
   }
 
+  /** Deletes the open workspace and goes back to the personal one, where the person's own finances are. */
+  protected deleteWorkspace(workspace: Workspace): Promise<void> {
+    this.confirmingDelete.set(false);
+    return this.run(`«${workspaceLabel(workspace)}» eliminado.`, async () => {
+      await firstValueFrom(this.http.delete(`/api/v1/workspaces/${workspace.id}`));
+      await this.workspaces.refresh();
+      const personal = this.workspaces.personal();
+      if (personal) {
+        this.workspaces.select(personal.id);
+      }
+
+      await this.router.navigateByUrl('/');
+    });
+  }
+
   protected createWorkspace(): void {
     void submit(this.newWorkspaceForm, () =>
       this.run(null, async () => {
-        await this.workspaces.create(this.newWorkspaceModel().name.trim());
-        this.newWorkspaceModel.set({ name: '' });
+        await this.workspaces.create(this.newWorkspaceModel().name.trim(), this.newWorkspaceModel().kind);
+        this.newWorkspaceModel.set({ name: '', kind: 'business' });
         await this.router.navigateByUrl('/onboarding');
       }),
     );

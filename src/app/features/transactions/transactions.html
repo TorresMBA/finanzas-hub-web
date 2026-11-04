@@ -129,7 +129,7 @@
                       @if (item.status === 'voided' && (item.voidReason || item.note)) {
                         <span>{{ item.voidReason ? 'Motivo: ' + item.voidReason : item.note }}</span>
                       } @else if (item.transfer; as transfer) {
-                        <span>{{ transfer.fromAccountName }} → {{ transfer.toAccountName }}</span>
+                        <span>{{ transfer.fromAccountName }} → {{ transfer.toAccountName }}{{ transfer.otherBookId ? " · " + workspaces.bookLabel(transfer.otherBookId) : "" }}</span>
                       } @else {
                         <span>{{ item.category ? item.category.name + ' · ' : '' }}{{ item.accountName }}</span>
                       }

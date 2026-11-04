@@ -5,17 +5,19 @@ import { provideRouter } from '@angular/router';
 import { Account, AccountSummary, BaseTotals, Category, CurrencyTotals, ExchangeRate, Transaction, TransactionPage } from '../../core/api/api-types';
 import { apiErrorInterceptor, idempotencyKeyInterceptor } from '../../core/http/api-interceptors';
 import { TODAY } from '../../core/period/period-store';
-import { TEST_WORKSPACE, provideSession } from '../../core/testing/signed-in';
+import { TEST_USER, TEST_WORKSPACE, provideSession } from '../../core/testing/signed-in';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { Transactions } from './transactions';
 
 const BASE = `/api/v1/workspaces/${TEST_WORKSPACE.id}`;
 const LIST_URL = `${BASE}/transactions`;
+/** A business of the same person, with books of its own (ADR-023). */
+const BUSINESS = { ...TEST_WORKSPACE, id: '0197e7a0-0000-7000-8000-0000000000bb', name: 'Bodega', isPersonal: false, kind: 'business' as const };
 
 const BCP: Account = {
   id: 'a-bcp', name: 'BCP', type: 'bank', currency: 'PEN', institution: null, balance: 946, includeInNetWorth: true, creditCard: null, isArchived: false,
   createdAt: '2026-10-01T10:00:00Z',
-  isFavorite: false,
+  isFavorite: false, canDelete: false,
 };
 const DOLLARS: Account = { ...BCP, id: 'a-usd', name: 'BCP Dólares', currency: 'USD' };
 const GROCERIES: Category = {
@@ -26,9 +28,10 @@ const GROCERIES: Category = {
   color: 'green',
   isArchived: false,
   tags: ['mercado'],
-  subcategories: [{ id: 's-pantry', name: 'Despensa', isArchived: false }],
+  subcategories: [{ id: 's-pantry', name: 'Despensa', isArchived: false, canDelete: false }],
+  canDelete: false,
 };
-const SALARY: Category = { id: 'c-salary', kind: 'income', name: 'Sueldo', icon: 'payments', color: 'green', isArchived: false, tags: ['fijo'], subcategories: [] };
+const SALARY: Category = { id: 'c-salary', kind: 'income', name: 'Sueldo', icon: 'payments', color: 'green', isArchived: false, tags: ['fijo'], subcategories: [], canDelete: false };
 
 const movement = (id: string, description: string, signedAmount: number, occurredOn: string, extra: Partial<Transaction> = {}): Transaction => ({
   id,
@@ -100,7 +103,7 @@ describe('Transactions', () => {
         provideRouter([]),
         provideHttpClient(withInterceptors([idempotencyKeyInterceptor, apiErrorInterceptor])),
         provideHttpClientTesting(),
-        provideSession(),
+        provideSession(TEST_USER, [TEST_WORKSPACE, BUSINESS]),
         { provide: TODAY, useValue: () => new Date(2026, 9, 13) },
       ],
     });
@@ -308,7 +311,7 @@ describe('Transactions', () => {
 
     await click('Transferencia');
     expect(texts('app-transaction-form label .label')).toEqual([
-      'Descripción (opcional)', 'Desde', 'Monto que envías', 'Fecha', 'Hacia', 'Comisión cobrada (opcional)', 'Nota (opcional)',
+      'Descripción (opcional)', 'Desde', 'Monto que envías', 'Fecha', 'Libro que recibe', 'Hacia', 'Comisión cobrada (opcional)', 'Nota (opcional)',
     ]);
     await send();
     expect(texts('app-transaction-form [role="alert"]')).toEqual(['Elige una cuenta.', 'Escribe el monto.', 'Elige la cuenta que recibe.']);
@@ -344,6 +347,40 @@ describe('Transactions', () => {
 
     expect(form()).toBeNull();
     expect(element.querySelector('[role="status"]')?.textContent).toBe('Transferencia de S/ 375.00 registrada.');
+  });
+
+  it('sends money to an account of another book of the person, asking that book for its accounts', async () => {
+    await open();
+    await click('addNueva transacción');
+    await click('Transferencia');
+    await pick('Desde', 'BCP');
+    await fill('Monto que envías', '100');
+    await fill('Fecha', '2026-10-13');
+
+    await fill('Libro que recibe', BUSINESS.id);
+    http.expectOne(`/api/v1/workspaces/${BUSINESS.id}/accounts`).flush([{ ...BCP, id: 'a-caja', name: 'Caja', type: 'cash' }]);
+    await settle();
+    // A fee is something of one book: between two it is not asked.
+    expect(texts('app-transaction-form label .label')).not.toContain('Comisión cobrada (opcional)');
+    await pick('Hacia', 'Caja');
+    element.querySelector('app-transaction-form form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+
+    const request = http.expectOne({ method: 'POST', url: `${BASE}/book-transfers` });
+    expect(request.request.body).toEqual({
+      fromAccountId: 'a-bcp', toWorkspaceId: BUSINESS.id, toAccountId: 'a-caja', amount: 100, destinationAmount: null, occurredOn: '2026-10-13', description: null, note: null,
+    });
+    const leg: Transaction = {
+      ...TRANSFER, amount: 100, signedAmount: -100, currency: 'PEN',
+      transfer: { ...TRANSFER.transfer!, toAccountId: 'a-caja', toAccountName: 'Caja', amountOut: 100, amountIn: 100, currencyIn: 'PEN', otherBookId: BUSINESS.id },
+    };
+    request.flush(leg);
+    await settle();
+    listRequest().flush(page([leg]));
+    await settle();
+
+    expect(element.querySelector('[role="status"]')?.textContent).toBe('Transferencia de S/ 100.00 a «Bodega · Negocio» registrada.');
+    expect(texts('.row .names span')).toEqual(['BCP → Caja · Bodega · Negocio']);
   });
 
   it('shows the first movement in the panel and another one on click', async () => {

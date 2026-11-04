@@ -70,7 +70,7 @@ function signedBaseAmount(item: Transaction, conversion: Conversion): number | s
 export class Transactions {
   private readonly api = inject(TransactionsApi);
   private readonly period = inject(PeriodStore);
-  private readonly workspaces = inject(WorkspaceStore);
+  protected readonly workspaces = inject(WorkspaceStore);
   private readonly media = inject(DOCUMENT).defaultView?.matchMedia?.(DESKTOP);
 
   /** From the URL: the account whose movements to show, when arriving from its page. */

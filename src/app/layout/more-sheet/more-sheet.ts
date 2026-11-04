@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, inject, output, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, computed, inject, output, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NotificationCenter } from '../../core/notifications/notification-center';
+import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { Icon } from '../../shared/ui/icon';
-import { MOBILE_MORE } from '../navigation';
+import { MOBILE_MORE, sectionsFor } from '../navigation';
 
 /** Bottom sheet with the sections that have no tab of their own on mobile. */
 @Component({
@@ -14,7 +15,7 @@ import { MOBILE_MORE } from '../navigation';
       <div class="handle"></div>
       <h2 id="more-sheet-title">Todas las secciones</h2>
       <nav aria-label="Todas las secciones">
-        @for (item of items; track item.id) {
+        @for (item of items(); track item.id) {
           @let unreadHere = item.id === 'notifications' ? unread() : 0;
           <a
             [routerLink]="item.path"
@@ -126,7 +127,8 @@ export class MoreSheet {
 
   readonly closed = output<void>();
 
-  protected readonly items = MOBILE_MORE;
+  private readonly workspaces = inject(WorkspaceStore);
+  protected readonly items = computed(() => sectionsFor(MOBILE_MORE, this.workspaces.allowsCollaboration()));
   protected readonly unread = inject(NotificationCenter).unread;
 
   constructor() {

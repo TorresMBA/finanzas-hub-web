@@ -15,7 +15,7 @@ const CATEGORIES_URL = `${BASE}/categories?kind=expense`;
 const detailUrl = (budgetId: string) => `${BASE}/budgets/${budgetId}?month=2026-10`;
 const TOTALS_URL = `${BASE}/transactions/category-totals?from=2026-10-01&to=2026-10-31`;
 
-const EDUCATION: Category = { id: 'c-new', kind: 'expense', name: 'Educación', icon: 'school', color: 'blue', isArchived: false, tags: [], subcategories: [] };
+const EDUCATION: Category = { id: 'c-new', kind: 'expense', name: 'Educación', icon: 'school', color: 'blue', isArchived: false, tags: [], subcategories: [], canDelete: false };
 const NO_TOTALS: CategoryTotals = { baseCurrency: 'PEN', categories: [], missingRates: [] };
 
 const budget = (id: string, name: string, limit: number, spent: number, extra: Partial<Budget> = {}): Budget => ({
@@ -161,7 +161,7 @@ describe('Budgets', () => {
   it('folds the subcategories of a budget, each with what it spent this month, and what went on the category itself apart', async () => {
     const groceries: Category = {
       ...EDUCATION, id: 'c-groceries', name: 'Supermercado',
-      subcategories: [{ id: 's-pantry', name: 'Despensa', isArchived: false }, { id: 's-cleaning', name: 'Limpieza', isArchived: false }],
+      subcategories: [{ id: 's-pantry', name: 'Despensa', isArchived: false, canDelete: false }, { id: 's-cleaning', name: 'Limpieza', isArchived: false, canDelete: false }],
     };
     // 430 of Supermercado: 300 in Despensa, 100 on the category itself and nothing in Limpieza.
     await load(MONTH, [groceries], {

@@ -112,6 +112,9 @@ export class GroupView {
   readonly addMember = output<{ userId: string; name: string }>();
   readonly removeMember = output<{ userId: string; name: string }>();
   readonly archive = output<void>();
+  /** Only offered while nothing was ever registered in the group (ADR-024). */
+  readonly deleteGroup = output<void>();
+  protected readonly confirmingDelete = signal(false);
   /** The glyph chosen for the group. Only who created it sees the choice. */
   readonly changeIcon = output<string>();
 

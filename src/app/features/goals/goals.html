@@ -180,10 +180,12 @@
         <div class="detail-actions">
           @if (confirming(); as what) {
             <span class="lead">
-              {{ what === 'leave' ? '¿Salir de la meta?' : what === 'cancel' ? '¿Cancelar la meta? Lo que cada quien aportó vuelve a las cuentas de donde salió.' : '¿Archivar la meta?' }}
+              {{ what === 'delete' ? '¿Eliminar la meta? Nadie aportó todavía: se borra para siempre.' : what === 'leave' ? '¿Salir de la meta?' : what === 'cancel' ? '¿Cancelar la meta? Lo que cada quien aportó vuelve a las cuentas de donde salió.' : '¿Archivar la meta?' }}
             </span>
             <button type="button" class="button button--small button--danger" [disabled]="busy()" (click)="confirm(goal)">Sí</button>
             <button type="button" class="button button--small" (click)="confirming.set(null)">No</button>
+          } @else if (goal.canDelete) {
+            <button type="button" class="link danger" (click)="confirming.set('delete')">Eliminar meta</button>
           } @else if (goal.isOwner && goal.status === 'active') {
             <button type="button" class="link" (click)="confirming.set('archive')">Archivar</button>
             <button type="button" class="link" (click)="confirming.set('cancel')">Cancelar meta</button>

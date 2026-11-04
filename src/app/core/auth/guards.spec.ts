@@ -44,6 +44,13 @@ describe('route guards', () => {
     expect(await open('/accounts', TEST_USER, [{ ...pending, role: 'member', isPersonal: false }])).toBe('/accounts');
   });
 
+  it('keeps goals and shared expenses out of a business, which has neither', async () => {
+    const business: Workspace = { ...TEST_WORKSPACE, isPersonal: false, kind: 'business' };
+    expect(await open('/goals', TEST_USER, [business])).toBe('/');
+    TestBed.resetTestingModule();
+    expect(await open('/shared', TEST_USER, [business])).toBe('/');
+  });
+
   it('has no onboarding page for a workspace that is already set up', async () => {
     expect(await open('/onboarding', TEST_USER)).toBe('/');
   });

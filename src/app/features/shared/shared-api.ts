@@ -113,6 +113,11 @@ export class SharedApi {
     return firstValueFrom(this.http.post<SharedGroupDetail>(`${this.base()}/shared-groups/${groupId}/archive`, null));
   }
 
+  /** Only a group where nothing was ever registered; one with history is archived. */
+  delete(groupId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base()}/shared-groups/${groupId}`));
+  }
+
   /** `key` makes the request safe to repeat: create it when the form opens, not when it is sent. */
   createExpense(groupId: string, request: CreateSharedExpenseRequest, key: string): Promise<SharedGroupDetail> {
     return firstValueFrom(this.http.post<SharedGroupDetail>(`${this.base()}/shared-groups/${groupId}/expenses`, request, this.withKey(key)));

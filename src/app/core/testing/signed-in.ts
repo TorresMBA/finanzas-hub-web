@@ -3,7 +3,7 @@ import { CurrencyInfo, Me, Workspace } from '../api/api-types';
 import { CurrencyCatalog } from '../currency/currency-catalog';
 import { LIVE_NOTIFICATIONS } from '../notifications/notification-center';
 import { SessionStore } from '../auth/session-store';
-import { WorkspaceStore } from '../workspace/workspace-store';
+import { WorkspaceStore, bookLabelIn, otherBooksOf } from '../workspace/workspace-store';
 
 export const TEST_USER: Me = {
   id: '0197e7a0-0000-7000-8000-000000000001',
@@ -31,6 +31,7 @@ export const TEST_WORKSPACE: Workspace = {
   role: 'owner',
   memberCount: 1,
   isPersonal: true,
+  kind: 'personal',
   ownerName: null,
 };
 
@@ -70,6 +71,9 @@ export function provideSession(user: Me | null = TEST_USER, workspaces: readonly
     pendingSetup: computed(() => (selected()?.status === 'pendingSetup' && selected()?.role === 'owner' ? selected() : null)),
     needsOnboarding: computed(() => selected()?.status === 'pendingSetup' && selected()?.role === 'owner'),
     canAdminister: computed(() => selected() !== null && selected()?.role !== 'member'),
+    allowsCollaboration: computed(() => selected()?.kind === 'personal'),
+    otherBooks: computed(() => otherBooksOf(list(), selected())),
+    bookLabel: (workspaceId: string) => bookLabelIn(list(), workspaceId),
     ensureLoaded: async () => {
       await Promise.resolve();
       list.set(workspaces);

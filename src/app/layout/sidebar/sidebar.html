@@ -7,7 +7,7 @@
 </a>
 
 <nav aria-label="Secciones">
-  @for (group of groups; track group.label) {
+  @for (group of groups(); track group.label) {
     <div class="group" role="group" [attr.aria-label]="group.label">
       <div class="group-label" aria-hidden="true">{{ group.label }}</div>
       @for (item of group.items; track item.id) {

@@ -25,7 +25,7 @@ const account = (id: string, name: string, balance: number, extra: Partial<Accou
   creditCard: null,
   isArchived: false,
   createdAt: '2026-10-01T10:00:00Z',
-  isFavorite: false,
+  isFavorite: false, canDelete: false,
   ...extra,
 });
 const BCP = account('a-bcp', 'BCP Sueldo', 946.1, { institution: 'BCP' });

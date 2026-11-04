@@ -360,6 +360,13 @@ export class Shared {
     return this.run(`«${detail.group.name}» archivado.`, () => this.api.archive(detail.group.id));
   }
 
+  protected deleteGroup(detail: SharedGroupDetail): Promise<void> {
+    return this.run(`«${detail.group.name}» eliminado.`, async () => {
+      await this.api.delete(detail.group.id);
+      this.chosenId.set(null);
+    });
+  }
+
   protected reload(): void {
     this.board.reload();
     this.accounts.reload();

@@ -21,7 +21,7 @@ const SCOTIA: Account = {
   creditCard: null,
   isArchived: false,
   createdAt: '2026-10-01T10:00:00Z',
-  isFavorite: false,
+  isFavorite: false, canDelete: false,
 };
 
 describe('HoldingForm', () => {

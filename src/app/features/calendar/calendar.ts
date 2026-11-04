@@ -201,6 +201,14 @@ export class Calendar {
     return this.run(`«${rule.description}» ${done}.`, () => this.api.changeStatus(rule.id, change));
   }
 
+  /** The rule the person is being asked to confirm they want deleted. */
+  protected readonly deleting = signal<string | null>(null);
+
+  protected remove(rule: RecurringRule): Promise<void> {
+    this.deleting.set(null);
+    return this.run(`«${rule.description}» eliminado.`, () => this.api.delete(rule.id));
+  }
+
   constructor() {
     // A movement registered from the quick button shows on its day.
     onMovementSaved(() => this.reload());

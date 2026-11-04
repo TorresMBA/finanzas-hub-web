@@ -188,6 +188,14 @@ export class Accounts {
     return this.run(`«${account.name}» archivada. Conserva su saldo y sus movimientos, pero ya no se ofrece.`, () => this.api.archive(account.id));
   }
 
+  /** The account the person is being asked to confirm they want deleted. */
+  protected readonly deleting = signal<string | null>(null);
+
+  protected remove(account: Account): Promise<void> {
+    this.deleting.set(null);
+    return this.run(`«${account.name}» eliminada.`, () => this.api.delete(account.id));
+  }
+
   protected restore(account: Account): Promise<void> {
     return this.run(`«${account.name}» restaurada.`, () => this.api.restore(account.id));
   }
