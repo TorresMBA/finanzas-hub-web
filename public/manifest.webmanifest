@@ -1,0 +1,11 @@
+{
+  "name": "FinanzasHub",
+  "short_name": "FinanzasHub",
+  "description": "Finanzas personales y compartidas.",
+  "lang": "es",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a111e",
+  "theme_color": "#0a111e",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

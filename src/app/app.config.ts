@@ -7,6 +7,7 @@ import {
   correlationIdInterceptor,
   credentialsInterceptor,
   idempotencyKeyInterceptor,
+  sessionExpiredInterceptor,
 } from './core/http/api-interceptors';
 import { PrivacyStore } from './core/privacy/privacy-store';
 import { AMOUNTS_HIDDEN } from './shared/ui/money';
@@ -16,7 +17,8 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(
-      withInterceptors([credentialsInterceptor, correlationIdInterceptor, idempotencyKeyInterceptor, apiErrorInterceptor]),
+      // The last one sees the raw HTTP response first, before apiErrorInterceptor turns it into an ApiError.
+      withInterceptors([credentialsInterceptor, correlationIdInterceptor, idempotencyKeyInterceptor, apiErrorInterceptor, sessionExpiredInterceptor]),
     ),
     { provide: AMOUNTS_HIDDEN, useFactory: () => inject(PrivacyStore).amountsHidden },
   ],

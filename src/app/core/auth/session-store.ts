@@ -49,6 +49,12 @@ export class SessionStore {
     await this.refresh();
   }
 
+  /** The API said the session is over (401): forget the person without asking it anything else. */
+  expire(): void {
+    this.current.set(null);
+    this.loading = Promise.resolve(false);
+  }
+
   async logout(): Promise<void> {
     await firstValueFrom(this.http.post('/api/v1/auth/logout', null));
     this.current.set(null);

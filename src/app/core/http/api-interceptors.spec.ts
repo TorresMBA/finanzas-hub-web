@@ -9,7 +9,10 @@ import {
   credentialsInterceptor,
   idempotencyKeyInterceptor,
   newIdempotencyKey,
+  sessionExpiredInterceptor,
 } from './api-interceptors';
+import { Router } from '@angular/router';
+import { SessionStore } from '../auth/session-store';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -97,5 +100,49 @@ describe('API interceptors', () => {
     server.expectOne('/api/v1/me').flush(null, { status: 401, statusText: 'Unauthorized' });
 
     expect((failure as ApiError).code).toBe('auth.unauthenticated');
+  });
+});
+
+describe('sessionExpiredInterceptor', () => {
+  let http: HttpClient;
+  let server: HttpTestingController;
+  let session: { isSignedIn: () => boolean; expire: ReturnType<typeof vi.fn> };
+  let router: { url: string; navigate: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    session = { isSignedIn: () => true, expire: vi.fn() };
+    router = { url: '/accounts', navigate: vi.fn().mockResolvedValue(true) };
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([apiErrorInterceptor, sessionExpiredInterceptor])),
+        provideHttpClientTesting(),
+        { provide: SessionStore, useValue: session },
+        { provide: Router, useValue: router },
+      ],
+    });
+    http = TestBed.inject(HttpClient);
+    server = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => server.verify());
+
+  it('forgets an ended session and sends the person to sign in, back to where they were', () => {
+    let failure: unknown;
+    http.get('/api/v1/workspaces/w/accounts').subscribe({ error: (error: unknown) => (failure = error) });
+
+    server.expectOne('/api/v1/workspaces/w/accounts').flush({ status: 401, code: 'auth.unauthenticated' }, { status: 401, statusText: 'Unauthorized' });
+
+    expect(session.expire).toHaveBeenCalledOnce();
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: '/accounts', expired: 1 } });
+    expect(failure).toBeInstanceOf(ApiError);
+  });
+
+  it('leaves a wrong password on the sign-in call alone', () => {
+    http.post('/api/v1/auth/login', {}).subscribe({ error: () => undefined });
+
+    server.expectOne('/api/v1/auth/login').flush({ status: 401, code: 'auth.invalid_credentials' }, { status: 401, statusText: 'Unauthorized' });
+
+    expect(session.expire).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 });

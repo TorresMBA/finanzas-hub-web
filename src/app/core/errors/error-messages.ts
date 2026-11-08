@@ -19,6 +19,8 @@ const MESSAGES: Readonly<Record<string, string>> = {
   'identity.invalid': 'La contraseña no cumple los requisitos: 12 caracteres con una minúscula, un número y un símbolo.',
   'identity.password_incorrect': 'La contraseña actual no es correcta.',
   'identity.token_invalid': 'El enlace no es válido o ya caducó. Pide uno nuevo.',
+  'identity.invitation_required': 'Las cuentas se crean por invitación. Pide a alguien que ya use PersonalHub que te invite y abre el enlace de su correo.',
+  'notifications.whatsapp_unavailable': 'WhatsApp todavía no está disponible.',
   'workspace.not_found': 'No encontramos ese espacio, o ya no perteneces a él.',
   'workspace.insufficient_role': 'Tu rol en este espacio no permite hacer eso.',
   'workspaces.insufficient_role': 'Tu rol en este espacio no permite hacer eso.',

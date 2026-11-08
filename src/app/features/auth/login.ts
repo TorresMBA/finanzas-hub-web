@@ -16,6 +16,8 @@ import { AuthPage } from './auth-page';
       <form class="form-stack" (submit)="$event.preventDefault(); signIn()" novalidate>
         @if (failure(); as text) {
           <div class="alert" role="alert">{{ text }}</div>
+        } @else if (expired()) {
+          <div class="alert" role="status">Tu sesión terminó. Vuelve a iniciar sesión para continuar.</div>
         }
         <app-field label="Correo electrónico" [state]="loginForm.email()">
           <span class="control">
@@ -53,7 +55,7 @@ import { AuthPage } from './auth-page';
           <app-icon [name]="busy() ? 'progress_activity' : 'arrow_forward'" [size]="19" />
         </button>
       </form>
-      <span footer>¿No tienes cuenta? <a routerLink="/register">Regístrate gratis</a></span>
+      <span footer>¿Te invitaron? <a routerLink="/register">Crea tu cuenta</a></span>
     </app-auth-page>
   `,
   styles: `
@@ -120,6 +122,9 @@ export class Login {
 
   /** Where the person was going when they were asked to sign in. Bound from the query string. */
   readonly returnUrl = input<string>();
+
+  /** Set when the session ended while the page was open (see sessionExpiredInterceptor). */
+  readonly expired = input<string>();
 
   protected readonly model = signal({ email: '', password: '' });
   protected readonly loginForm = form(this.model, (path) => {
