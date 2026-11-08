@@ -28,4 +28,16 @@ describe('AppErrorHandler', () => {
 
     expect(status.failure()).toBeNull();
   });
+
+  it('ignores what the window reports that is not a failure of the application', () => {
+    // How Angular passes on an error event without an error, such as the browser's ResizeObserver warning.
+    const resizeObserver = new ErrorEvent('error', { message: 'ResizeObserver loop completed with undelivered notifications.' });
+    handler.handleError(new Error('An ErrorEvent with no error occurred.', { cause: resizeObserver }));
+
+    const fromAnExtension = new Error('boom');
+    fromAnExtension.stack = 'Error: boom\n    at run (chrome-extension://abcdef/web-client-content-script.js:2:10)';
+    handler.handleError(fromAnExtension);
+
+    expect(status.failure()).toBeNull();
+  });
 });
