@@ -681,47 +681,61 @@ export class TransactionForm {
     });
   }
 
-  private async persist(): Promise<string> {
-    const target = this.target();
+  /** Saves what the form holds, by kind, and returns the line that confirms it. */
+  private persist(): Promise<string> {
     const value = this.model();
+    if (value.type !== 'transfer') {
+      return this.persistTransaction({ ...value, type: value.type });
+    }
+
+    return value.toBookId === '' ? this.persistTransfer(value) : this.persistBookTransfer(value);
+  }
+
+  /** What arrives in the destination account, when it is in another currency. */
+  private destinationAmountOf(value: TransactionFormModel): number | null {
+    const destination = this.destinationCurrency();
+    return destination ? parseAmount(value.destinationAmount, currencyDecimals(destination)) : null;
+  }
+
+  private async persistBookTransfer(value: TransactionFormModel): Promise<string> {
+    const transfer = await this.api.transferToBook(
+      {
+        fromAccountId: value.accountId,
+        toWorkspaceId: value.toBookId,
+        toAccountId: value.toAccountId,
+        amount: parseAmount(value.amount, currencyDecimals(this.currency())) ?? 0,
+        destinationAmount: this.destinationAmountOf(value),
+        occurredOn: value.date,
+        description: value.description.trim() || null,
+        note: value.note.trim() || null,
+      },
+      this.idempotencyKey,
+    );
+    const book = this.otherBooks().find((candidate) => candidate.id === value.toBookId);
+    return `Transferencia de ${formatMoney(transfer.amount, transfer.currency)} a «${book ? workspaceLabel(book) : 'otro libro'}» registrada.`;
+  }
+
+  private async persistTransfer(value: TransactionFormModel): Promise<string> {
+    const decimals = currencyDecimals(this.currency());
+    const transfer = await this.api.transfer(
+      {
+        fromAccountId: value.accountId,
+        toAccountId: value.toAccountId,
+        amount: parseAmount(value.amount, decimals) ?? 0,
+        destinationAmount: this.destinationAmountOf(value),
+        occurredOn: value.date,
+        description: value.description.trim() || null,
+        note: value.note.trim() || null,
+        fee: value.fee.trim() === '' ? null : parseAmount(value.fee, decimals),
+      },
+      this.idempotencyKey,
+    );
+    return `Transferencia de ${formatMoney(transfer.amount, transfer.currency)} registrada.`;
+  }
+
+  private async persistTransaction(value: TransactionFormModel & { type: TransactionType }): Promise<string> {
+    const target = this.target();
     const note = value.note.trim() || null;
-    if (value.type === 'transfer' && value.toBookId !== '') {
-      const decimals = currencyDecimals(this.currency());
-      const transfer = await this.api.transferToBook(
-        {
-          fromAccountId: value.accountId,
-          toWorkspaceId: value.toBookId,
-          toAccountId: value.toAccountId,
-          amount: parseAmount(value.amount, decimals) ?? 0,
-          destinationAmount: this.destinationCurrency() ? parseAmount(value.destinationAmount, currencyDecimals(this.destinationCurrency()!)) : null,
-          occurredOn: value.date,
-          description: value.description.trim() || null,
-          note,
-        },
-        this.idempotencyKey,
-      );
-      const book = this.otherBooks().find((candidate) => candidate.id === value.toBookId);
-      return `Transferencia de ${formatMoney(transfer.amount, transfer.currency)} a «${book ? workspaceLabel(book) : 'otro libro'}» registrada.`;
-    }
-
-    if (value.type === 'transfer') {
-      const decimals = currencyDecimals(this.currency());
-      const transfer = await this.api.transfer(
-        {
-          fromAccountId: value.accountId,
-          toAccountId: value.toAccountId,
-          amount: parseAmount(value.amount, decimals) ?? 0,
-          destinationAmount: this.destinationCurrency() ? parseAmount(value.destinationAmount, currencyDecimals(this.destinationCurrency()!)) : null,
-          occurredOn: value.date,
-          description: value.description.trim() || null,
-          note,
-          fee: value.fee.trim() === '' ? null : parseAmount(value.fee, decimals),
-        },
-        this.idempotencyKey,
-      );
-      return `Transferencia de ${formatMoney(transfer.amount, transfer.currency)} registrada.`;
-    }
-
     const foreign = this.foreign();
     const price = parseAmount(value.amount, currencyDecimals(this.priceCurrency())) ?? 0;
     const charged = foreign ? (parseAmount(value.charged, currencyDecimals(this.currency())) ?? Number(this.estimate())) : price;

@@ -66,7 +66,7 @@ export const MOBILE_TABS: readonly NavItem[] = NAV_ITEMS.filter((item) => MOBILE
 
 export const MOBILE_MORE: readonly NavItem[] = NAV_ITEMS.filter((item) => !MOBILE_TAB_IDS.includes(item.id));
 
-/** The sections a workspace offers: without goals and shared expenses where it admits no one else. */
-export function sectionsFor<T extends NavItem>(items: readonly T[], allowsCollaboration: boolean): readonly T[] {
-  return allowsCollaboration ? items : items.filter((item) => !item.collaborative);
+/** The sections without goals and shared expenses: what a workspace that admits no one else offers. */
+export function withoutCollaboration<T extends NavItem>(items: readonly T[]): readonly T[] {
+  return items.filter((item) => !item.collaborative);
 }

@@ -4,7 +4,7 @@ import { NotificationCenter } from '../../core/notifications/notification-center
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
 import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
-import { MOBILE_MORE, sectionsFor } from '../navigation';
+import { MOBILE_MORE, withoutCollaboration } from '../navigation';
 
 /**
  * Bottom sheet with the sections that have no tab of their own on mobile. It is the shared modal dialog, so focus
@@ -92,6 +92,6 @@ export class MoreSheet {
   readonly closed = output<void>();
 
   private readonly workspaces = inject(WorkspaceStore);
-  protected readonly items = computed(() => sectionsFor(MOBILE_MORE, this.workspaces.allowsCollaboration()));
+  protected readonly items = computed(() => (this.workspaces.allowsCollaboration() ? MOBILE_MORE : withoutCollaboration(MOBILE_MORE)));
   protected readonly unread = inject(NotificationCenter).unread;
 }
