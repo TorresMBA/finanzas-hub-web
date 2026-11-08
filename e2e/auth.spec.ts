@@ -7,7 +7,7 @@ test.describe('accounts', () => {
     await expect(page).toHaveURL(/\/login\?returnUrl=%2Faccounts$/);
     await expect(page.getByRole('heading', { level: 1, name: 'Hola de nuevo' })).toBeVisible();
 
-    await page.getByRole('link', { name: 'Regístrate gratis' }).click();
+    await page.getByRole('link', { name: 'Crea tu cuenta' }).click();
     await page.getByLabel('Tu nombre').fill('Brian Quispe');
     await page.getByLabel('Correo').fill(newEmail('brian'));
     await page.getByLabel('Contraseña').fill(PASSWORD);

@@ -7,7 +7,7 @@ import { Dashboard as DashboardData, DashboardAccount, DashboardMovement } from 
 import { SessionStore } from '../../core/auth/session-store';
 import { PeriodStore, TODAY } from '../../core/period/period-store';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
-import { formatShortDate } from '../../shared/ui/dates';
+import { formatShortDate, formatShortMonth } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Icon } from '../../shared/ui/icon';
@@ -15,7 +15,6 @@ import { IconTile, TileColor } from '../../shared/ui/icon-tile';
 import { AMOUNTS_HIDDEN, PrivateMoneyPipe, formatMoney } from '../../shared/ui/money';
 import { Skeleton } from '../../shared/ui/skeleton';
 
-const MONTH = new Intl.DateTimeFormat('es-PE', { month: 'short' });
 
 const ACCOUNT_LOOK: Readonly<Record<DashboardAccount['type'], { icon: string; color: TileColor }>> = {
   bank: { icon: 'account_balance', color: 'blue' },
@@ -75,7 +74,7 @@ const KPI_STORAGE_KEY = 'ph.home.kpis';
 /** "may" from "2026-05". */
 function monthLabel(iso: string): string {
   const [year, month] = iso.split('-').map(Number);
-  return MONTH.format(new Date(year, month - 1, 1)).replace('.', '').toLowerCase();
+  return formatShortMonth(year, month);
 }
 
 /** How a figure moved against the month before, as the line under a KPI. */

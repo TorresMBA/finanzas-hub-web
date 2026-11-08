@@ -66,7 +66,7 @@ describe('Notifications', () => {
   it('groups the notices by day, and opening an unread one marks it read and goes where it points', async () => {
     http.expectOne(LIST_URL).flush(LIST);
     http.expectOne(SETTINGS_URL).flush(SETTINGS);
-    http.expectOne('/api/v1/me/channels/whatsapp').flush({ phone: null, pendingPhone: null, codeExpiresAt: null });
+    http.expectOne('/api/v1/me/channels/whatsapp').flush({ phone: null, pendingPhone: null, codeExpiresAt: null, available: true });
     await fixture.whenStable();
 
     expect(Array.from(element.querySelectorAll('section h2')).map((node) => node.textContent)).toEqual(['Hoy', 'Anteriores']);
@@ -86,5 +86,16 @@ describe('Notifications', () => {
 
     expect(navigate).toHaveBeenCalledWith('/budgets');
     expect(element.querySelectorAll('.notice.is-unread').length).toBe(0);
+  });
+
+  it('hides WhatsApp while the installation does not offer it', async () => {
+    http.expectOne(LIST_URL).flush(LIST);
+    http.expectOne(SETTINGS_URL).flush(SETTINGS);
+    http.expectOne('/api/v1/me/channels/whatsapp').flush({ phone: null, pendingPhone: null, codeExpiresAt: null, available: false });
+    await fixture.whenStable();
+
+    expect(element.querySelector('app-whatsapp-channel')).toBeNull();
+    expect(element.querySelector('[aria-label="Alertas de presupuesto por WhatsApp"]')).toBeNull();
+    expect(element.querySelector<HTMLInputElement>('[aria-label="Alertas de presupuesto por correo"]')!.checked).toBe(true);
   });
 });

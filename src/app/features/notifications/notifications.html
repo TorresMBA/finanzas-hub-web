@@ -28,7 +28,7 @@
     </div>
 
     @if (!list.hasValue() && list.isLoading()) {
-      <div class="loading" aria-busy="true" aria-label="Cargando avisos">
+      <div class="loading" role="status" aria-busy="true" aria-label="Cargando avisos">
         @for (row of [1, 2, 3]; track row) {
           <app-skeleton height="68px" />
         }
@@ -77,7 +77,9 @@
     } @else if (whatsApp.error()) {
       <app-error-state title="No se pudo cargar tu WhatsApp" (retry)="whatsApp.reload()" />
     } @else if (whatsApp.value(); as channel) {
-      <app-whatsapp-channel [channel]="channel" (changed)="whatsApp.reload(); settings.reload()" />
+      @if (channel.available) {
+        <app-whatsapp-channel [channel]="channel" (changed)="whatsApp.reload(); settings.reload()" />
+      }
     }
     @if (!settings.hasValue() && settings.isLoading()) {
       <app-skeleton height="220px" />
@@ -87,24 +89,28 @@
       <form class="form-stack" (submit)="$event.preventDefault(); save()" novalidate>
         <fieldset class="channels">
           <legend>Elige dónde te llega cada aviso. Sacar uno de la bandeja no lo pierde: se guarda como leído.</legend>
-          <div class="channel-row channel-head" aria-hidden="true">
+          <div class="channel-row channel-head" [class.channel-row--no-whatsapp]="!whatsAppAvailable()" aria-hidden="true">
             <span></span>
             <span>Bandeja</span>
             <span>Correo</span>
-            <span>WhatsApp</span>
+            @if (whatsAppAvailable()) {
+              <span>WhatsApp</span>
+            }
           </div>
           @for (row of channelRows; track row.category) {
-            <div class="channel-row">
+            <div class="channel-row" [class.channel-row--no-whatsapp]="!whatsAppAvailable()">
               <span class="channel-name">
                 <strong>{{ categoryLook[row.category].label }}</strong>
                 <small>{{ categoryLook[row.category].hint }}</small>
               </span>
               <input type="checkbox" [formField]="settingsForm[row.inbox]" [attr.aria-label]="categoryLook[row.category].label + ' en la bandeja'" />
               <input type="checkbox" [formField]="settingsForm[row.email]" [attr.aria-label]="categoryLook[row.category].label + ' por correo'" />
-              <input type="checkbox" [formField]="settingsForm[row.whatsApp]" [attr.aria-label]="categoryLook[row.category].label + ' por WhatsApp'" />
+              @if (whatsAppAvailable()) {
+                <input type="checkbox" [formField]="settingsForm[row.whatsApp]" [attr.aria-label]="categoryLook[row.category].label + ' por WhatsApp'" />
+              }
             </div>
           }
-          @if (whatsApp.hasValue() && !whatsAppReady()) {
+          @if (whatsAppAvailable() && !whatsAppReady()) {
             <p class="form-note">Para recibir avisos por WhatsApp, verifica primero tu número.</p>
           }
         </fieldset>

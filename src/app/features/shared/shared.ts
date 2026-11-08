@@ -6,7 +6,7 @@ import { SessionStore } from '../../core/auth/session-store';
 import { errorMessage } from '../../core/errors/error-messages';
 import { NotificationCenter } from '../../core/notifications/notification-center';
 import { TODAY } from '../../core/period/period-store';
-import { toIsoDate } from '../../shared/ui/dates';
+import { formatShortMonth, toIsoDate } from '../../shared/ui/dates';
 import { Dialog } from '../../shared/ui/dialog';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
@@ -22,7 +22,6 @@ import { GroupView } from './group-view';
 import { SettlementForm, SettlementFormTarget } from './settlement-form';
 import { SharedApi } from './shared-api';
 
-const MONTH = new Intl.DateTimeFormat('es-PE', { month: 'short' });
 
 /** What is between the person asking and someone else, by the sign of what that someone owes them. */
 const PERSON_LABELS: Readonly<Record<Sign, string>> = { pos: 'Te debe', neg: 'Le debes', even: 'A mano' };
@@ -101,7 +100,7 @@ export class Shared {
     const me = this.me();
     const now = this.today();
     const month = toIsoDate(now).slice(0, 7);
-    const monthName = MONTH.format(now).replace('.', '').toLowerCase();
+    const monthName = formatShortMonth(now.getFullYear(), now.getMonth() + 1);
     const plain: Sign = 'even';
     return totals.flatMap((total) => {
       const currency = total.currency;

@@ -15,7 +15,7 @@
 </div>
 
 @if (!report.hasValue() && report.isLoading()) {
-  <div class="loading" aria-busy="true" aria-label="Cargando el reporte">
+  <div class="loading" role="status" aria-busy="true" aria-label="Cargando el reporte">
     <app-skeleton height="96px" />
     <app-skeleton height="260px" />
   </div>

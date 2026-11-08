@@ -3479,6 +3479,8 @@ export interface components {
             pendingPhone: null | string;
             /** Format: date-time */
             codeExpiresAt: null | string;
+            /** @default true */
+            available: boolean;
             isVerified?: boolean;
         };
         WhatsAppDeliveryResponse: {

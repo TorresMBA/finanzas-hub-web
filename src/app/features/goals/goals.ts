@@ -4,7 +4,7 @@ import { Account, Category, Goal, GoalContribution, GoalDetail, GoalList } from 
 import { SessionStore } from '../../core/auth/session-store';
 import { errorMessage } from '../../core/errors/error-messages';
 import { NotificationCenter } from '../../core/notifications/notification-center';
-import { formatShortDate } from '../../shared/ui/dates';
+import { formatShortDate, formatShortMonth } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Icon } from '../../shared/ui/icon';
@@ -24,7 +24,6 @@ const FILTERS: readonly { value: Filter; label: string }[] = [
   { value: 'all', label: 'Todas' },
 ];
 
-const MONTH = new Intl.DateTimeFormat('es-PE', { month: 'short' });
 
 /**
  * The goals the person saves for, alone or with other members of the workspace. A shared goal is seen only
@@ -84,7 +83,7 @@ export class Goals {
     const tallest = Math.max(1, ...months.map((month) => Number(month.amount)));
     return months.map((month) => {
       const [year, number] = month.month.split('-').map(Number);
-      return { month: month.month, label: MONTH.format(new Date(year, number - 1, 1)).replace('.', ''), height: (Math.max(0, Number(month.amount)) / tallest) * 100 };
+      return { month: month.month, label: formatShortMonth(year, number), height: (Math.max(0, Number(month.amount)) / tallest) * 100 };
     });
   });
 

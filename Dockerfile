@@ -17,6 +17,19 @@ COPY --chmod=755 <<'EOF' /docker-entrypoint.d/05-api-upstream.envsh
 : "${API_UPSTREAM:?falta API_UPSTREAM (host:puerto del API) en el .env de la app}"
 EOF
 
+# Cabeceras de seguridad de las páginas. Van en un snippet porque nginx no hereda los add_header del server en un
+# location que declara los suyos, y los dos de abajo declaran Cache-Control.
+# CSP: todo sale del propio origen (las fuentes van dentro del build). Los estilos de los componentes de Angular son
+# <style> en línea, de ahí 'unsafe-inline' solo en style-src; ningún script va en línea (inlineCritical está apagado).
+COPY <<'EOF' /etc/nginx/snippets/security-headers.conf
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "same-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+add_header Strict-Transport-Security "max-age=31536000" always;
+EOF
+
 COPY <<'EOF' /etc/nginx/templates/default.conf.template
 # WebSocket solo cuando el navegador lo pide
 map $http_upgrade $connection_upgrade {
@@ -63,14 +76,16 @@ server {
 
     # El build de Angular pone hash en el nombre de js, css y fuentes: no cambian nunca.
     # Lo de public/ (favicon, imágenes) no lleva hash y sigue la regla general.
-    location ~* \.(?:js|css|woff2)$ {
+    location ~* \.(?:js|css|woff2?)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        include /etc/nginx/snippets/security-headers.conf;
         try_files $uri =404;
     }
 
     location / {
         add_header Cache-Control "no-cache";
+        include /etc/nginx/snippets/security-headers.conf;
         try_files $uri $uri/ /index.html;
     }
 }

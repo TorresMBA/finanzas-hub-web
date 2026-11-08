@@ -40,3 +40,10 @@ export function formatDay(iso: string): string {
 export function formatShortDate(iso: string): string {
   return SHORT.format(toDate(iso)).replace('.', '');
 }
+
+const MONTH = new Intl.DateTimeFormat('es-PE', { month: 'short' });
+
+/** "oct": a month (1 to 12) as the charts and summaries name it. */
+export function formatShortMonth(year: number, month: number): string {
+  return MONTH.format(new Date(year, month - 1, 1)).replace('.', '').toLowerCase();
+}

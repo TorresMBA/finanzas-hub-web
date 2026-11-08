@@ -33,7 +33,7 @@
 </section>
 
 @if (!dashboard.hasValue() && dashboard.isLoading()) {
-  <div class="loading" aria-busy="true" aria-label="Cargando el resumen">
+  <div class="loading" role="status" aria-busy="true" aria-label="Cargando el resumen">
     <app-skeleton height="132px" />
     <app-skeleton height="280px" />
     <app-skeleton height="280px" />

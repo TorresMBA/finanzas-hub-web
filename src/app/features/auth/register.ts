@@ -18,6 +18,8 @@ export const PASSWORD_HINT = 'Mínimo 12 caracteres, con una minúscula, un núm
       <form class="form-stack" (submit)="$event.preventDefault(); register()" novalidate>
         @if (failure(); as text) {
           <div class="alert" role="alert">{{ text }}</div>
+        } @else if (!invitation()) {
+          <p class="form-note">Las cuentas se crean por invitación: si alguien te invitó, abre el enlace de su correo.</p>
         }
         <app-field label="Tu nombre" [state]="registerForm.displayName()">
           <input class="input" type="text" autocomplete="name" [formField]="registerForm.displayName" />

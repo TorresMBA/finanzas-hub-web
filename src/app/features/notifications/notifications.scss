@@ -126,6 +126,10 @@ h2 {
 .channel-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 58px 54px 68px;
+
+  &--no-whatsapp {
+    grid-template-columns: minmax(0, 1fr) 58px 54px;
+  }
   align-items: center;
   gap: 8px;
   padding: 8px 0;

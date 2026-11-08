@@ -6,6 +6,7 @@ import { ReportFormat, ReportPeriodKind, ReportSummary } from '../../core/api/ap
 import { SessionStore } from '../../core/auth/session-store';
 import { PeriodStore } from '../../core/period/period-store';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
+import { formatShortMonth } from '../../shared/ui/dates';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ErrorState } from '../../shared/ui/error-state';
 import { Icon } from '../../shared/ui/icon';
@@ -14,7 +15,6 @@ import { PageHeader } from '../../shared/ui/page-header';
 import { Skeleton } from '../../shared/ui/skeleton';
 
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-const SHORT_MONTH = new Intl.DateTimeFormat('es-PE', { month: 'short' });
 
 /** The slices of the donut: five categories and the rest. Fixed colours, so two categories never share one. */
 const SLICE_COLORS = ['var(--ac)', 'var(--bl)', 'var(--vi)', 'var(--am)', 'var(--rd)', 'var(--mu)'];
@@ -209,7 +209,7 @@ export class Reports {
       const rate = month.savingsRate === null ? null : Number(month.savingsRate);
       return {
         month: month.month,
-        label: SHORT_MONTH.format(new Date(year, number - 1, 1)).replace('.', ''),
+        label: formatShortMonth(year, number),
         text: rate === null ? '—' : `${rate.toLocaleString('es-PE', { maximumFractionDigits: 0 })}%`,
         height: rate === null ? 0 : Math.max(2, (Math.abs(rate) / top) * 100),
         negative: rate !== null && rate < 0,

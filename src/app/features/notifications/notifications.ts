@@ -81,6 +81,9 @@ export class Notifications {
   /** Notices go to WhatsApp only once the number is proven. */
   protected readonly whatsAppReady = computed(() => !!this.whatsApp.value()?.phone);
 
+  /** Whether this installation offers WhatsApp at all. Until it does, its column and its card are not shown. */
+  protected readonly whatsAppAvailable = computed(() => this.whatsApp.value()?.available === true);
+
   protected readonly failure = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly busy = signal(false);

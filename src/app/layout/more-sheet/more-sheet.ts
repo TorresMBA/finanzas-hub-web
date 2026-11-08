@@ -1,19 +1,20 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, computed, inject, output, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NotificationCenter } from '../../core/notifications/notification-center';
 import { WorkspaceStore } from '../../core/workspace/workspace-store';
+import { Dialog } from '../../shared/ui/dialog';
 import { Icon } from '../../shared/ui/icon';
 import { MOBILE_MORE, sectionsFor } from '../navigation';
 
-/** Bottom sheet with the sections that have no tab of their own on mobile. */
+/**
+ * Bottom sheet with the sections that have no tab of their own on mobile. It is the shared modal dialog, so focus
+ * stays inside while it is open, the page behind is inert, Escape closes it and focus goes back to "Más".
+ */
 @Component({
   selector: 'app-more-sheet',
-  imports: [RouterLink, RouterLinkActive, Icon],
+  imports: [Dialog, RouterLink, RouterLinkActive, Icon],
   template: `
-    <button type="button" class="backdrop" aria-label="Cerrar" (click)="closed.emit()"></button>
-    <div #sheet class="sheet" role="dialog" aria-modal="true" aria-labelledby="more-sheet-title" tabindex="-1">
-      <div class="handle"></div>
-      <h2 id="more-sheet-title">Todas las secciones</h2>
+    <app-dialog title="Todas las secciones" (closed)="closed.emit()">
       <nav aria-label="Todas las secciones">
         @for (item of items(); track item.id) {
           @let unreadHere = item.id === 'notifications' ? unread() : 0;
@@ -32,43 +33,9 @@ import { MOBILE_MORE, sectionsFor } from '../navigation';
           </a>
         }
       </nav>
-    </div>
+    </app-dialog>
   `,
   styles: `
-    :host {
-      position: absolute;
-      inset: 0;
-      z-index: 20;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-    }
-    .backdrop {
-      flex: 1;
-      background: var(--ov);
-      border-radius: 0;
-    }
-    .sheet {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      padding: 10px 16px 24px;
-      background: var(--sf);
-      border-top: 1px solid var(--bd);
-      border-radius: 20px 20px 0 0;
-      outline: none;
-    }
-    .handle {
-      align-self: center;
-      width: 40px;
-      height: 4px;
-      border-radius: 99px;
-      background: var(--sf3);
-    }
-    h2 {
-      font-size: 15px;
-      font-weight: 800;
-    }
     nav {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -119,20 +86,12 @@ import { MOBILE_MORE, sectionsFor } from '../navigation';
       }
     }
   `,
-  host: { '(document:keydown.escape)': 'closed.emit()' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MoreSheet {
-  private readonly sheet = viewChild.required<ElementRef<HTMLElement>>('sheet');
-
   readonly closed = output<void>();
 
   private readonly workspaces = inject(WorkspaceStore);
   protected readonly items = computed(() => sectionsFor(MOBILE_MORE, this.workspaces.allowsCollaboration()));
   protected readonly unread = inject(NotificationCenter).unread;
-
-  constructor() {
-    // Move focus into the dialog so keyboard and screen reader users land on it.
-    afterNextRender(() => this.sheet().nativeElement.focus());
-  }
 }

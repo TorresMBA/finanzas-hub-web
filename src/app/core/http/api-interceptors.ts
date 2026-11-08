@@ -1,5 +1,8 @@
 import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
+import { SessionStore } from '../auth/session-store';
 import { toApiError } from '../errors/api-error';
 
 const API_PREFIX = '/api/';
@@ -38,3 +41,29 @@ export const apiErrorInterceptor: HttpInterceptorFn = (request, next) =>
       throwError(() => (error instanceof HttpErrorResponse && isApiRequest(request.url) ? toApiError(error) : error)),
     ),
   );
+
+/**
+ * A session can end while the page is open: the cookie expired, or the password was changed on another device.
+ * The first API call that answers 401 then forgets the person and sends them to sign in, back to where they were.
+ * Calls to /auth are left alone: a wrong password is their own answer, not an ended session.
+ */
+export const sessionExpiredInterceptor: HttpInterceptorFn = (request, next) => {
+  const session = inject(SessionStore);
+  const router = inject(Router);
+  return next(request).pipe(
+    catchError((error: unknown) => {
+      if (
+        error instanceof HttpErrorResponse &&
+        error.status === 401 &&
+        isApiRequest(request.url) &&
+        !request.url.startsWith('/api/v1/auth/') &&
+        session.isSignedIn()
+      ) {
+        session.expire();
+        void router.navigate(['/login'], { queryParams: { returnUrl: router.url, expired: 1 } });
+      }
+
+      return throwError(() => error);
+    }),
+  );
+};

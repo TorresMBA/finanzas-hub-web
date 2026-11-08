@@ -10,7 +10,7 @@
 }
 
 @if (!budgets.hasValue() && budgets.isLoading()) {
-  <div class="loading" aria-busy="true" aria-label="Cargando presupuestos">
+  <div class="loading" role="status" aria-busy="true" aria-label="Cargando presupuestos">
     <app-skeleton height="220px" />
     @for (row of [1, 2, 3]; track row) {
       <app-skeleton height="96px" />

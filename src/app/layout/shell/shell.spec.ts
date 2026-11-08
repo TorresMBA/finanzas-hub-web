@@ -51,7 +51,7 @@ describe('Shell', () => {
 
     expect(text('app-more-sheet nav a span')).toEqual(MOBILE_MORE.map((item) => item.label));
 
-    element.querySelector<HTMLButtonElement>('app-more-sheet .backdrop')!.click();
+    element.querySelector<HTMLButtonElement>('app-more-sheet button[aria-label="Cerrar"]')!.click();
     await fixture.whenStable();
 
     expect(element.querySelector('app-more-sheet')).toBeNull();

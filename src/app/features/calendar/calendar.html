@@ -10,7 +10,7 @@
 }
 
 @if (!calendar.hasValue() && calendar.isLoading()) {
-  <div class="loading" aria-busy="true" aria-label="Cargando el calendario">
+  <div class="loading" role="status" aria-busy="true" aria-label="Cargando el calendario">
     <app-skeleton height="92px" />
     <app-skeleton height="420px" />
   </div>

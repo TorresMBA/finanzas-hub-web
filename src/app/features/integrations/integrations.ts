@@ -275,7 +275,11 @@ export class Integrations {
     });
   }
 
+  /** The rule whose "Eliminar" was pressed: deleting asks once more, inline. */
+  protected readonly confirmingRule = signal<string | null>(null);
+
   protected deleteRule(rule: CategorizationRule): Promise<void> {
+    this.confirmingRule.set(null);
     return this.run(async () => {
       await this.api.deleteRule(rule.id);
       return `Regla «${rule.pattern}» eliminada.`;

@@ -14,7 +14,7 @@
 }
 
 @if (!board.hasValue() && board.isLoading()) {
-  <div class="loading" aria-busy="true" aria-label="Cargando grupos">
+  <div class="loading" role="status" aria-busy="true" aria-label="Cargando grupos">
     <div class="kpis">
       @for (card of [1, 2, 3, 4]; track card) {
         <app-skeleton height="112px" />
