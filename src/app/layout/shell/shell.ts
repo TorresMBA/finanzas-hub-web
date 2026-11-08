@@ -295,6 +295,10 @@ export class Shell {
   private readonly main = viewChild.required<ElementRef<HTMLElement>>('main');
 
   constructor() {
+    // A new frame is a new session: what failed before signing in (or while the last session was ending) is not
+    // news for this one.
+    this.status.dismiss();
+
     // The inbox is followed for as long as a signed-in page is on screen.
     this.center.start();
     inject(DestroyRef).onDestroy(() => this.center.stop());

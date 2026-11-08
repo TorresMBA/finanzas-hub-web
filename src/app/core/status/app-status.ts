@@ -30,6 +30,8 @@ export class AppStatus {
 /**
  * Errors nobody caught. They are logged as before, and the person hears about them instead of meeting a page that
  * silently stopped working. A failed API call is not one of them: the view that made it shows its own error state.
+ * It also arrives wrapped: reading the value of a resource whose request failed throws Angular's ResourceValueError,
+ * with the ApiError as its cause, so the whole chain of causes is looked at.
  */
 @Injectable()
 export class AppErrorHandler implements ErrorHandler {
@@ -37,8 +39,36 @@ export class AppErrorHandler implements ErrorHandler {
 
   handleError(error: unknown): void {
     console.error(error);
-    if (!(error instanceof ApiError)) {
+    if (!comesFromTheApi(error) && !isNoise(error)) {
       this.status.reportUnexpected();
     }
   }
+}
+
+function causes(error: unknown): unknown[] {
+  const chain: unknown[] = [];
+  for (let current = error; current && chain.length < 5; current = (current as { cause?: unknown }).cause) {
+    chain.push(current);
+  }
+
+  return chain;
+}
+
+function comesFromTheApi(error: unknown): boolean {
+  return causes(error).some((current) => current instanceof ApiError);
+}
+
+/**
+ * What the window reports that is not a failure of this application:
+ * - an error event that carries no error, like "ResizeObserver loop completed with undelivered notifications" (the
+ *   browser's own warning, harmless) or the "Script error." of a script from another origin. Angular wraps it in an
+ *   Error with the event as its cause;
+ * - an error thrown by a browser extension, whose code runs in the page and reports to the same window.
+ */
+function isNoise(error: unknown): boolean {
+  return causes(error).some(
+    (current) =>
+      (typeof ErrorEvent !== 'undefined' && current instanceof ErrorEvent && !current.error) ||
+      (current instanceof Error && /\b(?:chrome|moz|safari-web)-extension:\/\//.test(current.stack ?? '')),
+  );
 }
