@@ -108,6 +108,8 @@ export class GroupView {
   /** Asks to put an expense the person paid in one of their accounts. */
   readonly linkExpense = output<SharedExpense>();
   readonly voidSettlement = output<SharedSettlement>();
+  /** The payment whose "Anular" was pressed: voiding asks once more, inline. */
+  protected readonly confirmingVoid = signal<string | null>(null);
   readonly linkAccount = output<SharedSettlement>();
   readonly addMember = output<{ userId: string; name: string }>();
   readonly removeMember = output<{ userId: string; name: string }>();

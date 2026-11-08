@@ -143,7 +143,11 @@ export class SettingsWorkspace {
     });
   }
 
+  /** The invitation whose "Revocar" was pressed: revoking asks once more, inline. */
+  protected readonly confirmingRevoke = signal<string | null>(null);
+
   protected revoke(invitation: Invitation): Promise<void> {
+    this.confirmingRevoke.set(null);
     // The link on screen may be the one being revoked.
     this.lastInvite.set(null);
     return this.run('Invitación revocada.', async () => {

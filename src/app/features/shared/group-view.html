@@ -212,7 +212,13 @@
                       · <button type="button" class="link" (click)="linkAccount.emit(row.settlement)">Registrar en mi cuenta</button>
                     }
                     @if (row.settlement.canVoid) {
-                      · <button type="button" class="link danger" [disabled]="busy()" (click)="voidSettlement.emit(row.settlement)">Anular</button>
+                      @if (confirmingVoid() === row.settlement.id) {
+                        · ¿Anular este pago?
+                        <button type="button" class="link danger" [disabled]="busy()" (click)="confirmingVoid.set(null); voidSettlement.emit(row.settlement)">Sí, anular</button>
+                        · <button type="button" class="link" (click)="confirmingVoid.set(null)">Cancelar</button>
+                      } @else {
+                        · <button type="button" class="link danger" [disabled]="busy()" (click)="confirmingVoid.set(row.settlement.id)">Anular</button>
+                      }
                     }
                   </span>
                 </span>

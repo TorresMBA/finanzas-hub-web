@@ -186,7 +186,12 @@
               <span>{{ roleLabels[invitation.role] }}</span>
             </div>
             <span class="badge" [class.badge--warn]="invitation.expired">{{ invitation.expired ? 'Caducada' : 'Pendiente' }}</span>
-            <button class="button button--small" type="button" [disabled]="busy()" (click)="revoke(invitation)">Revocar</button>
+            @if (confirmingRevoke() === invitation.id) {
+              <button class="button button--small button--danger" type="button" [disabled]="busy()" (click)="revoke(invitation)">Sí, revocar</button>
+              <button class="button button--small" type="button" (click)="confirmingRevoke.set(null)">Cancelar</button>
+            } @else {
+              <button class="button button--small" type="button" [disabled]="busy()" (click)="confirmingRevoke.set(invitation.id)">Revocar</button>
+            }
           </li>
         }
       </ul>

@@ -255,8 +255,14 @@
                 <span class="lead">→ {{ rule.categoryName }}</span>
               </span>
               <span class="side">
-                <button type="button" class="link" [disabled]="busy()" (click)="toggleRule(rule)">{{ rule.isActive ? 'Pausar' : 'Activar' }}</button>
-                <button type="button" class="link danger" [disabled]="busy()" (click)="deleteRule(rule)">Eliminar</button>
+                @if (confirmingRule() === rule.id) {
+                  <span class="lead">¿Eliminar la regla?</span>
+                  <button type="button" class="link danger" [disabled]="busy()" (click)="deleteRule(rule)">Sí, eliminar</button>
+                  <button type="button" class="link" (click)="confirmingRule.set(null)">Cancelar</button>
+                } @else {
+                  <button type="button" class="link" [disabled]="busy()" (click)="toggleRule(rule)">{{ rule.isActive ? 'Pausar' : 'Activar' }}</button>
+                  <button type="button" class="link danger" [disabled]="busy()" (click)="confirmingRule.set(rule.id)">Eliminar</button>
+                }
               </span>
             </li>
           } @empty {

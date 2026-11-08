@@ -93,7 +93,7 @@
       }
 
       @if (state() === 'loading') {
-        <div class="loading" aria-busy="true" aria-label="Cargando movimientos">
+        <div class="loading" role="status" aria-busy="true" aria-label="Cargando movimientos">
           @for (row of [1, 2, 3, 4, 5]; track row) {
             <app-skeleton height="58px" />
           }

@@ -58,7 +58,15 @@ export const routes: Routes = [
     path: '',
     component: Shell,
     canActivate: [appGuard],
-    children: [...sections, QUICK_TRANSACTION_ROUTE],
+    children: [
+      ...sections,
+      QUICK_TRANSACTION_ROUTE,
+      // Inside the frame, so a person who mistyped an address still has the navigation.
+      {
+        path: '**',
+        title: 'Página no encontrada · FinanzasHub',
+        loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),
+      },
+    ],
   },
-  { path: '**', redirectTo: '' },
 ];

@@ -11,7 +11,7 @@
 }
 
 @if (!goals.hasValue() && goals.isLoading()) {
-  <div class="loading" aria-busy="true" aria-label="Cargando metas">
+  <div class="loading" role="status" aria-busy="true" aria-label="Cargando metas">
     @for (row of [1, 2, 3]; track row) {
       <app-skeleton height="110px" />
     }

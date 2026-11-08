@@ -75,6 +75,7 @@ test('a dinner of 300 split between two: Juan pays his half from his account and
 
   // He voids it: the debt is back and the movement left his account too, so paying again does not leave two.
   await activity.getByRole('button', { name: 'Anular' }).click();
+  await activity.getByRole('button', { name: 'Sí, anular' }).click();
   await expect(juan.getByRole('status')).toContainText('Pago anulado');
   await expect(activity).toContainText('Debes S/ 150.00');
   await juan.goto('/accounts');
