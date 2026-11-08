@@ -1,5 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
 import { CurrencyCatalog } from '../../core/currency/currency-catalog';
 import { MovementsFeed, QUICK_OUTLET, QUICK_TRANSACTION_PATH } from '../../core/movements/movements-feed';
 import { NotificationCenter } from '../../core/notifications/notification-center';
@@ -24,7 +26,7 @@ const NOTICE_MS = 5000;
     <app-sidebar />
     <div class="column">
       <app-topbar />
-      <main id="main" tabindex="-1">
+      <main #main id="main" tabindex="-1">
         <div class="content">
           <router-outlet />
         </div>
@@ -249,6 +251,7 @@ export class Shell {
   protected readonly quickOutlet = QUICK_OUTLET;
   private readonly router = inject(Router);
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly main = viewChild.required<ElementRef<HTMLElement>>('main');
 
   constructor() {
     // The inbox is followed for as long as a signed-in page is on screen.
@@ -267,6 +270,27 @@ export class Shell {
       }
     });
     inject(DestroyRef).onDestroy(() => clearTimeout(this.noticeTimer));
+
+    // A new page moves focus to its content, as a page load would: a keyboard or screen reader user goes on from
+    // the new page, not from the link that led there. Only when the page itself changes, not the quick movement
+    // over it, the query string or the first load.
+    let page = this.pageOf(this.router.url);
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) => {
+        const next = this.pageOf(event.urlAfterRedirects);
+        if (next !== page) {
+          page = next;
+          this.main().nativeElement.focus({ preventScroll: true });
+        }
+      });
+  }
+
+  private pageOf(url: string): string {
+    return this.router.parseUrl(url).root.children['primary']?.toString() ?? '';
   }
 
   /** Opens the new movement over the page; the address stays, since it is not a place to come back to. */

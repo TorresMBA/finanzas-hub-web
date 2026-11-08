@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, input, output, viewChild } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, inject, input, output, viewChild } from '@angular/core';
 import { Icon } from './icon';
 
 let nextId = 0;
@@ -6,7 +7,7 @@ let nextId = 0;
 /**
  * A modal dialog: a sheet from the bottom on mobile, a centred card from tablet up. Render it only while it is
  * open (inside an `@if`) and remove it on `closed`. It is a native dialog, so the browser keeps focus inside,
- * makes the page behind inert and closes it with Escape.
+ * makes the page behind inert and closes it with Escape. When it goes, focus returns to what opened it.
  */
 @Component({
   selector: 'app-dialog',
@@ -14,7 +15,9 @@ let nextId = 0;
   template: `
     <!-- The click only closes on the backdrop; from the keyboard that is Escape, which raises "cancel". -->
     <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
-    <dialog #dialog [attr.aria-labelledby]="titleId" (cancel)="$event.preventDefault(); closed.emit()" (click)="closeIfBackdrop($event)">
+    <dialog #dialog [attr.aria-labelledby]="titleId" (cancel)="$event.preventDefault(); closed.emit()" (click)="closeIfBackdrop($event)"
+      (input)="edited = true"
+    >
       <header>
         <h2 [id]="titleId">{{ title() }}</h2>
         <button type="button" aria-label="Cerrar" (click)="closed.emit()"><app-icon name="close" /></button>
@@ -111,7 +114,19 @@ export class Dialog {
 
   protected readonly titleId = `dialog-title-${nextId++}`;
 
+  /** Something was typed or chosen inside: a stray click on the backdrop must not throw it away. */
+  protected edited = false;
+
   constructor() {
+    // What had focus when the dialog opened, usually the button that opened it. Without this, closing leaves
+    // focus on the body and a keyboard or screen reader user starts again from the top of the page.
+    const opener = inject(DOCUMENT).activeElement;
+    inject(DestroyRef).onDestroy(() => {
+      if (opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus({ preventScroll: true });
+      }
+    });
+
     afterNextRender(() => {
       const element = this.dialog().nativeElement;
       // A DOM without the modal API (a unit test) still shows the content.
@@ -123,11 +138,11 @@ export class Dialog {
     });
   }
 
-  /** A click on the backdrop is reported on the dialog element, but lands outside its box. */
+  /** A click on the backdrop is reported on the dialog element, but lands outside its box. Once edited, only ×, Cancel or Escape close it. */
   protected closeIfBackdrop(event: MouseEvent): void {
     const box = this.dialog().nativeElement.getBoundingClientRect();
     const inside = event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
-    if (event.target === this.dialog().nativeElement && !inside) {
+    if (event.target === this.dialog().nativeElement && !inside && !this.edited) {
       this.closed.emit();
     }
   }

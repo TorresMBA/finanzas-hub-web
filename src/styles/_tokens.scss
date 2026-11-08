@@ -48,6 +48,7 @@
   --horb: radial-gradient(circle at 40% 40%, #fff6d6, #f5d27a 60%, rgba(245, 210, 122, 0) 72%);
 }
 
+// Text colours reach WCAG AA (4.5:1) on every surface and on their own tinted backgrounds (checked 2026-11-08).
 [data-theme='light'] {
   color-scheme: light;
   --bg: #f3f5f8;
@@ -58,15 +59,15 @@
   --tx: #0e1626;
   --tx2: #334155;
   --mu: #5a6577;
-  --ac: #08805a;
-  --acs: rgba(8, 128, 90, 0.1);
+  --ac: #067352;
+  --acs: rgba(6, 115, 82, 0.1);
   --onac: #ffffff;
-  --bl: #1572b0;
-  --bls: rgba(21, 114, 176, 0.1);
-  --rd: #cc2f5a;
-  --rds: rgba(204, 47, 90, 0.09);
-  --am: #a86c00;
-  --ams: rgba(168, 108, 0, 0.11);
+  --bl: #11649c;
+  --bls: rgba(17, 100, 156, 0.1);
+  --rd: #b82850;
+  --rds: rgba(184, 40, 80, 0.09);
+  --am: #8f5b00;
+  --ams: rgba(143, 91, 0, 0.11);
   --vi: #5f4bd8;
   --vis: rgba(95, 75, 216, 0.1);
   --sh: 0 1px 2px rgba(15, 23, 42, 0.06);

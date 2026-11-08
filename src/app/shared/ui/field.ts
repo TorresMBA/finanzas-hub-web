@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, afterRenderEffect, computed, inject, input } from '@angular/core';
+
+let nextId = 0;
 
 /** The part of a form field's state this component reads. A Signal Forms field state satisfies it. */
 export interface FieldErrors {
@@ -10,7 +12,8 @@ export interface FieldErrors {
  * Label, control and message of one form field. Project the control; it shows the first validation
  * message once the field was touched, or the message the API returned for the field.
  *
- * The label wraps the control, so the control needs no id.
+ * The label wraps the control, so the control needs no id. The message and the hint are tied to the control with
+ * aria-describedby, and an error marks it aria-invalid, so a screen reader reads them when the control gets focus.
  */
 @Component({
   selector: 'app-field',
@@ -22,9 +25,9 @@ export interface FieldErrors {
       <ng-content />
     </label>
     @if (message(); as text) {
-      <p class="error" role="alert">{{ text }}</p>
+      <p class="error" role="alert" [id]="messageId">{{ text }}</p>
     } @else if (hint(); as text) {
-      <p class="hint">{{ text }}</p>
+      <p class="hint" [id]="messageId">{{ text }}</p>
     }
   `,
   styles: `
@@ -68,4 +71,29 @@ export class Field {
     const local = state?.touched() ? state.errors()[0] : undefined;
     return local ? (local.message ?? 'Valor no válido.') : (this.serverError() ?? null);
   });
+
+  protected readonly messageId = `field-message-${nextId++}`;
+
+  constructor() {
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    afterRenderEffect(() => {
+      const control = host.querySelector('input, select, textarea');
+      if (!control) {
+        return;
+      }
+
+      const invalid = this.message() !== null;
+      if (invalid) {
+        control.setAttribute('aria-invalid', 'true');
+      } else {
+        control.removeAttribute('aria-invalid');
+      }
+
+      if (invalid || this.hint()) {
+        control.setAttribute('aria-describedby', this.messageId);
+      } else {
+        control.removeAttribute('aria-describedby');
+      }
+    });
+  }
 }
