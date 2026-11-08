@@ -30,6 +30,8 @@ export class AppStatus {
 /**
  * Errors nobody caught. They are logged as before, and the person hears about them instead of meeting a page that
  * silently stopped working. A failed API call is not one of them: the view that made it shows its own error state.
+ * It also arrives wrapped: reading the value of a resource whose request failed throws Angular's ResourceValueError,
+ * with the ApiError as its cause, so the whole chain of causes is looked at.
  */
 @Injectable()
 export class AppErrorHandler implements ErrorHandler {
@@ -37,8 +39,18 @@ export class AppErrorHandler implements ErrorHandler {
 
   handleError(error: unknown): void {
     console.error(error);
-    if (!(error instanceof ApiError)) {
+    if (!comesFromTheApi(error)) {
       this.status.reportUnexpected();
     }
   }
+}
+
+function comesFromTheApi(error: unknown): boolean {
+  for (let current = error, depth = 0; current && depth < 5; current = (current as { cause?: unknown }).cause, depth++) {
+    if (current instanceof ApiError) {
+      return true;
+    }
+  }
+
+  return false;
 }
