@@ -110,8 +110,11 @@ pipeline {
       }
     }
 
+    // git flow: solo main llega a prod. develop, release/* y hotfix/* se construyen y van a dev
+    // (docs/getting-started/workflow.md en el repo principal). Sin BRANCH_NAME no se filtra.
     // Sin agente: la espera no ocupa RAM ni un cupo de agente
     stage('Aprobar prod') {
+      when { expression { !env.BRANCH_NAME || env.BRANCH_NAME == 'main' } }
       steps {
         timeout(time: 1, unit: 'DAYS') {
           input message: "¿Promover ${APP}:${TAG} a prod?"
@@ -120,6 +123,10 @@ pipeline {
     }
 
     stage('Deploy prod') {
+      when {
+        beforeAgent true
+        expression { !env.BRANCH_NAME || env.BRANCH_NAME == 'main' }
+      }
       agent { label 'base' }
       environment {
         REGISTRY = credentials('registry')
