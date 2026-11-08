@@ -12,7 +12,7 @@ async function openAccount(page: Page, name: string, balance: string, type = 'Ba
 }
 
 async function postTransaction(page: Page, fields: { type?: 'Gasto' | 'Ingreso'; amount: string; description: string; category: string; pending?: boolean; tag?: string }): Promise<void> {
-  await page.getByRole('button', { name: 'Nueva transacción' }).click();
+  await page.getByRole('main').getByRole('button', { name: 'Nueva transacción' }).click();
   const dialog = page.getByRole('dialog', { name: 'Nueva transacción' });
   await dialog.getByRole('button', { name: fields.type ?? 'Gasto', exact: true }).click();
   await dialog.getByLabel(/^Monto/).fill(fields.amount);
@@ -85,7 +85,7 @@ test.describe('ledger', () => {
     await expect(page.getByText(/^Sin movimientos en /)).toBeVisible();
 
     // The form says what is missing before anything is sent.
-    await page.getByRole('button', { name: 'Nueva transacción' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Nueva transacción' }).click();
     const form = page.getByRole('dialog', { name: 'Nueva transacción' });
     await form.getByRole('button', { name: 'Registrar' }).click();
     await expect(form.getByRole('alert')).toHaveText(['Escribe una descripción.', 'Escribe el monto.', 'Elige una categoría.']);
@@ -163,7 +163,7 @@ test.describe('ledger', () => {
 
     // An archived account is not offered for a new transaction.
     await page.goto('/transactions');
-    await page.getByRole('button', { name: 'Nueva transacción' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Nueva transacción' }).click();
     const form = page.getByRole('dialog', { name: 'Nueva transacción' });
     // The only account left is chosen by itself, and it is the only one in the list.
     const picker = form.getByRole('combobox', { name: 'Cuenta' });

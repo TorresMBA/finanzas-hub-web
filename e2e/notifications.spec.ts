@@ -22,7 +22,7 @@ test('crossing 90 % of a budget raises the badge without reloading and leaves a 
   // From here on the page is never reloaded: the badge can only change because the hub said so.
   await page.getByRole('link', { name: 'Transacciones' }).first().click();
   await expect(page.getByRole('link', { name: 'Notificaciones', exact: true }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Nueva transacción' }).click();
+  await page.getByRole('main').getByRole('button', { name: 'Nueva transacción' }).click();
   const expense = page.getByRole('dialog', { name: 'Nueva transacción' });
   await expense.getByRole('button', { name: 'Gasto', exact: true }).click();
   await expense.getByLabel(/^Monto/).fill('370');

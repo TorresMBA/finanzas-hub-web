@@ -26,7 +26,7 @@ async function openCard(page: Page, name: string, limit: string, paymentDay: str
 }
 
 async function postTransaction(page: Page, fields: { type: 'Gasto' | 'Ingreso'; amount: string; description: string; category: string; account: string }): Promise<void> {
-  await page.getByRole('button', { name: 'Nueva transacción' }).click();
+  await page.getByRole('main').getByRole('button', { name: 'Nueva transacción' }).click();
   const dialog = page.getByRole('dialog', { name: 'Nueva transacción' });
   await dialog.getByRole('button', { name: fields.type, exact: true }).click();
   await dialog.getByLabel(/^Monto/).fill(fields.amount);
@@ -56,7 +56,7 @@ test.describe('transfers, cards and net worth', () => {
     await expect(netWorth(page).first()).toContainText('S/ 1,200.00');
 
     await page.goto('/transactions');
-    await page.getByRole('button', { name: 'Nueva transacción' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Nueva transacción' }).click();
     const form = page.getByRole('dialog', { name: 'Nueva transacción' });
     await form.getByRole('button', { name: 'Transferencia', exact: true }).click();
     await expect(form).toContainText('No es ingreso ni gasto');
@@ -131,7 +131,7 @@ test.describe('transfers, cards and net worth', () => {
     const payment = page.getByRole('dialog', { name: 'Pagar tarjeta' });
     await expect(payment).toContainText('«Visa» debe S/ 200.00');
     // The only account with money is already chosen and the amount starts at what is owed.
-    await expect(payment.getByLabel('Pagar desde')).toHaveValue(/.+/);
+    await expect(payment.getByRole('combobox', { name: 'Pagar desde' })).toContainText('BCP');
     await expect(payment.getByLabel(/^Monto del pago/)).toHaveValue('200.00');
     await payment.getByRole('button', { name: 'Registrar pago' }).click();
     await expect(page.getByRole('status')).toHaveText('Pago de S/ 200.00 a «Visa» registrado.');
@@ -222,7 +222,7 @@ test.describe('transfers, cards and net worth', () => {
     }
 
     // The transfer form fits too, with its two accounts side by side.
-    await page.getByRole('button', { name: 'Nueva transacción' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Nueva transacción' }).click();
     const form = page.getByRole('dialog', { name: 'Nueva transacción' });
     await form.getByRole('button', { name: 'Transferencia', exact: true }).click();
     await expect(form.getByLabel('Hacia')).toBeVisible();

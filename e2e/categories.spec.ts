@@ -50,21 +50,21 @@ test.describe('categories', () => {
     await expect(list.getByRole('button', { name: /^Vivienda / })).toBeHidden();
     await page.getByRole('button', { name: 'Quitar filtro' }).click();
 
-    // Archiving hides it; it comes back from the archived ones, with its subcategory.
-    await page.getByRole('button', { name: 'Archivar Hijos' }).click();
-    await expect(page.getByRole('status')).toContainText('«Hijos» archivada');
-    await expect(list.getByRole('button', { name: /^Hijos / })).toBeHidden();
-    await page.getByRole('button', { name: 'Archivadas (1)' }).click();
-    await page.getByRole('button', { name: 'Restaurar Hijos' }).click();
-    await expect(page.getByRole('status')).toHaveText('«Hijos» restaurada.');
+    // No movement ever used it, so it is deleted instead of archived (ADR-024), with its subcategory.
     await expect(row.getByText('1 subcategoría · Gasto')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Archivar Hijos' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Eliminar Hijos' }).click();
+    await page.getByRole('button', { name: 'Sí, eliminar' }).click();
+    await expect(page.getByRole('status')).toHaveText('«Hijos» eliminada.');
+    await expect(list.getByRole('button', { name: /^Hijos / })).toBeHidden();
 
     // What was done is still there after a reload: it is saved, not only on screen.
     await page.reload();
-    await expect(list.getByRole('button', { name: /^Hijos / })).toBeVisible();
+    await expect(list.getByRole('button', { name: /^Vivienda / })).toBeVisible();
+    await expect(list.getByRole('button', { name: /^Hijos / })).toBeHidden();
   });
 
-  test('the quick form adds a tag to a category and the tag can be archived', async ({ page }) => {
+  test('the quick form adds a tag to a category and a tag nobody used can be deleted', async ({ page }) => {
     await signUp(page);
     await page.goto('/categories');
     const list = page.getByRole('region', { name: 'Categorías' });
@@ -79,10 +79,10 @@ test.describe('categories', () => {
     await expect(pets.getByRole('button', { name: /veterinario/ })).toBeVisible();
 
     await pets.getByRole('button', { name: /veterinario/ }).click();
-    await page.getByRole('button', { name: 'Archivar etiqueta' }).click();
-    await page.getByRole('button', { name: 'Sí, archivar' }).click();
+    await page.getByRole('button', { name: 'Eliminar etiqueta' }).click();
+    await page.getByRole('button', { name: 'Sí, eliminar' }).click();
 
-    await expect(page.getByRole('status')).toHaveText('Etiqueta #veterinario archivada.');
+    await expect(page.getByRole('status')).toHaveText('Etiqueta #veterinario eliminada.');
     await expect(page.getByRole('button', { name: /veterinario/ })).toHaveCount(0);
     await expect(pets.getByRole('button', { name: /mascota$/ })).toBeVisible();
   });

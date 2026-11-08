@@ -1,5 +1,5 @@
 import { Page, expect, test } from '@playwright/test';
-import { GREETING, signUp } from './support';
+import { GREETING, pickAccount, signUp } from './support';
 
 async function openGroup(page: Page, name: string): Promise<void> {
   await page.getByRole('navigation', { name: 'Grupos' }).getByRole('button', { name: new RegExp(name) }).click();
@@ -64,7 +64,7 @@ test('a dinner of 300 split between two: Juan pays his half from his account and
     await juan.getByRole('button', { name: 'Registrar pago' }).click();
     const payment = juan.getByRole('dialog', { name: 'Pagar a Brian' });
     await payment.getByRole('checkbox').check();
-    await payment.getByLabel(/^Cuenta/).selectOption({ label: 'Interbank' });
+    await pickAccount(payment, 'Cuenta', 'Interbank');
     await payment.getByLabel(/^Categoría/).selectOption({ label: 'Supermercado' });
     await payment.getByRole('button', { name: 'Registrar', exact: true }).click();
     await expect(juan.getByRole('status')).toHaveText('Pagaste S/ 150.00 a Brian.');

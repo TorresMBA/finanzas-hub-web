@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signUp } from './support';
+import { pickAccount, signUp } from './support';
 
 test('a term deposit of 15,000 lowers the account but leaves the net worth and the expenses of the month as they were', async ({ page }) => {
   await signUp(page);
@@ -20,7 +20,7 @@ test('a term deposit of 15,000 lowers the account but leaves the net worth and t
   await form.getByLabel(/^Monto a invertir/).fill('15000');
   await form.getByLabel('Tasa (TEA %)').fill('6');
   await form.getByRole('group', { name: 'Plazos frecuentes' }).getByRole('button', { name: '360', exact: true }).click();
-  await form.getByLabel('Desde la cuenta').selectOption({ index: 1 });
+  await pickAccount(form, 'Desde la cuenta', 'BCP');
   await expect(form.getByRole('region', { name: 'Resumen' })).toContainText('S/ 15,900.00');
   await form.getByRole('button', { name: 'Registrar inversión' }).click();
   await expect(form).toBeHidden();

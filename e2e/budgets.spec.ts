@@ -11,7 +11,7 @@ async function openAccount(page: Page, name: string, balance: string): Promise<v
 }
 
 async function spend(page: Page, amount: string, description: string, category: string): Promise<void> {
-  await page.getByRole('button', { name: 'Nueva transacción' }).click();
+  await page.getByRole('main').getByRole('button', { name: 'Nueva transacción' }).click();
   const dialog = page.getByRole('dialog', { name: 'Nueva transacción' });
   await dialog.getByRole('button', { name: 'Gasto', exact: true }).click();
   await dialog.getByLabel(/^Monto/).fill(amount);

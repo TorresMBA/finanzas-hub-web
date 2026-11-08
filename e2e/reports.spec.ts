@@ -13,7 +13,7 @@ test('the month report adds up the expenses, downloads as Excel, and the search 
 
   await page.goto('/transactions');
   for (const [description, amount] of [['Wong', '120'], ['Wong', '80']]) {
-    await page.getByRole('button', { name: 'Nueva transacción' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Nueva transacción' }).click();
     const expense = page.getByRole('dialog', { name: 'Nueva transacción' });
     await expense.getByRole('button', { name: 'Gasto', exact: true }).click();
     await expense.getByLabel(/^Monto/).fill(amount);
